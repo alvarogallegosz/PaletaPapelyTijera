@@ -4,64 +4,57 @@ import pandas as pd
 from db_connection import guardar_cambios_en_disco
 
 def render_edicion(df_mes, rol_actual, es_consolidado):
-    st.markdown("### 🛠️ Modificación y Ajuste de Registros")
+    st.markdown("### 🛠️ Modificaciones Generales de Auditoría")
     
     if df_mes.empty:
         st.info("No hay registros editables en este periodo.")
         return
 
     if es_consolidado:
-        st.warning("🔒 **EDICIÓN SUSPENDIDA:** Los registros están blindados por consolidación.")
+        st.warning("🔒 **EDICIÓN SUSPENDIDA:** Los registros están blindados por consolidación administrativa.")
+        return
 
-    opciones = {
-        row["id"]: f"ID: {row['id']} | {row['tipo']} | {row['detalle'][:25]}... | {row['monto']:,.2f}"
-        for _, row in df_mes.iterrows()
-    }
-    
-    id_sel = st.selectbox("Seleccione el registro a modificar:", options=list(opciones.keys()), format_func=lambda x: opciones[x], disabled=es_consolidado)
-    registro_actual = df_mes[df_mes["id"] == id_sel].iloc[0]
-    
-    with st.form("form_edicion", clear_on_submit=False):
-        c1, c2 = st.columns(2)
-        with c1:
-            f_edit = st.date_input("Fecha", registro_actual["fecha"], disabled=es_consolidado)
-            cat_edit = st.text_input("Categoría", value=str(registro_actual["categoria"]), disabled=es_consolidado)
-            det_edit = st.text_input("Detalle", value=str(registro_actual["detalle"]), disabled=es_consolidado)
-        with c2:
-            t_edit = st.selectbox("Tipo Cuenta", ["IN-Bs", "EG-Bs", "IN-$Ze", "EG-$Ze", "IN-$Ch", "EG-$Ch"], index=["IN-Bs", "EG-Bs", "IN-$Ze", "EG-$Ze", "IN-$Ch", "EG-$Ch"].index(registro_actual["tipo"]), disabled=es_consolidado)
-            monto_edit = st.number_input("Monto", min_value=0.0, value=float(registro_actual["monto"]), disabled=es_consolidado)
-            tasa_edit = st.number_input("Tasa", min_value=0.0, value=float(registro_actual["tasa"]) if pd.notnull(registro_actual["tasa"]) else 0.0, disabled=es_consolidado)
+    st.caption("💡 Puedes modificar cualquier celda haciendo doble clic directamente sobre ella (Estilo Excel). Al finalizar, presiona el botón inferior para procesar los cambios.")
+
+    # Dataframe interactivo
+    df_editado = st.data_editor(
+        df_mes,
+        column_order=["id", "fecha", "categoria", "detalle", "tipo", "monto", "tasa", "comentarios"],
+        column_config={
+            "id": st.column_config.NumberColumn("ID", disabled=True),
+            "fecha": st.column_config.DateColumn("Fecha"),
+            "tipo": st.column_config.SelectboxColumn("Tipo Cuenta", options=["IN-Bs", "EG-Bs", "IN-$Ze", "EG-$Ze", "IN-$Ch", "EG-$Ch"]),
+            "monto": st.column_config.NumberColumn("Monto", min_value=0.0, format="%.2f"),
+            "tasa": st.column_config.NumberColumn("Tasa", min_value=0.0),
+            "categoria": st.column_config.TextColumn("Categoría"),
+            "detalle": st.column_config.TextColumn("Detalle"),
+            "comentarios": st.column_config.TextColumn("Comentarios")
+        },
+        disabled=es_consolidado,
+        hide_index=True,
+        use_container_width=True,
+        key="editor_excel_caja"
+    )
+
+    # Botón unificado de guardado masivo
+    if not es_consolidado:
+        if st.button("💾 Aplicar Cambios Consolidados en Base de Datos"):
+            df_global = st.session_state["df_movimientos"]
             
-        com_edit = st.text_area("Notas", value=str(registro_actual["comentarios"]) if pd.notnull(registro_actual["comentarios"]) else "", disabled=es_consolidado)
-        
-        b1, b2 = st.columns(2)
-        with b1: btn_upd = st.form_submit_button("💾 Guardar Cambios", disabled=es_consolidado)
-        with b2: btn_del = st.form_submit_button("❌ Eliminar Registro", disabled=es_consolidado)
-        
-        if (btn_upd or btn_del) and es_consolidado:
-            st.error("Mes Consolidado. No puedes forzar la escritura.")
-            return
-
-        df_global = st.session_state["df_movimientos"]
-        idx = df_global[df_global["id"] == id_sel].index[0]
-
-        if btn_upd:
-            df_global.at[idx, "fecha"] = f_edit
-            df_global.at[idx, "categoria"] = cat_edit.strip().upper()
-            df_global.at[idx, "detalle"] = det_edit.strip()
-            df_global.at[idx, "tipo"] = t_edit
-            df_global.at[idx, "monto"] = monto_edit
-            df_global.at[idx, "tasa"] = tasa_edit if "Bs" in t_edit else None
-            df_global.at[idx, "comentarios"] = com_edit.strip()
-            df_global.at[idx, "modificado_por"] = rol_actual
+            # Sincronizamos las filas alteradas usando el ID como clave primaria
+            for _, row_editada in df_editado.iterrows():
+                idx_original = df_global[df_global["id"] == row_editada["id"]].index
+                if not idx_original.empty:
+                    idx = idx_original[0]
+                    df_global.at[idx, "fecha"] = row_editada["fecha"]
+                    df_global.at[idx, "categoria"] = str(row_editada["categoria"]).strip().upper()
+                    df_global.at[idx, "detalle"] = str(row_editada["detalle"]).strip()
+                    df_global.at[idx, "tipo"] = row_editada["tipo"]
+                    df_global.at[idx, "monto"] = float(row_editada["monto"])
+                    df_global.at[idx, "tasa"] = float(row_editada["tasa"]) if pd.notnull(row_editada["tasa"]) else None
+                    df_global.at[idx, "comentarios"] = str(row_editada["comentarios"]).strip()
+                    df_global.at[idx, "modificado_por"] = rol_actual
             
             guardar_cambios_en_disco()
-            st.success("Registro actualizado.")
-            st.rerun()
-            
-        if btn_del:
-            df_global.at[idx, "activo"] = False
-            df_global.at[idx, "modificado_por"] = rol_actual
-            guardar_cambios_en_disco()
-            st.success("Registro removido.")
+            st.success("🎉 ¡Todos los cambios han sido consolidados exitosamente en el archivo local!")
             st.rerun()

@@ -50,14 +50,15 @@ if modulos_validos:
     modulo_activo = st.radio("Módulos:", modulos_validos, horizontal=True)
     st.markdown("---")
     
+
     if modulo_activo == "REGISTROS DE CAJA":
-        # Bloque de pestañas de trabajo
         tab1, tab2, tab3, tab4 = st.tabs(["📝 Carga de Movimientos", "🔍 Ver Libro Diario", "🛠️ Modificaciones/Ajustes", "📚 Histórico de Cierres"])
         
         with tab1:
             render_carga(rol_simulado, es_consolidado)
         with tab2:
-            render_visor(df_mes, mes_sel_nombre, anho_sel)
+            # Enviamos saldos_fin para mapear las tarjetas superiores
+            render_visor(df_mes, mes_sel_nombre, anho_sel, saldos_fin)
         with tab3:
             render_edicion(df_mes, rol_simulado, es_consolidado)
         with tab4:

@@ -11,13 +11,15 @@ def render_carga(rol_actual, es_consolidado):
     st.markdown("### 📝 Carga de Movimientos de Caja")
     
     if es_consolidado:
-        st.warning("🔒 **PERÍODO CONSOLIDADO:** Este mes ha sido cerrado por la administración. No se permiten modificaciones ni inserciones.")
+        st.warning("🔒 **PERÍODO CONSOLIDADO:** Este mes ha sido cerrado por la administración. No se permiten modificaciones.")
+        return
     
-    with st.form("form_carga_caja", clear_on_submit=True):
+    # clear_on_submit=False evita el vaciado accidental al presionar Enter prematuramente
+    with st.form("form_carga_caja", clear_on_submit=False):
         c1, c2 = st.columns(2)
         with c1:
             f_ins = st.date_input("Fecha de Operación", datetime.now(), disabled=es_consolidado)
-            cat_ins = st.text_input("Categoría", placeholder="Ej: Salario personal, Impresión...", disabled=es_consolidado)
+            cat_ins = st.text_input("Categoría", placeholder="Ej: SALARIO PERSONAL, IMPRESIÓN...", disabled=es_consolidated:=es_consolidado)
             det_ins = st.text_input("Detalle / Concepto", placeholder="Ej. Pago de arriendo...", disabled=es_consolidado)
         with c2:
             t_ins = st.selectbox("Tipo Cuenta", ["IN-Bs", "EG-Bs", "IN-$Ze", "EG-$Ze", "IN-$Ch", "EG-$Ch"], disabled=es_consolidado)
@@ -28,9 +30,6 @@ def render_carga(rol_actual, es_consolidado):
         btn_guardar = st.form_submit_button("Registrar Transacción", disabled=es_consolidado)
         
         if btn_guardar:
-            if es_consolidado:
-                st.error("Acción denegada por cierre de mes.")
-                return
             if not det_ins.strip():
                 st.error("El campo 'Detalle / Concepto' es obligatorio.")
                 return
@@ -49,7 +48,7 @@ def render_carga(rol_actual, es_consolidado):
                     "activo": True, "consolidado": False, "creado_por": rol_actual, "modificado_por": rol_actual
                 }
                 guardar_movimiento_local(reg)
-                st.success(f"¡Asiento registrado con éxito! ({m_ins:,.2f})")
+                st.success(f"💥 ¡Asiento registrado con éxito! Recuerda usar TAB para navegar entre casillas.")
                 st.rerun()
             except ValueError:
                 st.error("Formato numérico inválido.")

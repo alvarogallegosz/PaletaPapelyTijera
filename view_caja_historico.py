@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 from core_finance_engine import procesar_mes_aislado
 from db_connection import guardar_cambios_en_disco
+from view_caja_visor import preparar_columnas_monto
 
 def render_historico(df_todos, rol_actual):
     st.markdown("### 📚 Reporte e Histórico de Cierres de Mes")
@@ -29,8 +30,28 @@ def render_historico(df_todos, rol_actual):
     else:
         st.warning("🔓 **ESTADO PERÍODO: ABIERTO / EN AUDITORÍA**")
 
-    st.markdown("**Saldos de Cierre del Período:**")
-    st.write(f"**Disponibilidad Bs:** {saldos_fin['Bs']:,.2f} | **Disponibilidad Zelle:** ${saldos_fin['Ze']:,.2f} | **Disponibilidad Cash:** ${saldos_fin['Ch']:,.2f}")
+    # --- CORRECCIÓN DE TIPOGRAFÍA DE SALDOS ---
+    st.markdown("#### 📊 Cierre de Saldos Disponibles:")
+    col_s1, col_s2, col_s3 = st.columns(3)
+    col_s1.metric("Disponibilidad Bs", f"Bs {saldos_fin['Bs']:,.2f}")
+    col_s2.metric("Disponibilidad Zelle", f"$ {saldos_fin['Ze']:,.2f}")
+    col_s3.metric("Disponibilidad Cash", f"$ {saldos_fin['Ch']:,.2f}")
+
+    # --- DESPLEGAR TODOS LOS MOVIMIENTOS EN ESTA VENTANA ---
+    st.markdown("#### 📋 Detalle de Movimientos del Período:")
+    if not df_mes.empty:
+        df_hist_visual = df_mes.copy()
+        df_hist_visual = preparar_columnas_monto(df_hist_visual)
+        df_hist_visual = df_hist_visual.rename(columns={"detalle": "Descripción", "categoria": "Categoría", "tipo": "Tipo", "comentarios": "Comentario"})
+        
+        st.dataframe(
+            df_hist_visual[["id", "fecha", "Descripción", "Categoría", "Tipo", "Monto Bs", "Monto $ Zelle", "Monto $ Cash", "Comentario"]],
+            use_container_width=True,
+            hide_index=True,
+            height=250
+        )
+    else:
+        st.info("No existen registros operativos en el mes seleccionado.")
 
     if rol_actual in ["administrador", "gerente"]:
         st.markdown("---")
@@ -48,5 +69,5 @@ def render_historico(df_todos, rol_actual):
                 st.session_state["df_movimientos"].loc[indices, "consolidado"] = False
                 st.session_state["df_movimientos"].loc[indices, "modificado_por"] = rol_actual
                 guardar_cambios_en_disco()
-                st.success("El mes se encuentra abierto de nuevo para modificaciones.")
+                st.success("El candado se ha retirado. Ahora puedes corregir desde las pestañas de Carga y Modificaciones.")
                 st.rerun()
