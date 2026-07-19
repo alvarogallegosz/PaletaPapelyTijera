@@ -185,7 +185,7 @@ def render_creacion_presupuestos(rol_simulado):
                         st.session_state.secciones_presupuesto.pop(idx)
                         st.rerun()
 
-                # Editor de datos sin indexación basura de pandas
+                # Editor de datos corregido sin parámetros inválidos de placeholder
                 df_editado = st.data_editor(
                     sec["df"],
                     key=f"editor_clean_{idx}",
@@ -193,11 +193,27 @@ def render_creacion_presupuestos(rol_simulado):
                     use_container_width=True,
                     hide_index=True,
                     column_config={
-                        "descripción": st.column_config.TextColumn("Descripción / Detalle", required=True, placeholder="Describa el artículo..."),
-                        "medidas": st.column_config.TextColumn("Medidas / Notas", placeholder="Ej. 2,20 m x 1,70 m"),
-                        "juegos/kits": st.column_config.NumberColumn("Juegos/Kits (Dejar vacío si es Null)", min_value=1),
-                        "cantidad": st.column_config.NumberColumn("Cantidad", min_value=1, default=1),
-                        "precio_unitario": st.column_config.NumberColumn("Precio Unitario ($)", min_value=0.0, format="$%.2f")
+                        "descripción": st.column_config.TextColumn(
+                            "Descripción / Detalle", 
+                            required=True
+                        ),
+                        "medidas": st.column_config.TextColumn(
+                            "Medidas / Notas"
+                        ),
+                        "juegos/kits": st.column_config.NumberColumn(
+                            "Juegos/Kits (Vacío = Null)", 
+                            min_value=1
+                        ),
+                        "cantidad": st.column_config.NumberColumn(
+                            "Cantidad", 
+                            min_value=1, 
+                            default=1
+                        ),
+                        "precio_unitario": st.column_config.NumberColumn(
+                            "Precio Unitario ($)", 
+                            min_value=0.0, 
+                            format="$%.2f"
+                        )
                     }
                 )
                 st.session_state.secciones_presupuesto[idx]["df"] = df_editado
