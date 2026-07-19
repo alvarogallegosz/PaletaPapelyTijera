@@ -10,13 +10,17 @@ def render_edicion(df_mes, rol_actual, es_consolidado):
         st.info("No hay registros editables en este periodo.")
         return
 
-    if es_consolidado:
+    # 🛡️ BLINDAJE ANTI-TYPEEROR: Forzamos la conversión a un bool puro de Python.
+    # Esto evita que los tipos de datos nativos de NumPy (numpy.bool_) rompan el validador de Streamlit.
+    es_consolidado_puro = bool(es_consolidado)
+
+    if es_consolidado_puro:
         st.warning("🔒 **EDICIÓN SUSPENDIDA:** Los registros están blindados por consolidación administrativa.")
         return
 
     st.caption("💡 Puedes modificar cualquier celda haciendo doble clic directamente sobre ella (Estilo Excel). Al finalizar, presiona el botón inferior para procesar los cambios.")
 
-    # Dataframe interactivo
+    # Dataframe interactivo estructurado
     df_editado = st.data_editor(
         df_mes,
         column_order=["id", "fecha", "categoria", "detalle", "tipo", "monto", "tasa", "comentarios"],
@@ -30,14 +34,14 @@ def render_edicion(df_mes, rol_actual, es_consolidado):
             "detalle": st.column_config.TextColumn("Detalle"),
             "comentarios": st.column_config.TextColumn("Comentarios")
         },
-        disabled=es_consolidado,
+        disabled=es_consolidado_puro, # <-- Usamos el booleano limpio purificado
         hide_index=True,
         use_container_width=True,
         key="editor_excel_caja"
     )
 
     # Botón unificado de guardado masivo
-    if not es_consolidado:
+    if not es_consolidado_puro:
         if st.button("💾 Aplicar Cambios Consolidados en Base de Datos"):
             df_global = st.session_state["df_movimientos"]
             
