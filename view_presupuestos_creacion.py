@@ -6,7 +6,7 @@ import time
 
 def render_creacion_presupuestos(rol_simulado):
     # --- 🎨 CONTROL DE INYECCIÓN CSS PARA AISLAMIENTO DE IMPRESIÓN ---
-st.markdown("""
+    st.markdown("""
         <style>
             @page {
                 size: letter;
