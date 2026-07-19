@@ -15,7 +15,7 @@ st.markdown("""
     <style>
         /* 1. Ajuste de respiro superior (ACTUALIZADO A 1.5rem para pegar arriba) */
         .block-container {
-            padding-top: 1.5rem !important; 
+            padding-top: 2.4rem !important; 
             padding-bottom: 1rem !important;
             max-width: 98% !important;     
         }
