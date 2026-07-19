@@ -17,7 +17,7 @@ st.markdown("""
     h3 { font-size: 16px !important; font-weight: 600 !important; color: #333; }
     .stTabs [data-baseweb="tab"] { font-size: 13px !important; padding: 6px 12px !important; }
     </style>
-""", unsafe_html=True)
+""", unsafe_allow_html=True)  # <-- Cambiado a unsafe_allow_html
 
 st.sidebar.markdown("### 🛠️ Entorno de Desarrollo")
 rol_simulado = st.sidebar.selectbox("Rol Activo:", ["administrador", "gerente", "contador", "operador", "soporte"])
