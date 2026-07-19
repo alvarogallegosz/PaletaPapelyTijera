@@ -3,7 +3,6 @@ import streamlit as st
 import pandas as pd
 
 def preparar_columnas_monto(df):
-    """Segmenta dinámicamente los montos en columnas independientes aplicando el signo matemático."""
     if df.empty:
         df["Monto Bs"] = ""
         df["Monto $ Zelle"] = ""
@@ -11,7 +10,6 @@ def preparar_columnas_monto(df):
         return df
 
     def evaluar_monto(row, cuenta_esperada):
-        # 🛡️ CAPA DE PROTECCIÓN COMPLEMENTARIA CONTRA TYPEERROR
         try:
             monto_val = float(row["monto"]) if pd.notnull(row["monto"]) else 0.0
         except (ValueError, TypeError):
@@ -35,42 +33,49 @@ def render_visor(df_mes, mes_nombre, anho, saldos_fin):
         st.info("No se registran movimientos activos en este periodo.")
         return
 
-    # --- BANNER DE SALDOS DINÁMICOS SUPERIORES ALINEADOS ---
-    st.markdown("#### 💰 Disponibilidad Actual en Cajas")
-    m_col1, m_col2, m_col3 = st.columns(3)
+    # --- FILA DE SALDOS COMPACTOS ALINEADOS EXACTAMENTE CON SUS COLUMNAS ---
+    # Configuración de proporciones idénticas a los anchos de la tabla
+    # Columnas: Fecha(100px), Descripción(320px), Categoría(160px), Tipo(90px), MontoBs(140px), Zelle(140px), Cash(140px), Comentario(320px)
+    cols_alineacion = st.columns([100, 320, 160, 90, 140, 140, 140, 320])
     
-    # Aseguramos conversión limpia también en las métricas superiores
     val_bs = float(saldos_fin.get('Bs', 0.0))
     val_ze = float(saldos_fin.get('Ze', 0.0))
     val_ch = float(saldos_fin.get('Ch', 0.0))
-    
-    with m_col1:
-        st.metric(label="Saldo Neto Bs", value=f"Bs {val_bs:,.2f}")
-    with m_col2:
-        st.metric(label="Saldo Neto Zelle", value=f"$ {val_ze:,.2f}")
-    with m_col3:
-        st.metric(label="Saldo Neto Cash", value=f"$ {val_ch:,.2f}")
-    st.markdown("---")
 
-    # Construcción de la estructura analítica
+    with cols_alineacion[4]: # Encima de Monto Bs
+        st.markdown(f"<div class='contenedor-saldo'><p class='saldo-lbl'>Saldo Bs</p><p class='saldo-val'>{val_bs:,.2f}</p></div>", unsafe_allow_html=True)
+    with cols_alineacion[5]: # Encima de Monto $ Zelle
+        st.markdown(f"<div class='contenedor-saldo'><p class='saldo-lbl'>Saldo Zelle</p><p class='saldo-val'>${val_ze:,.2f}</p></div>", unsafe_allow_html=True)
+    with cols_alineacion[6]: # Encima de Monto $ Cash
+        st.markdown(f"<div class='contenedor-saldo'><p class='saldo-lbl'>Saldo Cash</p><p class='saldo-val'>${val_ch:,.2f}</p></div>", unsafe_allow_html=True)
+    
+    st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+
+    # Preparar visualización limpia
     df_visual = df_mes.copy()
     df_visual = preparar_columnas_monto(df_visual)
     
-    # Renombrado oficial de etiquetas para el usuario
+    # 🛡️ Corrección de Fecha: Forzar formato String estricto DD/MM/YYYY para evitar herencias numéricas de Pandas
+    df_visual["Fecha Ext"] = pd.to_datetime(df_visual["fecha"]).dt.strftime("%d/%m/%Y")
+    
     df_visual = df_visual.rename(columns={"detalle": "Descripción", "categoria": "Categoría", "tipo": "Tipo", "comentarios": "Comentario"})
     
-    cols_mostrar = ["id", "fecha", "Descripción", "Categoría", "Tipo", "Monto Bs", "Monto $ Zelle", "Monto $ Cash", "Comentario"]
+    # Se elimina por completo el ID del orden visual expuesto
+    cols_mostrar = ["Fecha Ext", "Descripción", "Categoría", "Tipo", "Monto Bs", "Monto $ Zelle", "Monto $ Cash", "Comentario"]
     
     st.dataframe(
         df_visual[cols_mostrar],
         column_config={
-            "id": st.column_config.TextColumn("ID"),
-            "fecha": st.column_config.TextColumn("Fecha"),
-            "Monto Bs": st.column_config.TextColumn("Monto Bs"),
-            "Monto $ Zelle": st.column_config.TextColumn("Monto $ Zelle"),
-            "Monto $ Cash": st.column_config.TextColumn("Monto $ Cash"),
+            "Fecha Ext": st.column_config.TextColumn("Fecha", width=100),
+            "Descripción": st.column_config.TextColumn("Descripción", width=320),
+            "Categoría": st.column_config.TextColumn("Categoría", width=160),
+            "Tipo": st.column_config.TextColumn("Tipo", width=90),
+            "Monto Bs": st.column_config.TextColumn("Monto Bs", width=140),
+            "Monto $ Zelle": st.column_config.TextColumn("Monto $ Zelle", width=140),
+            "Monto $ Cash": st.column_config.TextColumn("Monto $ Cash", width=140),
+            "Comentario": st.column_config.TextColumn("Comentario", width=320),
         },
-        use_container_width=True,
+        use_container_width=False, # Mantiene los anchos fijos estrictos forzando el scrollbar nativo si sale de pantalla
         hide_index=True,
-        height=400
+        height=380
     )
