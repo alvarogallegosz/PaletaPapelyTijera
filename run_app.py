@@ -10,17 +10,17 @@ from view_caja_historico import render_historico
 
 st.set_page_config(page_title="Estructura Administrativa PaletaPapelyTijera", layout="wide")
 
-# --- INYECCIÓN DE CSS GLOBAL OPTIMIZADO (ESPACIOS ULTRA COMPACTOS) ---
+# --- INYECCIÓN DE CSS GLOBAL OPTIMIZADO (ESPACIOS ULTRA COMPACTOS Y RESPETO DE TÍTULOS) ---
 st.markdown("""
     <style>
-        /* 1. Ajuste de respiro superior (ACTUALIZADO A 1.5rem para pegar arriba) */
+        /* 1. Ajuste del lienzo superior para respetar la barra de herramientas de Streamlit */
         .block-container {
             padding-top: 2.4rem !important; 
             padding-bottom: 1rem !important;
             max-width: 98% !important;     
         }
         
-        /* 2. Compactar espacio muerto entre elementos (ACTUALIZADO A 0.3rem) */
+        /* 2. Compactar espacio muerto entre elementos */
         div[data-testid="stVerticalBlock"] {
             gap: 0.3rem !important; 
         }
@@ -28,20 +28,21 @@ st.markdown("""
             margin-bottom: 0px !important;
         }
         
-        /* 3. Control estricto de tipografías y márgenes inferiores */
+        /* 3. Control estricto de tipografías y márgenes para evitar solapamientos */
         h1 { 
             font-size: 22px !important; 
             font-weight: 700 !important; 
-            margin-bottom: 12px !important; 
+            margin-top: 4px !important;     
+            margin-bottom: 6px !important;    
             padding-bottom: 0px !important; 
         }
         h2 { font-size: 18px !important; font-weight: 700 !important; margin-top: 2px !important; }
         h3 { font-size: 15px !important; font-weight: 600 !important; margin-bottom: 2px !important; }
         
-        /* Ajuste de 7mm (26px) para bajar st.segmented_control y evitar el solapamiento */
+        /* El SegmentedControl viaja a una distancia proporcional perfecta (Ajuste 7mm) */
         div[data-testid="stSegmentedControl"] {
-            margin-top: 26px !important;    
-            margin-bottom: 8px !important;
+            margin-top: 4px !important;    
+            margin-bottom: 6px !important;
         }
 
         /* 4. Unificación estética de las subpestañas */
@@ -61,7 +62,7 @@ st.markdown("""
             font-weight: 500 !important;
             color: #6b7280 !important;
             border: none !important;
-            }
+        }
         .stTabs [aria-selected="true"] {
             background-color: #ffffff !important;
             color: #1f2937 !important;
@@ -106,6 +107,7 @@ modulo_activo = st.segmented_control(
 )
 
 # Enrutador de Módulos con subpestañas consistentes
+# I. REGISTRO MOVIMIENTOS DE CAJA
 if modulo_activo == "📦 Registro Movimientos de Caja":
     tab1, tab2, tab3, tab4 = st.tabs([
         "📝 Carga de Movimientos", 
@@ -123,15 +125,22 @@ if modulo_activo == "📦 Registro Movimientos de Caja":
     with tab4:
         render_historico(df_completo, rol_simulado)
 
+# II. PRESUPUESTOS (SERVICIOS AL CLIENTE)
 elif modulo_activo == "📊 Presupuestos (Servicios al Cliente)":
     st.markdown("### 📊 Panel General de Presupuestos")
     st.info("Módulo de generación de presupuestos de servicios al cliente.")
+
+# III. FACTURACIÓN
 elif modulo_activo == "📊 Facturación":
     st.markdown("### 📊 Panel General de facturación")
     st.info("Módulo de generación de facturas fiscales por servicios al cliente.")
+
+# IV. ADMINISTRACIÓN
 elif modulo_activo == "📊 Administración":
     st.markdown("### 📊 Panel General de Administración")
     st.info("Módulo de bancos, compras, ventas, cuantas por pagar, cuentas por cobrar.")
+
+# V. SOPORTE TÉCNICO
 elif modulo_activo == "⚙️ Soporte Técnico":
-    st.markdown("### ⚙️ Configuración Global del Sistema")
-    st.info("Panel de control de variables del entorno de desarrollo y respaldos de BD.")
+    st.markdown("### ⚙️ Configuración y Auditorías Técnicas")
+    st.info("Módulo de infraestructura con visualización exclusiva del histórico transaccional del sistema. y respaldos de BD.")
