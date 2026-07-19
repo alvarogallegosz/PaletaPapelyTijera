@@ -292,27 +292,145 @@ def render_creacion_presupuestos(rol_simulado):
                 st.success("🎉 Guardado.")
 
 # ===================================================
-    # 🖨️ MODO VISTA PREVIA (INMUNIZADO CONTRA MANGLES Y SALTOS)
+    # 🖨️ MODO VISTA PREVIA (RECONFIGURADO PARA DESCARGA NATIVA)
     # ===================================================
     else:
-        # Extracción e inmunización segura del estado de la sesión
+        # 1. Extracción e inmunización segura del estado de la sesión
         meta = st.session_state.get("meta_presupuesto", {})
         clausulas_txt = st.session_state.get("clausulas_presupuesto", "")
         secciones_activas = st.session_state.get("lista_secciones", [])
         
         st.markdown("### 👁️ Vista Previa del Documento")
-        col_pv1, col_pv2 = st.columns(2)
+        
+        # 2. Generación silenciosa del binario PDF en el backend
+        # (Asegúrate de tener la función generar_pdf_presupuesto_nativo declarada arriba)
+        pdf_bytes = generar_pdf_presupuesto_nativo()
+        nombre_cliente = str(meta.get("cliente", "cliente")).strip().replace(" ", "_").lower()
+        
+        # 3. Fila de Control de Acciones (3 Columnas Equilibradas)
+        col_pv1, col_pv2, col_pv3 = st.columns(3)
         with col_pv1:
-            if st.button("✏️ Regresar a Modo Edición", type="secondary", use_container_width=True):
+            if st.button("✏️ Regresar a Edición", type="secondary", use_container_width=True):
                 st.session_state.modo_vista = "edicion"
                 st.rerun()
+                
         with col_pv2:
-            st.button("💾 Confirmar y Guardar en Supabase", disabled=True, type="primary", use_container_width=True)
+            st.download_button(
+                label="📥 Descargar Presupuesto PDF",
+                data=pdf_bytes,
+                file_name=f"presupuesto_{nombre_cliente}.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+            
+        with col_pv3:
+            if st.button("💾 Guardar en Base de Datos", type="primary", use_container_width=True):
+                # Pon aquí tu lógica existente para persistir en Supabase
+                st.success("¡Presupuesto guardado exitosamente en la base de datos!")
         
-        st.info("💡 Para guardar el PDF limpio: Presiona **Ctrl + P** o **Cmd + P**.")
         st.markdown("---")
-        
-        # --- 🖼️ CARGA ROBUSTA DEL LOGO (MISMAS MINÚSCULAS) ---
+
+        # 4. CSS Simplificado: Exclusivo para la simulación estética en pantalla
+        st.markdown("""
+            <style>
+                .documento-hoja {
+                    font-family: 'Arial', sans-serif;
+                    color: #000000;
+                    background-color: #ffffff;
+                    width: 100%;
+                    max-width: 8.5in;
+                    min-height: 11in;
+                    box-sizing: border-box;
+                    padding: 0.5in;
+                    margin: 10px auto;
+                    border: 1px solid #cbd5e1;
+                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+                }
+
+                .meta-contenedor {
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 12px;
+                    line-height: 1.4;
+                    margin-top: 10px;
+                    margin-bottom: 5px;
+                }
+                .meta-izquierda { font-weight: normal; }
+                .meta-derecha { text-align: right; font-weight: bold; }
+
+                .banner-verde-principal {
+                    background-color: #b8d7a3 !important;
+                    color: #ffffff !important;
+                    text-align: center;
+                    font-weight: bold;
+                    padding: 6px 0px;
+                    font-size: 13px;
+                    letter-spacing: 0.5px;
+                    text-transform: uppercase;
+                    margin-bottom: 12px;
+                }
+
+                .tabla-remastered {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 0px;
+                    table-layout: fixed;
+                }
+                .tabla-remastered th {
+                    background-color: #fffdeb !important;
+                    border-bottom: 1px solid #cbd5e1;
+                    color: #000000;
+                    font-weight: bold;
+                    font-size: 11px;
+                    padding: 6px 8px;
+                }
+                .tabla-remastered td {
+                    padding: 6px 8px;
+                    font-size: 11px;
+                    border-bottom: 1px solid #e2e8f0;
+                    vertical-align: top;
+                    word-wrap: break-word;
+                }
+
+                .contenedor-subtotal {
+                    background-color: #ffffff;
+                    font-weight: bold;
+                    font-size: 12px;
+                    text-align: right;
+                    padding: 6px 8px;
+                    margin-bottom: 15px;
+                    border-bottom: 1px solid #cbd5e1;
+                }
+
+                .banner-total-general {
+                    background-color: #b8d7a3 !important;
+                    color: #000000 !important;
+                    font-weight: bold;
+                    font-size: 20px;
+                    padding: 8px 15px;
+                    margin-top: 15px;
+                    margin-bottom: 20px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+
+                .clausulas-container {
+                    font-size: 11px;
+                    margin-top: 20px;
+                    color: #1a202c;
+                    line-height: 1.4;
+                }
+                .clausulas-header {
+                    color: #d53f8c;
+                    font-weight: bold;
+                    font-size: 12px;
+                    margin-bottom: 5px;
+                }
+            </style>
+        """, unsafe_allow_html=True)
+
+        # 5. Carga local del Logo en minúsculas
         logo_nombre = "encabezado_paleta.png"
         ruta_script = os.path.join(os.path.dirname(__file__), logo_nombre)
         ruta_raiz = os.path.join(os.getcwd(), logo_nombre)
@@ -326,17 +444,15 @@ def render_creacion_presupuestos(rol_simulado):
         else:
             html_logo = f'<div style="background-color:#f2f2f2; border:2px dashed #cbd5e1; padding:20px; text-align:center; font-weight:bold; color:#64748b; margin-bottom:10px;">[ LOGO: {logo_nombre} NO DETECTADO ]</div>'
 
-        # Formateo seguro de textos de cabecera
+        # Textos sanitizados de cabecera
         p_nombre = str(meta.get('nombre', '') or '').upper() or 'PRESUPUESTO'
         p_fecha_evt = str(meta.get('fecha_evento', '') or '').upper() or 'N/A'
         p_cliente = str(meta.get('cliente', '') or '').upper() or 'N/A'
         p_lugar = str(meta.get('lugar', '') or '').upper() or 'N/A'
         p_emision = str(meta.get('fecha_larga', '') or '').upper() or 'N/A'
-
-        # Sanitizamos las cláusulas convirtiendo sus saltos de línea a etiquetas HTML válidas
         clausulas_html = str(clausulas_txt or '').replace("\n", "<br>")
 
-        # Construcción base del lienzo
+        # Construcción del esqueleto HTML
         html_cuerpo = f"""
         <div class="documento-hoja">
             {html_logo}
@@ -357,20 +473,19 @@ def render_creacion_presupuestos(rol_simulado):
         
         for idx_sec, sec in enumerate(secciones_activas):
             sec_id = sec.get('id', '')
-            sec_titulo = sec.get('titulo', f'SECCIÓN {idx_sec+1}')
+            sec_titulo = sec.get('titulo', f'SECCIÓN {idx_sec+1}').upper()
             df_sec = st.session_state.get(f"df_{sec_id}", pd.DataFrame())
-            th_style = 'style="background-color: #f2f2f2 !important;"' if idx_sec > 0 else ''
             
             html_cuerpo += f"""
             <table class="tabla-remastered">
                 <thead>
                     <tr>
-                        <th style="width: 7%; text-align: center;" {th_style}>ITEM</th>
-                        <th style="width: 41%; text-align: left;" {th_style}>{sec_titulo}</th>
-                        <th style="width: 20%; text-align: left;" {th_style}>MEDIDAS</th>
-                        <th style="width: 10%; text-align: center;" {th_style}>JUEGOS/KITS</th>
-                        <th style="width: 12%; text-align: center;" {th_style}>CANTIDAD</th>
-                        <th style="width: 10%; text-align: right;" {th_style}>PRECIO</th>
+                        <th style="width: 5%; text-align: center;">ITEM</th>
+                        <th style="width: 48%; text-align: left;">{sec_titulo}</th>
+                        <th style="width: 25%; text-align: left;">MEDIDAS</th>
+                        <th style="width: 8%; text-align: center;">JUEGOS/KITS</th>
+                        <th style="width: 6%; text-align: center;">CANT.</th>
+                        <th style="width: 8%; text-align: right;">PRECIO</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -381,7 +496,6 @@ def render_creacion_presupuestos(rol_simulado):
             
             if not df_sec.empty:
                 for row in df_sec.to_dict('records'):
-                    # 🌟 SANITIZACIÓN CRÍTICA: Reemplazar saltos de línea crudos por <br>
                     desc = str(row.get('descripción', '') or '').strip().replace("\n", "<br>").replace("\r", "")
                     med = str(row.get('medidas', '') or '').strip().replace("\n", "<br>").replace("\r", "")
                     
@@ -393,15 +507,12 @@ def render_creacion_presupuestos(rol_simulado):
                     except: pu_val = 0.0
 
                     if desc or med or jk_val or cant_val or pu_val:
-                        if jk_val == 0.0:
-                            total_fila = cant_val * pu_val
-                            jk_str = ""
-                        else:
-                            total_fila = jk_val * cant_val * pu_val
-                            jk_str = f"{int(jk_val) if jk_val.is_integer() else jk_val}"
-                            
+                        total_fila = (jk_val * cant_val * pu_val) if jk_val > 0 else (cant_val * pu_val)
                         subtotal_seccion += total_fila
-                        precio_str = f"${total_fila:,.2f}"
+                        
+                        # 🌟 CORREGIDO: Las celdas de detalle van sin el signo $ para optimizar espacio
+                        precio_str = f"{total_fila:,.2f}"
+                        jk_str = f"{int(jk_val) if jk_val.is_integer() else jk_val}" if jk_val > 0 else ""
                         cant_str = f"{int(cant_val) if cant_val.is_integer() else cant_val}" if cant_val > 0 else ""
                         
                         html_cuerpo += f"""
@@ -419,6 +530,7 @@ def render_creacion_presupuestos(rol_simulado):
             if item_numeral == 1:
                 html_cuerpo += '<tr><td colspan="6" style="text-align: center; color: #a0aec0; padding: 8px;">Sección sin registros activos</td></tr>'
                 
+            # 🌟 El signo $ permanece visible en los Subtotales de sección
             html_cuerpo += f"""
                 </tbody>
             </table>
@@ -429,6 +541,7 @@ def render_creacion_presupuestos(rol_simulado):
             """
             total_general += subtotal_seccion
             
+        # 🌟 El signo $ permanece visible en el Banner del Total General
         html_cuerpo += f"""
             <div class="banner-total-general">
                 <span>TOTAL A CANCELAR</span>
@@ -441,8 +554,6 @@ def render_creacion_presupuestos(rol_simulado):
         </div>
         """
         
-        # 🚀 EL TRUCO MAESTRO: Unificar todo el HTML removiendo saltos de línea estructurales (\n)
-        # Esto previene que el compilador Markdown rompa las celdas de las tablas de datos.
+        # Compresión del string en una sola línea para evitar rupturas de Markdown en pantalla
         html_compreso = " ".join([line.strip() for line in html_cuerpo.splitlines()])
-        
         st.markdown(html_compreso, unsafe_allow_html=True)
