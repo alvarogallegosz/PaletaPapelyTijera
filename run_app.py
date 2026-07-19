@@ -95,7 +95,7 @@ es_consolidado = df_mes["consolidado"].all() if not df_mes.empty else False
 st.markdown(f"<h1>📊 Estructura Administrativa — {rol_simulado.upper()}</h1>", unsafe_allow_html=True)
 
 # Definición homologada de los módulos principales en formato Botones de Píldora
-modulos_sistema = ["📦 Registro Movimientos de Caja", "📊 REPORTES DE DIRECTIVA", "⚙️ CONFIGURACIÓN"]
+modulos_sistema = ["📦 Registro Movimientos de Caja", "📊 Presupuestos (Servicios al Cliente)", "📊 Facturación", "📊 Administración", "⚙️ Soporte Técnico"]
 
 # Reemplazo de st.radio por control segmentado de bajo perfil con eliminación total de etiquetas verticales
 modulo_activo = st.segmented_control(
