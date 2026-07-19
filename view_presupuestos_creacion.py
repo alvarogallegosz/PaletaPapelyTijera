@@ -8,7 +8,7 @@ def render_creacion_presupuestos(rol_simulado):
     # --- 🎨 CONFIGURACIÓN DE LIENZO DE IMPRESIÓN Y MÁRGENES ESTRICTOS (TAMAÑO CARTA) ---
     st.markdown("""
         <style>
-            /* Configuración del Lienzo Físico de Impresión Tamaño Carta */
+            /* Lienzo Físico de Impresión Tamaño Carta con Márgenes Solicitados */
             @page {
                 size: letter;
                 margin-top: 1.3cm;
@@ -73,9 +73,10 @@ def render_creacion_presupuestos(rol_simulado):
                 width: 100%;
                 border-collapse: collapse;
                 margin-bottom: 0px;
+                table-layout: fixed; /* Fuerza el respeto de los anchos asignados */
             }
             .tabla-remastered th {
-                background-color: #fffdeb !important; /* Crema oficial */
+                background-color: #fffdeb !important;
                 border-bottom: 1px solid #cbd5e1;
                 color: #000000;
                 font-weight: bold;
@@ -87,6 +88,7 @@ def render_creacion_presupuestos(rol_simulado):
                 font-size: 12px;
                 border-bottom: 1px solid #e2e8f0;
                 vertical-align: top;
+                word-wrap: break-word; /* Evita desbordes de texto */
             }
 
             .fila-subtotal-seccion {
@@ -117,6 +119,7 @@ def render_creacion_presupuestos(rol_simulado):
                 margin-top: 15px;
                 color: #1a202c;
                 line-height: 1.4;
+                white-space: pre-line; /* Mantiene saltos de línea del editor */
             }
             .clausulas-header {
                 color: #d53f8c;
@@ -134,23 +137,38 @@ def render_creacion_presupuestos(rol_simulado):
     if "meta_presupuesto" not in st.session_state:
         st.session_state.meta_presupuesto = {"cliente": "", "nombre": "", "fecha_evento": "", "lugar": "", "fecha_larga": ""}
 
-    # --- 📦 INICIALIZACIÓN DE TABLAS BASE FIZAS ---
+    # --- 📜 CLÁUSULAS PREDETERMINADAS EDITABLES ---
+    clausulas_defecto = (
+        "Las condiciones generales de nuestra oferta son las siguientes:\n"
+        "* Precios se entienden en: Dólares netos. El costo debe ser pagado el 50% a la aceptación del contrato y el otro 50% 2 días antes del evento.\n"
+        "* Si el pago lo realizará en bs la tasa que manejamos es Euro indicado por el Banco Central de Venezuela.\n"
+        "* Validez de la Oferta: 3 días contínuos.\n"
+        "* Si el cliente cancela el servicio (es decir no va a querer el servicio) 2 días antes del evento le será devuelto un 30% del monto pagado.\n"
+        "* Si el cliente cancela el servicio (es decir no va a querer el servicio) 1 día antes ó el día del evento no se le devolverá nada del monto pagado.\n"
+        "* El cliente es enteramente responsable de todo el material suministrado para el evento y cancelara cualquier daño al mismo.\n\n"
+        "Sin más a que hacer referencia, a la espera de vuestra consideración, nos despedimos de Ud.,\n"
+        "Atentamente,\n"
+        "Paletapapelytijera"
+    )
+    
+    if "clausulas_presupuesto" not in st.session_state:
+        st.session_state.clausulas_presupuesto = clausulas_defecto
+
+    # --- 📦 REGLA: 1 SOLA SECCIÓN INICIAL POR DEFECTO ---
     if "lista_secciones" not in st.session_state:
         st.session_state.lista_secciones = [
-            {"id": "sec_inicial_1", "titulo": "DECORACIÓN PRINCIPAL (ALQUILER)"},
-            {"id": "sec_inicial_2", "titulo": "ZONA DE CENTRO DE MESA"}
+            {"id": "sec_inicial_1", "titulo": "DECORACIÓN PRINCIPAL (ALQUILER)"}
         ]
         st.session_state["df_sec_inicial_1"] = pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])
-        st.session_state["df_sec_inicial_2"] = pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])
 
     # ===================================================
-    # 📝 MODO DE EDICIÓN (REDISEÑADO ANTIFALLOS)
+    # 📝 MODO DE EDICIÓN
     # ===================================================
     if st.session_state.modo_vista == "edicion":
         st.markdown("## 📝 Maquetación de Presupuesto")
         
         with st.container(border=True):
-            st.markdown("#### 🏛️ Configuración de Cabecera")
+            st.markdown("#### 🏛 Honorarios y Datos de Cabecera")
             c1, c2, c3 = st.columns(3)
             with c1:
                 st.session_state.meta_presupuesto["nombre"] = st.text_input("Nombre del Presupuesto:", value=st.session_state.meta_presupuesto["nombre"])
@@ -161,9 +179,8 @@ def render_creacion_presupuestos(rol_simulado):
             with c3:
                 st.session_state.meta_presupuesto["fecha_larga"] = st.text_input("Fecha de Emisión:", value=st.session_state.meta_presupuesto["fecha_larga"])
 
-        st.markdown("#### 📦 Bloques del Presupuesto")
+        st.markdown("#### 📦 Bloques de Catálogo")
         
-        # Botón dinámico: Guarda estado actual antes de alterar la estructura física
         if st.button("➕ Añadir Nueva Sección Física", disabled=len(st.session_state.lista_secciones) >= 5):
             for s in st.session_state.lista_secciones:
                 k = f"df_{s['id']}"
@@ -173,17 +190,17 @@ def render_creacion_presupuestos(rol_simulado):
             nuevo_id = f"sec_{int(time.time() * 1000)}"
             st.session_state.lista_secciones.append({
                 "id": nuevo_id,
-                "titulo": f"NUEVA SECCIÓN {len(st.session_state.lista_secciones) + 1}"
+                "titulo": f"NUEVA ZONA {len(st.session_state.lista_secciones) + 1}"
             })
             st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])
             st.rerun()
 
-        # Renderizado Asíncrono de Tablas
+        # Renderizado de Bloques y validación de topes por sección
         for idx, sec in enumerate(st.session_state.lista_secciones):
             sec_id = sec["id"]
             df_key = f"df_{sec_id}"
             
-            # Asignación de topes según requerimiento exacto
+            # Asignación estricta de límites físicos por sección
             if idx == 0:
                 max_filas = 15
             elif idx == 1:
@@ -208,9 +225,8 @@ def render_creacion_presupuestos(rol_simulado):
                         st.session_state.pop(f"final_{df_key}", None)
                         st.rerun()
 
-                st.caption(f"Capacidad establecida para este bloque: **{max_filas} filas** (Los valores vacíos o nulos son válidos).")
+                st.caption(f"Límite establecido: **{max_filas} filas max**. (Celdas vacías permitidas, no anulan la fila).")
 
-                # 🌟 EL SECRETO: El editor lee de 'df_key' (estable) y guarda el búfer vivo en 'final_df_key'
                 df_vivo = st.data_editor(
                     st.session_state[df_key],
                     key=f"editor_widget_{sec_id}",
@@ -218,26 +234,33 @@ def render_creacion_presupuestos(rol_simulado):
                     use_container_width=True,
                     hide_index=True,
                     column_config={
-                        "descripción": st.column_config.TextColumn("Descripción / Detalle"),
-                        "medidas": st.column_config.TextColumn("Medidas / Notas"),
-                        "juegos/kits": st.column_config.NumberColumn("Juegos/Kits", min_value=1),
-                        "cantidad": st.column_config.NumberColumn("Cantidad", min_value=1, default=1),
-                        "precio_unitario": st.column_config.NumberColumn("Precio Unitario ($)", min_value=0.0, format="$%.2f")
+                        "descripción": st.column_config.TextColumn("Descripción (80 ch)"),
+                        "medidas": st.column_config.TextColumn("Medidas (40 ch)"),
+                        "juegos/kits": st.column_config.NumberColumn("Juegos/Kits (11 ch)", min_value=1),
+                        "cantidad": st.column_config.NumberColumn("Cantidad (8 ch)", min_value=1, default=1),
+                        "precio_unitario": st.column_config.NumberColumn("Precio (12 ch)", min_value=0.0, format="$%.2f")
                     }
                 )
 
-                # Control visual y físico de desbordamiento sin romper la pantalla
                 if len(df_vivo) > max_filas:
-                    st.error(f"⚠️ Alerta: Esta sección excede el tope de {max_filas} filas. Solo se procesarán las primeras {max_filas} líneas.")
+                    st.error(f"⚠️ Sección limitada a {max_filas} líneas. Excedente truncado automáticamente.")
                     st.session_state[f"final_{df_key}"] = df_vivo.head(max_filas)
                 else:
                     st.session_state[f"final_{df_key}"] = df_vivo
+
+        # --- 📜 PANEL DE CONTROL DE CLÁUSULAS DINÁMICAS ---
+        with st.container(border=True):
+            st.markdown("#### 📜 Cláusulas del Contrato (Variables por presupuesto)")
+            st.session_state.clausulas_presupuesto = st.text_area(
+                "Modifique o adicione términos legales para este documento:",
+                value=st.session_state.clausulas_presupuesto,
+                height=200
+            )
 
         st.markdown("---")
         col_acc1, col_acc2 = st.columns(2)
         with col_acc1:
             if st.button("👁️ Generar Vista Previa de Impresión", type="secondary", use_container_width=True):
-                # Sincronización masiva y limpia antes de saltar de pantalla
                 for s in st.session_state.lista_secciones:
                     k = f"df_{s['id']}"
                     if f"final_{k}" in st.session_state:
@@ -250,10 +273,10 @@ def render_creacion_presupuestos(rol_simulado):
                     k = f"df_{s['id']}"
                     if f"final_{k}" in st.session_state:
                         st.session_state[k] = st.session_state[f"final_{k}"]
-                st.success("🎉 Todo el presupuesto indexado fue consolidado y guardado con éxito.")
+                st.success("🎉 Estructura consolidada con éxito.")
 
     # ===================================================
-    # 🖨️ MODO VISTA PREVIA DE IMPRESIÓN (LIENZO CARTA EXACTO)
+    # 🖨️ MODO VISTA PREVIA DE IMPRESIÓN
     # ===================================================
     else:
         meta = st.session_state.meta_presupuesto
@@ -268,13 +291,12 @@ def render_creacion_presupuestos(rol_simulado):
             if st.button("💾 Confirmar y Guardar en Supabase", disabled=rol_simulado not in ["administrador", "gerente"], type="primary", use_container_width=True):
                 st.success("🎉 Registro guardado en la base de datos.")
         
-        st.info("💡 Consejo para el PDF: Pulsa **Ctrl + P** (Windows) o **Cmd + P** (Mac). Configura márgenes como 'Predeterminados' u 'Originales de página'.")
+        st.info("💡 Consejo para el PDF: Pulsa **Ctrl + P** (Windows) o **Cmd + P** (Mac).")
         st.markdown("---")
         
-        # --- 📄 FORMATO DE HOJA FÍSICA ---
+        # --- 📄 INICIO DEL LIENZO FÍSICO ---
         st.markdown('<div class="documento-hoja">', unsafe_allow_html=True)
         
-        # Localizador corporativo
         dir_actual = os.path.dirname(__file__)
         rutas_probables = [
             "Encabezado_Paleta.png", "encabezado_paleta.png",
@@ -288,7 +310,6 @@ def render_creacion_presupuestos(rol_simulado):
         else:
             st.markdown('<div style="background-color:#f2f2f2; border:2px dashed #cbd5e1; padding:20px; text-align:center; font-weight:bold; color:#64748b;">[ PALETA PAPEL Y TIJERA ]</div>', unsafe_allow_html=True)
         
-        # Datos alineados del Presupuesto
         st.markdown(f"""
             <div class="meta-contenedor">
                 <div class="meta-izquierda">
@@ -302,10 +323,11 @@ def render_creacion_presupuestos(rol_simulado):
             </div>
         """, unsafe_allow_html=True)
         
-        st.markdown(f'<div class="banner-verde-principal">PRESUPUESTO DETALLADO</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="banner-verde-principal">PRESUPUESTO {meta["nombre"]}</div>', unsafe_allow_html=True)
         
         total_general = 0.0
         
+        # Procesamiento e inyección limpia de tablas con anchos proporcionales exactos
         for idx_sec, sec in enumerate(st.session_state.lista_secciones):
             df_sec = st.session_state[f"df_{sec['id']}"]
             th_style = 'style="background-color: #f2f2f2 !important;"' if idx_sec > 0 else ''
@@ -314,12 +336,12 @@ def render_creacion_presupuestos(rol_simulado):
             <table class="tabla-remastered">
                 <thead>
                     <tr>
-                        <th style="width: 6%; text-align: center;" {th_style}>ITEM</th>
-                        <th style="text-align: left;" {th_style}>{sec['titulo']}</th>
-                        <th style="width: 25%; text-align: left;" {th_style}>MEDIDAS</th>
-                        <th style="width: 12%; text-align: center;" {th_style}>JUEGOS/KITS</th>
-                        <th style="width: 10%; text-align: center;" {th_style}>CANTIDAD</th>
-                        <th style="width: 12%; text-align: right;" {th_style}>PRECIO</th>
+                        <th style="width: 3.2%; text-align: center;" {th_style}>ITEM</th>
+                        <th style="width: 51.3%; text-align: left;" {th_style}>{sec['titulo']}</th>
+                        <th style="width: 25.6%; text-align: left;" {th_style}>MEDIDAS</th>
+                        <th style="width: 7.1%; text-align: center;" {th_style}>JUEGOS/KITS</th>
+                        <th style="width: 5.1%; text-align: center;" {th_style}>CANTIDAD</th>
+                        <th style="width: 7.7%; text-align: right;" {th_style}>PRECIO</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -338,7 +360,6 @@ def render_creacion_presupuestos(rol_simulado):
                     desc_str = "" if pd.isna(desc) or desc is None else str(desc)
                     med_str = "" if pd.isna(med) or med is None else str(med)
                     
-                    # Cálculo tolerante a nulos totales en celdas vacías
                     cant_val = float(cant) if pd.notna(cant) and cant is not None else 0.0
                     pu_val = float(pu) if pd.notna(pu) and pu is not None else 0.0
                     
@@ -368,6 +389,7 @@ def render_creacion_presupuestos(rol_simulado):
             html_tabla += "</tbody></table>"
             st.markdown(html_tabla, unsafe_allow_html=True)
             
+            # Subtotales explícitos por sección
             st.markdown(f"""
                 <div class="fila-subtotal-seccion">
                     <span>SUB TOTAL {sec['titulo']}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
@@ -377,6 +399,7 @@ def render_creacion_presupuestos(rol_simulado):
             
             total_general += subtotal_seccion
             
+        # Banner del Total General del Presupuesto
         st.markdown(f"""
             <div class="banner-total-general">
                 <span>TOTAL A CANCELAR</span>
@@ -384,18 +407,11 @@ def render_creacion_presupuestos(rol_simulado):
             </div>
         """, unsafe_allow_html=True)
         
-        st.markdown("""
+        # Inyección de Cláusulas Dinámicas Procesadas
+        st.markdown(f"""
             <div class="clausulas-container">
                 <div class="clausulas-header">CLAUSULAS:</div>
-                * Precios se entienden en: Dólares netos. El costo debe ser pagado el 50% a la aceptación del contrato y el otro 50% 2 días antes del evento.<br>
-                * Si el pago lo realizará en bs la tasa que manejamos es Euro indicado por el Banco Central de Venezuela.<br>
-                * Validez de la Oferta: 3 días continuos.<br>
-                * Si el cliente cancela el servicio (es decir no va a querer el servicio) 2 días antes del evento le será devuelto un 30% del monto pagado.<br>
-                * Si el cliente cancela el servicio (es decir no va a querer el servicio) 1 día antes ó el día del evento no se le devolverá nada del monto pagado.<br>
-                * El cliente es enteramente responsable de todo el material suministrado para el evento y cancelara cualquier daño al mismo.<br><br>
-                Sin más a que hacer referencia, a la espera de vuestra consideración, nos despedimos de Ud.,<br>
-                Atentamente,<br><br>
-                <b>Paletapapelytijera</b>
+                {st.session_state.clausulas_presupuesto}
             </div>
         """, unsafe_allow_html=True)
         
