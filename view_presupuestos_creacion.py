@@ -296,14 +296,25 @@ def render_creacion_presupuestos(rol_simulado):
         else:
             html_logo = '<div style="background-color:#f2f2f2; border:2px dashed #cbd5e1; padding:20px; text-align:center; font-weight:bold; color:#64748b; margin-bottom:10px;">[ LOGO: ENCABEZADO_PALETA.PNG NO DETECTADO ]</div>'
 
-        # Construcción limpia sin cierres prematuros de string
+ # --- 🏗️ CONSTRUCCIÓN CONSOLIDADA DEL HTML DE IMPRESIÓN ---
+        ruta_logo = os.path.join(os.path.dirname(__file__), "encabezado_paleta.png")
+        
+        if os.path.exists(ruta_logo):
+            import base64
+            with open(ruta_logo, "rb") as f:
+                data_img = base64.b64encode(f.read()).decode("utf-8")
+            html_logo = f'<img src="data:image/png;base64,{data_img}" style="width:100%; height:auto; display:block; margin-bottom:10px;">'
+        else:
+            html_logo = '<div style="background-color:#f2f2f2; border:2px dashed #cbd5e1; padding:20px; text-align:center; font-weight:bold; color:#64748b; margin-bottom:10px;">[ LOGO: encabezado_paleta.png NO DETECTADO ]</div>'
+
+        # Construcción limpia de la cabecera
         html_cuerpo = f"""
         <div class="documento-hoja">
             {html_logo}
             <div class="meta-contenedor">
                 <div class="meta-izquierda">
                     <b>{meta['nombre'].upper() if meta['nombre'] else 'PRESUPUESTO'}</b><br>
-                    FECHA DEL EVENTO: {meta['fecha_evento'].upper() if meta['meta_presupuesto']['fecha_evento'] else 'N/A'}<br>
+                    FECHA DEL EVENTO: {meta['fecha_evento'].upper() if meta['fecha_evento'] else 'N/A'}<br>
                     CLIENTE: {meta['cliente'].upper() if meta['cliente'] else 'N/A'} | LUGAR: {meta['lugar'].upper() if meta['lugar'] else 'N/A'}
                 </div>
                 <div class="meta-derecha">
