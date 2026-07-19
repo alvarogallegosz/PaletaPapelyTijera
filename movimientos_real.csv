@@ -1,7 +1,7 @@
 id;fecha;detalle;categoria;tipo;monto;tasa;comentarios;activo;consolidado;creado_por;modificado_por
 1;30/6/2026;CIERRE de Junio 2026;;IN-Bs;552,85;554;;True;True;administrador;administrador
-2;30/6/2026;CIERRE de Junio 2026;;IN-$Ze;552,85;554;;True;True;administrador;administrador
-3;30/6/2026;CIERRE de Junio 2026;;IN-$Ch;552,85;554;;True;True;administrador;administrador
+2;30/6/2026;CIERRE de Junio 2026;;IN-$Ze;1696,09;554;;True;True;administrador;administrador
+3;30/6/2026;CIERRE de Junio 2026;;IN-$Ch;232,53;554;;True;True;administrador;administrador
 4;1/7/2026;Egreso de bs por pago puerto color cshea;Puerto Color Cashea;EG-Bs;7.036,68;633;;True;True;administrador;administrador
 5;1/7/2026;Egreso de bs por pago comision pago movil;Puerto Color Cashea;EG-Bs;21,11;633;;True;True;administrador;administrador
 6;1/7/2026;Egreso de $550 por zelle por pago alquiler casa paleta mes de julio;Alquiler casa;EG-$Ze;550;;;True;True;administrador;administrador
