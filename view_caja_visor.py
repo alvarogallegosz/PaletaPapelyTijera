@@ -11,10 +11,16 @@ def preparar_columnas_monto(df):
         return df
 
     def evaluar_monto(row, cuenta_esperada):
+        # 🛡️ CAPA DE PROTECCIÓN COMPLEMENTARIA CONTRA TYPEERROR
+        try:
+            monto_val = float(row["monto"]) if pd.notnull(row["monto"]) else 0.0
+        except (ValueError, TypeError):
+            monto_val = 0.0
+
         if row["tipo"] == f"IN-{cuenta_esperada}":
-            return f"+{row['monto']:,.2f}"
+            return f"+{monto_val:,.2f}"
         elif row["tipo"] == f"EG-{cuenta_esperada}":
-            return f"-{row['monto']:,.2f}"
+            return f"-{monto_val:,.2f}"
         return ""
 
     df["Monto Bs"] = df.apply(lambda r: evaluar_monto(r, "Bs"), axis=1)
@@ -32,19 +38,25 @@ def render_visor(df_mes, mes_nombre, anho, saldos_fin):
     # --- BANNER DE SALDOS DINÁMICOS SUPERIORES ALINEADOS ---
     st.markdown("#### 💰 Disponibilidad Actual en Cajas")
     m_col1, m_col2, m_col3 = st.columns(3)
+    
+    # Aseguramos conversión limpia también en las métricas superiores
+    val_bs = float(saldos_fin.get('Bs', 0.0))
+    val_ze = float(saldos_fin.get('Ze', 0.0))
+    val_ch = float(saldos_fin.get('Ch', 0.0))
+    
     with m_col1:
-        st.metric(label="Saldo Neto Bs", value=f"Bs {saldos_fin['Bs']:,.2f}")
+        st.metric(label="Saldo Neto Bs", value=f"Bs {val_bs:,.2f}")
     with m_col2:
-        st.metric(label="Saldo Neto Zelle", value=f"$ {saldos_fin['Ze']:,.2f}")
+        st.metric(label="Saldo Neto Zelle", value=f"$ {val_ze:,.2f}")
     with m_col3:
-        st.metric(label="Saldo Neto Cash", value=f"$ {saldos_fin['Ch']:,.2f}")
+        st.metric(label="Saldo Neto Cash", value=f"$ {val_ch:,.2f}")
     st.markdown("---")
 
-    # Construcción de la estructura solicitada
+    # Construcción de la estructura analítica
     df_visual = df_mes.copy()
     df_visual = preparar_columnas_monto(df_visual)
     
-    # Renombrado de etiquetas de visualización requeridas por auditoría
+    # Renombrado oficial de etiquetas para el usuario
     df_visual = df_visual.rename(columns={"detalle": "Descripción", "categoria": "Categoría", "tipo": "Tipo", "comentarios": "Comentario"})
     
     cols_mostrar = ["id", "fecha", "Descripción", "Categoría", "Tipo", "Monto Bs", "Monto $ Zelle", "Monto $ Cash", "Comentario"]

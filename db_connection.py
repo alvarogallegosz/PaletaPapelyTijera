@@ -18,6 +18,10 @@ def obtener_movimientos_locales():
             df["consolidado"] = df["consolidado"].astype(bool)
             df["categoria"] = df["categoria"].fillna("").astype(str)
             
+            # 🛡️ BLINDAJE CONTRA TYPEERROR: Forzar a que los montos y tasas sean estrictamente numéricos
+            df["monto"] = pd.to_numeric(df["monto"], errors="coerce").fillna(0.0).astype(float)
+            df["tasa"] = pd.to_numeric(df["tasa"], errors="coerce").fillna(1.0).astype(float)
+            
             st.session_state["df_movimientos"] = df
         else:
             # Estructura base si el archivo no existe
