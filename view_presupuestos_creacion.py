@@ -5,7 +5,7 @@ import os
 import time
 
 def render_creacion_presupuestos(rol_simulado):
-    # --- 🎨 ESTILOS CSS UNIFICADOS (CANVAS TAMAÑO CARTA EN IMPRESIÓN) ---
+    # --- 🎨 CONTROL DE INYECCIÓN CSS PARA AISLAMIENTO DE IMPRESIÓN ---
     st.markdown("""
         <style>
             @page {
@@ -17,20 +17,30 @@ def render_creacion_presupuestos(rol_simulado):
             }
             
             @media print {
-                section[data-testid="stSidebar"], 
-                div[data-testid="stSegmentedControl"],
+                /* Ocultar la app completa de Streamlit (Barras, menús, botones, pie de página 'Manage app') */
+                div[data-testid="stAppViewContainer"], 
+                div[data-testid="stSidebar"], 
+                header, 
+                footer,
                 .no-print,
-                .stButton,
-                header {
-                    display: none !important;
+                .stButton {
+                    visibility: hidden !important;
                 }
-                .block-container {
-                    padding: 0rem !important;
-                    max-width: 100% !important;
+                
+                /* Forzar que ÚNICAMENTE el contenedor del presupuesto sea visible en el PDF */
+                .documento-hoja, .documento-hoja * {
+                    visibility: visible !important;
                 }
+                
+                .documento-hoja {
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                    width: 100%;
+                    background-color: #ffffff !important;
+                }
+                
                 tr { page-break-inside: avoid; }
-                img { page-break-inside: avoid; }
-                .tabla-remastered { page-break-inside: auto; }
                 .contenedor-subtotal { page-break-inside: avoid; }
                 .banner-total-general { page-break-inside: avoid; }
                 .clausulas-container { page-break-inside: avoid; }
@@ -128,14 +138,13 @@ def render_creacion_presupuestos(rol_simulado):
         </style>
     """, unsafe_allow_html=True)
 
-    # --- 🔄 CONTROL DE VISTAS Y ESTADOS ---
+    # --- 🔄 CONTROL DE ESTADOS ---
     if "modo_vista" not in st.session_state:
         st.session_state.modo_vista = "edicion"
 
     if "meta_presupuesto" not in st.session_state:
         st.session_state.meta_presupuesto = {"cliente": "", "nombre": "", "fecha_evento": "", "lugar": "", "fecha_larga": ""}
 
-    # --- 📜 CLÁUSULAS PREDETERMINADAS EDITABLES ---
     if "clausulas_presupuesto" not in st.session_state:
         st.session_state.clausulas_presupuesto = (
             "Las condiciones generales de nuestra oferta son las siguientes:\n"
@@ -150,7 +159,7 @@ def render_creacion_presupuestos(rol_simulado):
             "Paletapapelytijera"
         )
 
-    # --- 📦 REGLA: 1 SOLA SECCIÓN INICIAL POR DEFECTO ---
+    # REGLA: 1 Sola sección inicial por defecto
     if "lista_secciones" not in st.session_state:
         st.session_state.lista_secciones = [
             {"id": "sec_inicial_1", "titulo": "DECORACIÓN PRINCIPAL (ALQUILER)"}
@@ -158,7 +167,7 @@ def render_creacion_presupuestos(rol_simulado):
         st.session_state["df_sec_inicial_1"] = pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])
 
     # ===================================================
-    # 📝 MODO DE EDICIÓN (PREVENCIÓN DE RESET POR TABULADOR)
+    # 📝 MODO EDICIÓN
     # ===================================================
     if st.session_state.modo_vista == "edicion":
         st.markdown("## 📝 Maquetación de Presupuesto")
@@ -175,7 +184,7 @@ def render_creacion_presupuestos(rol_simulado):
             with c3:
                 st.session_state.meta_presupuesto["fecha_larga"] = st.text_input("Fecha de Emisión:", value=st.session_state.meta_presupuesto["fecha_larga"])
 
-        st.markdown("#### 📦 Bloques de Presupuesto")
+        st.markdown("#### 📦 Bloques de Catálogo")
         
         if st.button("➕ Añadir Nueva Sección Física", disabled=len(st.session_state.lista_secciones) >= 5):
             for s in st.session_state.lista_secciones:
@@ -195,12 +204,7 @@ def render_creacion_presupuestos(rol_simulado):
             sec_id = sec["id"]
             df_key = f"df_{sec_id}"
             
-            if idx == 0:
-                max_filas = 15
-            elif idx == 1:
-                max_filas = 7
-            else:
-                max_filas = 5
+            max_filas = 15 if idx == 0 else (7 if idx == 1 else 5)
                 
             with st.container(border=True):
                 col_t1, col_t2 = st.columns([5, 1])
@@ -219,8 +223,6 @@ def render_creacion_presupuestos(rol_simulado):
                         st.session_state.pop(f"final_{df_key}", None)
                         st.rerun()
 
-                st.caption(f"Capacidad: **{max_filas} filas max**. (Los valores nulos no anulan la fila).")
-
                 df_vivo = st.data_editor(
                     st.session_state[df_key],
                     key=f"editor_widget_{sec_id}",
@@ -237,18 +239,14 @@ def render_creacion_presupuestos(rol_simulado):
                 )
 
                 if len(df_vivo) > max_filas:
-                    st.error(f"⚠️ Excedente truncado automáticamente al tope de {max_filas} filas.")
+                    st.error(f"⚠️ Sección limitada a {max_filas} líneas.")
                     st.session_state[f"final_{df_key}"] = df_vivo.head(max_filas)
                 else:
                     st.session_state[f"final_{df_key}"] = df_vivo
 
         with st.container(border=True):
-            st.markdown("#### 📜 Cláusulas del Presupuesto (Dinámicas)")
-            st.session_state.clausulas_presupuesto = st.text_area(
-                "Edite los términos legales aplicables a este documento:",
-                value=st.session_state.clausulas_presupuesto,
-                height=180
-            )
+            st.markdown("#### 📜 Términos y Cláusulas")
+            st.session_state.clausulas_presupuesto = st.text_area("Modifique cláusulas si es necesario:", value=st.session_state.clausulas_presupuesto, height=150)
 
         st.markdown("---")
         col_acc1, col_acc2 = st.columns(2)
@@ -261,15 +259,11 @@ def render_creacion_presupuestos(rol_simulado):
                 st.session_state.modo_vista = "previa"
                 st.rerun()
         with col_acc2:
-            if st.button("💾 Guardar Todo el Bloque en BD", disabled=rol_simulado not in ["administrador", "gerente"], type="primary", use_container_width=True):
-                for s in st.session_state.lista_secciones:
-                    k = f"df_{s['id']}"
-                    if f"final_{k}" in st.session_state:
-                        st.session_state[k] = st.session_state[f"final_{k}"]
-                st.success("🎉 Estructura indexada con éxito.")
+            if st.button("💾 Guardar en BD", disabled=rol_simulado not in ["administrador", "gerente"], type="primary", use_container_width=True):
+                st.success("🎉 Guardado.")
 
     # ===================================================
-    # 🖨️ MODO VISTA PREVIA DE IMPRESIÓN (LIENZO INTEGRADO)
+    # 🖨️ MODO VISTA PREVIA (CONSOLIDACIÓN DE CADENA HTML)
     # ===================================================
     else:
         meta = st.session_state.meta_presupuesto
@@ -281,33 +275,36 @@ def render_creacion_presupuestos(rol_simulado):
                 st.session_state.modo_vista = "edicion"
                 st.rerun()
         with col_pv2:
-            if st.button("💾 Confirmar y Guardar en Supabase", disabled=rol_simulado not in ["administrador", "gerente"], type="primary", use_container_width=True):
-                st.success("🎉 Guardado con éxito.")
+            st.button("💾 Confirmar y Guardar en Supabase", disabled=True, type="primary", use_container_width=True)
         
-        st.no_print = True
-        st.info("💡 Consejo: Usa **Ctrl + P** o **Cmd + P** para guardar como PDF (Márgenes: Predeterminados).")
+        st.info("💡 Para guardar el PDF limpio: Presiona **Ctrl + P** o **Cmd + P**.")
         st.markdown("---")
         
-        # --- 🏗️ CONSTRUCCIÓN CONSOLIDADA DEL HTML DE IMPRESIÓN ---
-        dir_actual = os.path.dirname(__file__)
-        ruta_logo = os.path.join(dir_actual, "Encabezado_Paleta.png")
+        # RASTREO ROBUSTO DEL LOGO CORPORATIVO (.PNG)
+        rutas_logo = [
+            "Encabezado_Paleta.png", "encabezado_paleta.png",
+            os.path.join(os.getcwd(), "Encabezado_Paleta.png"),
+            os.path.join(os.path.dirname(__file__), "Encabezado_Paleta.png")
+        ]
+        logo_path = next((r for r in rutas_logo if os.path.exists(r)), None)
         
-        if os.path.exists(ruta_logo):
+        if logo_path:
             import base64
-            with open(ruta_logo, "rb") as f:
+            with open(logo_path, "rb") as f:
                 data_img = base64.b64encode(f.read()).decode("utf-8")
             html_logo = f'<img src="data:image/png;base64,{data_img}" style="width:100%; height:auto; display:block; margin-bottom:10px;">'
         else:
-            html_logo = '<div style="background-color:#f2f2f2; border:2px dashed #cbd5e1; padding:20px; text-align:center; font-weight:bold; color:#64748b; margin-bottom:10px;">[ PALETA PAPEL Y TIJERA ]</div>'
+            html_logo = '<div style="background-color:#f2f2f2; border:2px dashed #cbd5e1; padding:20px; text-align:center; font-weight:bold; color:#64748b; margin-bottom:10px;">[ LOGO: ENCABEZADO_PALETA.PNG NO DETECTADO ]</div>'
 
+        # Construcción limpia sin cierres prematuros de string
         html_cuerpo = f"""
         <div class="documento-hoja">
             {html_logo}
             <div class="meta-contenedor">
                 <div class="meta-izquierda">
-                    <b>{meta['nombre'] if meta['nombre'] else '[SIN NOMBRE]'}</b><br>
-                    FECHA DEL EVENTO: {meta['fecha_evento'] if meta['fecha_evento'] else 'N/A'}<br>
-                    CLIENTE: {meta['cliente'] if meta['cliente'] else 'N/A'} | LUGAR: {meta['lugar'] if meta['lugar'] else 'N/A'}
+                    <b>{meta['nombre'].upper() if meta['nombre'] else 'PRESUPUESTO'}</b><br>
+                    FECHA DEL EVENTO: {meta['fecha_evento'].upper() if meta['meta_presupuesto']['fecha_evento'] else 'N/A'}<br>
+                    CLIENTE: {meta['cliente'].upper() if meta['cliente'] else 'N/A'} | LUGAR: {meta['lugar'].upper() if meta['lugar'] else 'N/A'}
                 </div>
                 <div class="meta-derecha">
                     EMISIÓN: {meta['fecha_larga'] if meta['fecha_larga'] else 'N/A'}
@@ -340,49 +337,45 @@ def render_creacion_presupuestos(rol_simulado):
             subtotal_seccion = 0.0
             item_numeral = 1
             
-            if not df_sec.empty:
-                for row in df_sec.itertuples():
-                    desc = getattr(row, 'descripción', '')
-                    med = getattr(row, 'medidas', '')
-                    jk = getattr(row, 'juegos_kits', None)
-                    cant = getattr(row, 'cantidad', None)
-                    pu = getattr(row, 'precio_unitario', None)
-                    
-                    desc_str = "" if pd.isna(desc) or desc is None else str(desc).strip()
-                    med_str = "" if pd.isna(med) or med is None else str(med).strip()
-                    
-                    cant_val = float(cant) if pd.notna(cant) and cant is not None else 0.0
-                    pu_val = float(pu) if pd.notna(pu) and pu is not None else 0.0
-                    jk_val = float(jk) if pd.notna(jk) and jk is not None else 0.0
-                    
-                    # 🌟 CONDICIÓN EXIGIDA: Evalúa si la fila posee datos válidos o precio activo
-                    if desc_str != "" or med_str != "" or pu_val != 0.0 or cant_val != 0.0 or jk_val != 0.0:
+            # Iteración blindada basada en diccionarios para evitar el bug de indices cruzados
+            for row in df_sec.to_dict('records'):
+                desc = str(row.get('descripción', '') or '').strip()
+                med = str(row.get('medidas', '') or '').strip()
+                
+                try: jk_val = float(row.get('juegos/kits')) if pd.notna(row.get('juegos/kits')) and row.get('juegos/kits') != '' else 0.0
+                except: jk_val = 0.0
+                try: cant_val = float(row.get('cantidad')) if pd.notna(row.get('cantidad')) and row.get('cantidad') != '' else 0.0
+                except: cant_val = 0.0
+                try: pu_val = float(row.get('precio_unitario')) if pd.notna(row.get('precio_unitario')) and row.get('precio_unitario') != '' else 0.0
+                except: pu_val = 0.0
+
+                # Auto-numera solo si la fila tiene alguna actividad real o precio válido
+                if desc or med or jk_val or cant_val or pu_val:
+                    if jk_val == 0.0:
+                        total_fila = cant_val * pu_val
+                        jk_str = ""
+                    else:
+                        total_fila = jk_val * cant_val * pu_val
+                        jk_str = f"{int(jk_val) if jk_val.is_integer() else jk_val}"
                         
-                        if pd.isna(jk) or jk is None or jk_val == 0.0:
-                            total_fila = cant_val * pu_val
-                            jk_str = ""
-                        else:
-                            total_fila = jk_val * cant_val * pu_val
-                            jk_str = f"{int(jk_val)}"
-                            
-                        subtotal_seccion += total_fila
-                        precio_str = f"${total_fila:,.2f}" if total_fila > 0 else "$0.00"
-                        cant_str = f"{int(cant_val)}" if cant_val.is_integer() else f"{cant_val}"
-                        
-                        html_cuerpo += f"""
-                        <tr>
-                            <td style="text-align: center;">{item_numeral}</td>
-                            <td style="text-align: left;">{desc_str}</td>
-                            <td style="text-align: left;">{med_str}</td>
-                            <td style="text-align: center;">{jk_str}</td>
-                            <td style="text-align: center;">{cant_str if cant_val > 0 else ""}</td>
-                            <td style="text-align: right;">{precio_str}</td>
-                        </tr>
-                        """
-                        item_numeral += 1
+                    subtotal_seccion += total_fila
+                    precio_str = f"${total_fila:,.2f}"
+                    cant_str = f"{int(cant_val) if cant_val.is_integer() else cant_val}" if cant_val > 0 else ""
+                    
+                    html_cuerpo += f"""
+                    <tr>
+                        <td style="text-align: center;">{item_numeral}</td>
+                        <td style="text-align: left;">{desc}</td>
+                        <td style="text-align: left;">{med}</td>
+                        <td style="text-align: center;">{jk_str}</td>
+                        <td style="text-align: center;">{cant_str}</td>
+                        <td style="text-align: right;">{precio_str}</td>
+                    </tr>
+                    """
+                    item_numeral += 1
             
             if item_numeral == 1:
-                html_cuerpo += '<tr><td colspan="6" style="text-align: center; color: #a0aec0; padding: 8px;">Sección vacía</td></tr>'
+                html_cuerpo += '<tr><td colspan="6" style="text-align: center; color: #a0aec0; padding: 8px;">Sección sin registros activos</td></tr>'
                 
             html_cuerpo += f"""
                 </tbody>
@@ -406,5 +399,5 @@ def render_creacion_presupuestos(rol_simulado):
         </div>
         """
         
-        # 🚀 IMPRESIÓN DEL BLOQUE ABSOLUTO SIN INTERFERENCIAS DE STREAMLIT
+        # Renderizado final absoluto y limpio
         st.markdown(html_cuerpo, unsafe_allow_html=True)
