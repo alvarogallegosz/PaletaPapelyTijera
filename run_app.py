@@ -34,7 +34,7 @@ mes_sel_num = [k for k, v in meses_nombres.items() if v == mes_sel_nombre][0]
 df_mes, saldos_ini, saldos_fin = procesar_mes_especifico(df_completo, anho_sel, mes_sel_num)
 
 # Título Ejecutivo Compacto
-st.markdown(f"<h1>📊 Control Maestro ERP — Rol: {rol_simulado.upper()}</h1>", unsafe_html=True)st.markdown(f"<h1>📊 Control Maestro ERP — Rol: {rol_simulado.upper()}</h1>", unsafe_allow_html=True)
+st.markdown(f"<h1>📊 Control Maestro ERP — Rol: {rol_simulado.upper()}</h1>", unsafe_allow_html=True)
 
 modulos_validos = []
 if rol_simulado in ["administrador", "gerente", "soporte"]: modulos_validos.append("REGISTROS DE CAJA")
