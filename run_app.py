@@ -8,7 +8,7 @@ from view_caja_visor import render_visor
 from view_caja_edicion import render_edicion
 from view_caja_historico import render_historico
 
-st.set_page_config(page_title="Control Maestro ERP", layout="wide")
+st.set_page_config(page_title="Estructura Administrativa PaletaPapelyTijera", layout="wide")
 
 # --- INYECCIÓN DE CSS GLOBAL CORREGIDO (SIN CORTES DE TÍTULO Y MÁS COMPACTO) ---
 st.markdown("""
@@ -79,18 +79,18 @@ df_mes, saldos_ini, saldos_fin = procesar_mes_aislado(df_completo, anho_sel, mes
 es_consolidado = df_mes["consolidado"].all() if not df_mes.empty else False
 
 # Título Ejecutivo
-st.markdown(f"<h1>📊 Control Maestro ERP — Rol: {rol_simulado.upper()}</h1>", unsafe_allow_html=True)
+st.markdown(f"<h1>📊 Estructura Administrativa - PaletaPapelyTijera — Rol: {rol_simulado.upper()}</h1>", unsafe_allow_html=True)
 
 modulos_validos = []
 if rol_simulado in ["administrador", "gerente", "contador", "operador"]:
-    modulos_validos.append("REGISTROS DE CAJA")
+    modulos_validos.append("Registro de Movimientos de Caja")
 
 if modulos_validos:
     modulo_activo = st.radio("Módulos:", modulos_validos, horizontal=True)
     st.markdown("---")
     
 
-    if modulo_activo == "REGISTROS DE CAJA":
+    if modulo_activo == "Registro de Movimientos de Caja":
         tab1, tab2, tab3, tab4 = st.tabs(["📝 Carga de Movimientos", "🔍 Ver Libro Diario", "🛠️ Modificaciones/Ajustes", "📚 Histórico de Cierres"])
         
         with tab1:
