@@ -485,7 +485,7 @@ def render_creacion_presupuestos(rol_simulado):
                         <th style="width: 20%; text-align: left;">MEDIDAS</th>
                         <th style="width: 9%; text-align: center;">JUEGOS/KITS</th>
                         <th style="width: 9%; text-align: center;">CANT.</th>
-                        <th style="width: 11%; text-align: right;">PRECIO</th>
+                        <th style="width: 11%; text-align: right;">PRECIO $</th>
                     </tr>
                 </thead>
                 <tbody>
