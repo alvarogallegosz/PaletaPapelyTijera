@@ -6,135 +6,60 @@ import time
 
 def render_creacion_presupuestos(rol_simulado):
     # --- 🎨 CONTROL DE INYECCIÓN CSS PARA AISLAMIENTO DE IMPRESIÓN ---
-    st.markdown("""
+st.markdown("""
         <style>
             @page {
                 size: letter;
-                margin-top: 1.3cm;
-                margin-bottom: 1.8cm;
-                margin-left: 2.0cm;
-                margin-right: 2.0cm;
+                margin: 0in; /* Eliminamos el margen del navegador para controlarlo por CSS */
             }
             
             @media print {
-                /* Ocultar la app completa de Streamlit (Barras, menús, botones, pie de página 'Manage app') */
-                div[data-testid="stAppViewContainer"], 
-                div[data-testid="stSidebar"], 
-                header, 
-                footer,
-                .no-print,
-                .stButton {
+                /* 1. Evaporar por completo TODO el ecosistema de Streamlit */
+                html, body, div[data-testid="stAppViewContainer"], 
+                div[data-testid="stSidebar"], header, footer, .no-print {
                     visibility: hidden !important;
+                    height: 0px !important;
+                    overflow: hidden !important;
                 }
                 
-                /* Forzar que ÚNICAMENTE el contenedor del presupuesto sea visible en el PDF */
-                .documento-hoja, .documento-hoja * {
+                /* 2. Forzar al presupuesto a ser un lienzo absoluto tamaño Carta */
+                .documento-hoja {
+                    visibility: visible !important;
+                    position: fixed !important;
+                    left: 0px !important;
+                    top: 0px !important;
+                    width: 8.5in !important;
+                    height: 11in !important;
+                    padding: 0.6in !important; /* Aquí controlas tus márgenes exactos */
+                    background-color: #ffffff !important;
+                    box-sizing: border-box !important;
+                    z-index: 9999999 !important;
+                    page-break-after: always;
+                }
+                
+                .documento-hoja * {
                     visibility: visible !important;
                 }
                 
-                .documento-hoja {
-                    position: absolute;
-                    left: 0;
-                    top: 0;
-                    width: 100%;
-                    background-color: #ffffff !important;
-                }
-                
                 tr { page-break-inside: avoid; }
-                .contenedor-subtotal { page-break-inside: avoid; }
-                .banner-total-general { page-break-inside: avoid; }
-                .clausulas-container { page-break-inside: avoid; }
+                .contenedor-subtotal, .banner-total-general, .clausulas-container { page-break-inside: avoid; }
             }
 
+            /* Estilos de visualización en pantalla (Simula la hoja carta en el monitor) */
             .documento-hoja {
                 font-family: 'Arial', sans-serif;
                 color: #000000;
                 background-color: #ffffff;
-                padding: 0px;
-            }
-
-            .meta-contenedor {
-                display: flex;
-                justify-content: space-between;
-                font-size: 13px;
-                line-height: 1.5;
-                margin-top: 8px;
-                margin-bottom: 5px;
-            }
-            .meta-izquierda { font-weight: normal; }
-            .meta-derecha { text-align: right; font-weight: bold; }
-
-            .banner-verde-principal {
-                background-color: #b8d7a3 !important;
-                color: #ffffff !important;
-                text-align: center;
-                font-weight: bold;
-                padding: 6px 0px;
-                font-size: 14px;
-                letter-spacing: 0.5px;
-                text-transform: uppercase;
-                margin-top: 5px;
-                margin-bottom: 10px;
-            }
-
-            .tabla-remastered {
                 width: 100%;
-                border-collapse: collapse;
-                margin-bottom: 0px;
-                table-layout: fixed;
+                max-width: 8.5in; /* Mantiene la escala de las columnas */
+                box-sizing: border-box;
+                padding: 0.4in;
+                margin: 0 auto;
+                border: 1px solid #e2e8f0; /* Silueta de hoja en pantalla */
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             }
-            .tabla-remastered th {
-                background-color: #fffdeb !important;
-                border-bottom: 1px solid #cbd5e1;
-                color: #000000;
-                font-weight: bold;
-                font-size: 12px;
-                padding: 5px 8px;
-            }
-            .tabla-remastered td {
-                padding: 6px 8px;
-                font-size: 12px;
-                border-bottom: 1px solid #e2e8f0;
-                vertical-align: top;
-                word-wrap: break-word;
-            }
-
-            .contenedor-subtotal {
-                background-color: #ffffff;
-                font-weight: bold;
-                font-size: 13px;
-                text-align: right;
-                padding: 6px 8px;
-                margin-bottom: 12px;
-                border-bottom: 1px solid #cbd5e1;
-            }
-
-            .banner-total-general {
-                background-color: #b8d7a3 !important;
-                color: #000000 !important;
-                font-weight: bold;
-                font-size: 22px;
-                padding: 6px 15px;
-                margin-top: 10px;
-                margin-bottom: 15px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-
-            .clausulas-container {
-                font-size: 11px;
-                margin-top: 15px;
-                color: #1a202c;
-                line-height: 1.4;
-                white-space: pre-line;
-            }
-            .clausulas-header {
-                color: #d53f8c;
-                font-weight: bold;
-                font-size: 12px;
-                margin-bottom: 3px;
-            }
+            
+            /* (Conserva aquí el resto de tus estilos de tablas, banners y subtotales) */
         </style>
     """, unsafe_allow_html=True)
 
