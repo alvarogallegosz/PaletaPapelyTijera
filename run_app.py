@@ -129,7 +129,6 @@ if modulo_activo == "📦 Registro Movimientos de Caja":
 # II. PRESUPUESTOS (SERVICIOS AL CLIENTE)
 elif modulo_activo == "📊 Presupuestos (Servicios al Cliente)":
     st.markdown("### 📊 Panel General de Presupuestos")
-    st.info("Módulo de generación de presupuestos de servicios al cliente.")
     tab1, tab2, tab3 = st.tabs(["📝 Creación y Carga", "🔄 Gestión y Aprobación", "📚 Plantillas e Histórico"])
     with tab1:
         render_creacion_presupuestos(rol_simulado)
