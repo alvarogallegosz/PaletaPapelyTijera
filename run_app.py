@@ -10,30 +10,36 @@ from view_caja_historico import render_historico
 
 st.set_page_config(page_title="Estructura Administrativa PaletaPapelyTijera", layout="wide")
 
-# --- INYECCIÓN DE CSS GLOBAL CORREGIDO (SIN CORTES DE TÍTULO Y MÁS COMPACTO) ---
+# --- INYECCIÓN DE CSS GLOBAL OPTIMIZADO (ESPACIOS ULTRA COMPACTOS) ---
 st.markdown("""
     <style>
         /* 1. Ajuste de respiro superior para evitar que el título se oculte */
         .block-container {
-            padding-top: 2.2rem !important;
+            padding-top: 1.8rem !important;
             padding-bottom: 1rem !important;
             max-width: 98% !important;
         }
         
-        /* 2. Compactar espacio muerto entre elementos y selectores (Margen de 3cm eliminado) */
+        /* 2. Compactar espacio muerto entre elementos y selectores */
         div[data-testid="stVerticalBlock"] {
-            gap: 0.4rem !important;
+            gap: 0.3rem !important;
         }
         .element-container {
             margin-bottom: 0px !important;
         }
         
-        /* 3. Tus estilos de fuentes y títulos */
-        h1 { font-size: 24px !important; font-weight: 700 !important; margin-bottom: 2px !important; }
-        h2 { font-size: 20px !important; font-weight: 700 !important; margin-top: 2px !important; }
-        h3 { font-size: 16px !important; font-weight: 600 !important; margin-bottom: 4px !important; }
+        /* 3. Control estricto de tipografías y márgenes inferiores */
+        h1 { font-size: 22px !important; font-weight: 700 !important; margin-bottom: 0px !important; padding-bottom: 2px !important; }
+        h2 { font-size: 18px !important; font-weight: 700 !important; margin-top: 2px !important; }
+        h3 { font-size: 15px !important; font-weight: 600 !important; margin-bottom: 2px !important; }
         
-        /* 4. Unificación estética de las pestañas principales */
+        /* Reducción extra del contenedor del segmented control para evitar brincos de línea */
+        div[data-testid="stSegmentedControl"] {
+            margin-top: 2px !important;
+            margin-bottom: 2px !important;
+        }
+
+        /* 4. Unificación estética de las subpestañas */
         .stTabs [data-baseweb="tab-list"] {
             gap: 4px;
             background-color: #f8f9fa;
@@ -42,7 +48,7 @@ st.markdown("""
             border-bottom: 1px solid #e5e7eb;
         }
         .stTabs [data-baseweb="tab"] {
-            height: 36px !important;
+            height: 34px !important;
             background-color: transparent;
             border-radius: 6px 6px 0px 0px;
             padding: 4px 14px !important;
@@ -58,8 +64,9 @@ st.markdown("""
             border-bottom: 3px solid #3b82f6 !important;
         }
     </style>
-""", unsafe_allow_html=True)# --- SIDEBAR DE CONFIGURACIÓN GLOBAL ---
+""", unsafe_allow_html=True)
 
+# --- SIDEBAR DE CONFIGURACIÓN GLOBAL ---
 st.sidebar.markdown("### 🛠️ Entorno de Desarrollo")
 rol_simulado = st.sidebar.selectbox("Rol Activo:", ["administrador", "gerente", "contador", "operador"])
 
@@ -78,27 +85,43 @@ df_mes, saldos_ini, saldos_fin = procesar_mes_aislado(df_completo, anho_sel, mes
 # Detección vectorial en caliente de consolidación
 es_consolidado = df_mes["consolidado"].all() if not df_mes.empty else False
 
-# Título Ejecutivo
-st.markdown(f"<h1>📊 Estructura Administrativa - PaletaPapelyTijera — Rol: {rol_simulado.upper()}</h1>", unsafe_allow_html=True)
+# --- CUERPO PRINCIPAL ---
+# Título Ejecutivo Compactado
+st.markdown(f"<h1>📊 Estructura Administrativa — {rol_simulado.upper()}</h1>", unsafe_allow_html=True)
 
-modulos_validos = []
-if rol_simulado in ["administrador", "gerente", "contador", "operador"]:
-    modulos_validos.append("Registro de Movimientos de Caja")
+# Definición homologada de los módulos principales en formato Botones de Píldora
+modulos_sistema = ["📦 Registro Movimientos de Caja", "📊 REPORTES DE DIRECTIVA", "⚙️ CONFIGURACIÓN"]
 
-if modulos_validos:
-    modulo_activo = st.radio("Módulos:", modulos_validos, horizontal=True)
-    st.markdown("---")
+# Reemplazo de st.radio por control segmentado de bajo perfil con eliminación total de etiquetas verticales
+modulo_activo = st.segmented_control(
+    label="Navegación Módulos",
+    options=modulos_sistema,
+    default="📦 Registro Movimientos de Caja",
+    label_visibility="collapsed"  # Elimina el label superior y compacta la distancia con el H1
+)
+
+# Enrutador de Módulos con subpestañas consistentes
+if modulo_activo == "📦 Registro Movimientos de Caja":
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📝 Carga de Movimientos", 
+        "🔍 Libro Diario", 
+        "🛠️ Modificaciones/Ajustes", 
+        "📚 Histórico de Cierres Mensuales"
+    ])
     
+    with tab1:
+        render_carga(rol_simulado, es_consolidado)
+    with tab2:
+        render_visor(df_mes, mes_sel_nombre, anho_sel, saldos_fin)
+    with tab3:
+        render_edicion(df_mes, rol_simulado, es_consolidado)
+    with tab4:
+        render_historico(df_completo, rol_simulado)
 
-    if modulo_activo == "Registro de Movimientos de Caja":
-        tab1, tab2, tab3, tab4 = st.tabs(["📝 Carga de Movimientos", "🔍 Ver Libro Diario", "🛠️ Modificaciones/Ajustes", "📚 Histórico de Cierres"])
-        
-        with tab1:
-            render_carga(rol_simulado, es_consolidado)
-        with tab2:
-            # Enviamos saldos_fin para mapear las tarjetas superiores
-            render_visor(df_mes, mes_sel_nombre, anho_sel, saldos_fin)
-        with tab3:
-            render_edicion(df_mes, rol_simulado, es_consolidado)
-        with tab4:
-            render_historico(df_completo, rol_simulado)
+elif modulo_activo == "📊 REPORTES DE DIRECTIVA":
+    st.markdown("### 📊 Panel General de Reportes Financieros")
+    st.info("Módulo de analítica y métricas de directiva en fase de consolidación.")
+
+elif modulo_activo == "⚙️ CONFIGURACIÓN":
+    st.markdown("### ⚙️ Configuración Global del Sistema")
+    st.info("Panel de control de variables del entorno de desarrollo.")
