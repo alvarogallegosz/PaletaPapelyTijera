@@ -5,10 +5,10 @@ import os
 import time
 
 def render_creacion_presupuestos(rol_simulado):
-    # --- 🎨 CONFIGURACIÓN DE LIENZO DE IMPRESIÓN Y MÁRGENES ESTRICTOS ---
+    # --- 🎨 CONFIGURACIÓN DE LIENZO DE IMPRESIÓN Y MÁRGENES ESTRICTOS (TAMAÑO CARTA) ---
     st.markdown("""
         <style>
-            /* Configuración del Lienzo Físico de Impresión */
+            /* Configuración del Lienzo Físico de Impresión Tamaño Carta */
             @page {
                 size: letter;
                 margin-top: 1.3cm;
@@ -29,10 +29,13 @@ def render_creacion_presupuestos(rol_simulado):
                     padding: 0rem !important;
                     max-width: 100% !important;
                 }
-                /* Distribución limpia en 2 o 3 páginas según espacio disponible */
+                /* Control de fractura limpia para 2 o 3 páginas según volumen */
                 tr { page-break-inside: avoid; }
+                img { page-break-inside: avoid; }
                 .tabla-remastered { page-break-inside: auto; }
                 .fila-subtotal-seccion { page-break-inside: avoid; }
+                .banner-total-general { page-break-inside: avoid; }
+                .clausulas-container { page-break-inside: avoid; }
             }
 
             .documento-hoja {
@@ -124,15 +127,14 @@ def render_creacion_presupuestos(rol_simulado):
         </style>
     """, unsafe_allow_html=True)
 
-    # --- 🔄 CONTROL DE VISTA ---
+    # --- 🔄 CONTROL DE ENTORNO ---
     if "modo_vista" not in st.session_state:
         st.session_state.modo_vista = "edicion"
 
-    # --- 🏛️ INITIALIZE METADATA ---
     if "meta_presupuesto" not in st.session_state:
         st.session_state.meta_presupuesto = {"cliente": "", "nombre": "", "fecha_evento": "", "lugar": "", "fecha_larga": ""}
 
-    # --- 📦 MIGRACIÓN Y ASIGNACIÓN ESTABLE DE FILAS ---
+    # --- 📦 INICIALIZACIÓN DE TABLAS BASE FIZAS ---
     if "lista_secciones" not in st.session_state:
         st.session_state.lista_secciones = [
             {"id": "sec_inicial_1", "titulo": "DECORACIÓN PRINCIPAL (ALQUILER)"},
@@ -142,13 +144,13 @@ def render_creacion_presupuestos(rol_simulado):
         st.session_state["df_sec_inicial_2"] = pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])
 
     # ===================================================
-    # 📝 MODO DE EDICIÓN
+    # 📝 MODO DE EDICIÓN (REDISEÑADO ANTIFALLOS)
     # ===================================================
     if st.session_state.modo_vista == "edicion":
         st.markdown("## 📝 Maquetación de Presupuesto")
         
         with st.container(border=True):
-            st.markdown("#### 🏛️ Configuración de Cabecera (ID Único de Presupuesto)")
+            st.markdown("#### 🏛️ Configuración de Cabecera")
             c1, c2, c3 = st.columns(3)
             with c1:
                 st.session_state.meta_presupuesto["nombre"] = st.text_input("Nombre del Presupuesto:", value=st.session_state.meta_presupuesto["nombre"])
@@ -160,7 +162,14 @@ def render_creacion_presupuestos(rol_simulado):
                 st.session_state.meta_presupuesto["fecha_larga"] = st.text_input("Fecha de Emisión:", value=st.session_state.meta_presupuesto["fecha_larga"])
 
         st.markdown("#### 📦 Bloques del Presupuesto")
+        
+        # Botón dinámico: Guarda estado actual antes de alterar la estructura física
         if st.button("➕ Añadir Nueva Sección Física", disabled=len(st.session_state.lista_secciones) >= 5):
+            for s in st.session_state.lista_secciones:
+                k = f"df_{s['id']}"
+                if f"final_{k}" in st.session_state:
+                    st.session_state[k] = st.session_state[f"final_{k}"]
+            
             nuevo_id = f"sec_{int(time.time() * 1000)}"
             st.session_state.lista_secciones.append({
                 "id": nuevo_id,
@@ -169,12 +178,12 @@ def render_creacion_presupuestos(rol_simulado):
             st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])
             st.rerun()
 
-        # Renderizado y validación de topes por sección
+        # Renderizado Asíncrono de Tablas
         for idx, sec in enumerate(st.session_state.lista_secciones):
             sec_id = sec["id"]
             df_key = f"df_{sec_id}"
             
-            # Asignación del tope físico según requerimiento
+            # Asignación de topes según requerimiento exacto
             if idx == 0:
                 max_filas = 15
             elif idx == 1:
@@ -190,14 +199,19 @@ def render_creacion_presupuestos(rol_simulado):
                 with col_t2:
                     st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
                     if st.button("🗑️", key=f"del_{sec_id}", use_container_width=True) and len(st.session_state.lista_secciones) > 1:
+                        for s in st.session_state.lista_secciones:
+                            k = f"df_{s['id']}"
+                            if f"final_{k}" in st.session_state:
+                                st.session_state[k] = st.session_state[f"final_{k}"]
                         st.session_state.lista_secciones.pop(idx)
                         st.session_state.pop(df_key, None)
+                        st.session_state.pop(f"final_{df_key}", None)
                         st.rerun()
 
-                st.caption(f"Capacidad máxima permitida para esta sección: **{max_filas} filas**.")
+                st.caption(f"Capacidad establecida para este bloque: **{max_filas} filas** (Los valores vacíos o nulos son válidos).")
 
-                # Editor dinámico (Se eliminó required=True para permitir nulos totales)
-                df_editado = st.data_editor(
+                # 🌟 EL SECRETO: El editor lee de 'df_key' (estable) y guarda el búfer vivo en 'final_df_key'
+                df_vivo = st.data_editor(
                     st.session_state[df_key],
                     key=f"editor_widget_{sec_id}",
                     num_rows="dynamic",
@@ -212,25 +226,34 @@ def render_creacion_presupuestos(rol_simulado):
                     }
                 )
 
-                # Control estricto de desbordamiento de filas
-                if len(df_editado) > max_filas:
-                    st.error(f"⚠️ ¡Límite excedido! La sección {idx+1} solo admite un máximo de {max_filas} filas. Las líneas sobrantes fueron truncadas automáticamente.")
-                    df_editado = df_editado.head(max_filas)
-                
-                st.session_state[df_key] = df_editado
+                # Control visual y físico de desbordamiento sin romper la pantalla
+                if len(df_vivo) > max_filas:
+                    st.error(f"⚠️ Alerta: Esta sección excede el tope de {max_filas} filas. Solo se procesarán las primeras {max_filas} líneas.")
+                    st.session_state[f"final_{df_key}"] = df_vivo.head(max_filas)
+                else:
+                    st.session_state[f"final_{df_key}"] = df_vivo
 
         st.markdown("---")
         col_acc1, col_acc2 = st.columns(2)
         with col_acc1:
             if st.button("👁️ Generar Vista Previa de Impresión", type="secondary", use_container_width=True):
+                # Sincronización masiva y limpia antes de saltar de pantalla
+                for s in st.session_state.lista_secciones:
+                    k = f"df_{s['id']}"
+                    if f"final_{k}" in st.session_state:
+                        st.session_state[k] = st.session_state[f"final_{k}"]
                 st.session_state.modo_vista = "previa"
                 st.rerun()
         with col_acc2:
             if st.button("💾 Guardar Todo el Bloque en BD", disabled=rol_simulado not in ["administrador", "gerente"], type="primary", use_container_width=True):
-                st.success("🎉 Estructura consolidada con éxito bajo el ID general de presupuesto.")
+                for s in st.session_state.lista_secciones:
+                    k = f"df_{s['id']}"
+                    if f"final_{k}" in st.session_state:
+                        st.session_state[k] = st.session_state[f"final_{k}"]
+                st.success("🎉 Todo el presupuesto indexado fue consolidado y guardado con éxito.")
 
     # ===================================================
-    # 🖨️ MODO VISTA PREVIA DE IMPRESIÓN (LIENZO CARTA)
+    # 🖨️ MODO VISTA PREVIA DE IMPRESIÓN (LIENZO CARTA EXACTO)
     # ===================================================
     else:
         meta = st.session_state.meta_presupuesto
@@ -243,15 +266,15 @@ def render_creacion_presupuestos(rol_simulado):
                 st.rerun()
         with col_pv2:
             if st.button("💾 Confirmar y Guardar en Supabase", disabled=rol_simulado not in ["administrador", "gerente"], type="primary", use_container_width=True):
-                st.success("🎉 Datos insertados con éxito.")
+                st.success("🎉 Registro guardado en la base de datos.")
         
-        st.info("💡 Consejo: Usa **Ctrl + P** (Windows) o **Cmd + P** (Mac) para guardar como PDF o imprimir directamente.")
+        st.info("💡 Consejo para el PDF: Pulsa **Ctrl + P** (Windows) o **Cmd + P** (Mac). Configura márgenes como 'Predeterminados' u 'Originales de página'.")
         st.markdown("---")
         
-        # --- 📄 INCICIO DEL LIENZO FÍSICO (TAMAÑO CARTA CONFIGURADO POR CSS) ---
+        # --- 📄 FORMATO DE HOJA FÍSICA ---
         st.markdown('<div class="documento-hoja">', unsafe_allow_html=True)
         
-        # Localizador de Imagen Corporativa
+        # Localizador corporativo
         dir_actual = os.path.dirname(__file__)
         rutas_probables = [
             "Encabezado_Paleta.png", "encabezado_paleta.png",
@@ -265,7 +288,7 @@ def render_creacion_presupuestos(rol_simulado):
         else:
             st.markdown('<div style="background-color:#f2f2f2; border:2px dashed #cbd5e1; padding:20px; text-align:center; font-weight:bold; color:#64748b;">[ PALETA PAPEL Y TIJERA ]</div>', unsafe_allow_html=True)
         
-        # Datos de cabecera vinculados al ID global
+        # Datos alineados del Presupuesto
         st.markdown(f"""
             <div class="meta-contenedor">
                 <div class="meta-izquierda">
@@ -283,7 +306,6 @@ def render_creacion_presupuestos(rol_simulado):
         
         total_general = 0.0
         
-        # Procesamiento de secciones
         for idx_sec, sec in enumerate(st.session_state.lista_secciones):
             df_sec = st.session_state[f"df_{sec['id']}"]
             th_style = 'style="background-color: #f2f2f2 !important;"' if idx_sec > 0 else ''
@@ -307,7 +329,6 @@ def render_creacion_presupuestos(rol_simulado):
             
             if not df_sec.empty:
                 for i, row in enumerate(df_sec.itertuples(), start=1):
-                    # Recuperación defensiva tolerante a valores NULOS totales
                     desc = getattr(row, 'descripción', '')
                     med = getattr(row, 'medidas', '')
                     jk = getattr(row, 'juegos_kits', None)
@@ -317,7 +338,7 @@ def render_creacion_presupuestos(rol_simulado):
                     desc_str = "" if pd.isna(desc) or desc is None else str(desc)
                     med_str = "" if pd.isna(med) or med is None else str(med)
                     
-                    # Cálculo matemático seguro con nulos convertidos a cero
+                    # Cálculo tolerante a nulos totales en celdas vacías
                     cant_val = float(cant) if pd.notna(cant) and cant is not None else 0.0
                     pu_val = float(pu) if pd.notna(pu) and pu is not None else 0.0
                     
@@ -329,8 +350,6 @@ def render_creacion_presupuestos(rol_simulado):
                         jk_str = f"{int(jk)}"
                         
                     subtotal_seccion += total_fila
-                    
-                    # Formateo visual del precio de fila
                     precio_str = f"${total_fila:,.2f}" if total_fila > 0 else "$0.00"
                     
                     html_tabla += f"""
@@ -358,7 +377,6 @@ def render_creacion_presupuestos(rol_simulado):
             
             total_general += subtotal_seccion
             
-        # Banner de Cierre
         st.markdown(f"""
             <div class="banner-total-general">
                 <span>TOTAL A CANCELAR</span>
@@ -366,7 +384,6 @@ def render_creacion_presupuestos(rol_simulado):
             </div>
         """, unsafe_allow_html=True)
         
-        # Cláusulas Legales
         st.markdown("""
             <div class="clausulas-container">
                 <div class="clausulas-header">CLAUSULAS:</div>
