@@ -263,10 +263,10 @@ def render_creacion_presupuestos(rol_simulado):
                 st.success("🎉 Guardado.")
 
 # ===================================================
-    # 🖨️ MODO VISTA PREVIA (BLINDADO CONTRA KEYERRORS)
+    # 🖨️ MODO VISTA PREVIA (INMUNIZADO CONTRA MANGLES Y SALTOS)
     # ===================================================
     else:
-        # Uso seguro de .get() para inmunizar la sesión contra llaves faltantes
+        # Extracción e inmunización segura del estado de la sesión
         meta = st.session_state.get("meta_presupuesto", {})
         clausulas_txt = st.session_state.get("clausulas_presupuesto", "")
         secciones_activas = st.session_state.get("lista_secciones", [])
@@ -283,24 +283,31 @@ def render_creacion_presupuestos(rol_simulado):
         st.info("💡 Para guardar el PDF limpio: Presiona **Ctrl + P** o **Cmd + P**.")
         st.markdown("---")
         
-        # RASTREO ULTRA-SIMPLIFICADO DEL LOGO (SÓLO MINÚSCULAS, SIN VERIFICACIONES EXTRA)
-        ruta_logo = os.path.join(os.path.dirname(__file__), "encabezado_paleta.png")
+        # --- 🖼️ CARGA ROBUSTA DEL LOGO (MISMAS MINÚSCULAS) ---
+        logo_nombre = "encabezado_paleta.png"
+        ruta_script = os.path.join(os.path.dirname(__file__), logo_nombre)
+        ruta_raiz = os.path.join(os.getcwd(), logo_nombre)
+        ruta_final = ruta_script if os.path.exists(ruta_script) else (ruta_raiz if os.path.exists(ruta_raiz) else None)
         
-        if os.path.exists(ruta_logo):
+        if ruta_final:
             import base64
-            with open(ruta_logo, "rb") as f:
+            with open(ruta_final, "rb") as f:
                 data_img = base64.b64encode(f.read()).decode("utf-8")
             html_logo = f'<img src="data:image/png;base64,{data_img}" style="width:100%; height:auto; display:block; margin-bottom:10px;">'
         else:
-            html_logo = '<div style="background-color:#f2f2f2; border:2px dashed #cbd5e1; padding:20px; text-align:center; font-weight:bold; color:#64748b; margin-bottom:10px;">[ LOGO: encabezado_paleta.png NO DETECTADO ]</div>'
+            html_logo = f'<div style="background-color:#f2f2f2; border:2px dashed #cbd5e1; padding:20px; text-align:center; font-weight:bold; color:#64748b; margin-bottom:10px;">[ LOGO: {logo_nombre} NO DETECTADO ]</div>'
 
-        # Extracción e inmunización de textos de cabecera
+        # Formateo seguro de textos de cabecera
         p_nombre = str(meta.get('nombre', '') or '').upper() or 'PRESUPUESTO'
         p_fecha_evt = str(meta.get('fecha_evento', '') or '').upper() or 'N/A'
         p_cliente = str(meta.get('cliente', '') or '').upper() or 'N/A'
         p_lugar = str(meta.get('lugar', '') or '').upper() or 'N/A'
         p_emision = str(meta.get('fecha_larga', '') or '').upper() or 'N/A'
 
+        # Sanitizamos las cláusulas convirtiendo sus saltos de línea a etiquetas HTML válidas
+        clausulas_html = str(clausulas_txt or '').replace("\n", "<br>")
+
+        # Construcción base del lienzo
         html_cuerpo = f"""
         <div class="documento-hoja">
             {html_logo}
@@ -322,8 +329,6 @@ def render_creacion_presupuestos(rol_simulado):
         for idx_sec, sec in enumerate(secciones_activas):
             sec_id = sec.get('id', '')
             sec_titulo = sec.get('titulo', f'SECCIÓN {idx_sec+1}')
-            
-            # Obtención segura del DataFrame de la sección
             df_sec = st.session_state.get(f"df_{sec_id}", pd.DataFrame())
             th_style = 'style="background-color: #f2f2f2 !important;"' if idx_sec > 0 else ''
             
@@ -347,8 +352,9 @@ def render_creacion_presupuestos(rol_simulado):
             
             if not df_sec.empty:
                 for row in df_sec.to_dict('records'):
-                    desc = str(row.get('descripción', '') or '').strip()
-                    med = str(row.get('medidas', '') or '').strip()
+                    # 🌟 SANITIZACIÓN CRÍTICA: Reemplazar saltos de línea crudos por <br>
+                    desc = str(row.get('descripción', '') or '').strip().replace("\n", "<br>").replace("\r", "")
+                    med = str(row.get('medidas', '') or '').strip().replace("\n", "<br>").replace("\r", "")
                     
                     try: jk_val = float(row.get('juegos/kits')) if pd.notna(row.get('juegos/kits')) and row.get('juegos/kits') != '' else 0.0
                     except: jk_val = 0.0
@@ -401,10 +407,13 @@ def render_creacion_presupuestos(rol_simulado):
             </div>
             <div class="clausulas-container">
                 <div class="clausulas-header">CLAUSULAS:</div>
-                {clausulas_txt}
+                <div style="font-weight: normal;">{clausulas_html}</div>
             </div>
         </div>
         """
         
-        # Renderizado final seguro
-        st.markdown(html_cuerpo, unsafe_allow_html=True)
+        # 🚀 EL TRUCO MAESTRO: Unificar todo el HTML removiendo saltos de línea estructurales (\n)
+        # Esto previene que el compilador Markdown rompa las celdas de las tablas de datos.
+        html_compreso = " ".join([line.strip() for line in html_cuerpo.splitlines()])
+        
+        st.markdown(html_compreso, unsafe_allow_html=True)
