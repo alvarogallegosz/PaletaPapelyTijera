@@ -10,41 +10,43 @@ from view_caja_historico import render_historico
 
 st.set_page_config(page_title="Control Maestro ERP", layout="wide")
 
-# --- INYECCIÓN DE CSS GLOBAL PARA INTERFAZ LIMPIA Y UNIFICADA ---
+# --- INYECCIÓN DE CSS GLOBAL CORREGIDO (SIN CORTES DE TÍTULO Y MÁS COMPACTO) ---
 st.markdown("""
     <style>
-        /* 1. Eliminar el espacio masivo superior de Streamlit (Recupera los 7cm) */
+        /* 1. Ajuste de respiro superior para evitar que el título se oculte */
         .block-container {
-            padding-top: 0.5rem !important;
+            padding-top: 2.2rem !important;
             padding-bottom: 1rem !important;
             max-width: 98% !important;
         }
-        .stMainHeader {
-            display: none !important;
+        
+        /* 2. Compactar espacio muerto entre elementos y selectores (Margen de 3cm eliminado) */
+        div[data-testid="stVerticalBlock"] {
+            gap: 0.4rem !important;
         }
-        div[block-class="main"] {
-            padding-top: 0rem !important;
+        .element-container {
+            margin-bottom: 0px !important;
         }
         
-        /* 2. Tus estilos previos de fuentes y títulos */
-        h1 { font-size: 24px !important; font-weight: 700 !important; margin-bottom: 5px !important; }
-        h2 { font-size: 20px !important; font-weight: 700 !important; margin-top: 5px !important; }
-        h3 { font-size: 16px !important; font-weight: 600 !important; }
+        /* 3. Tus estilos de fuentes y títulos */
+        h1 { font-size: 24px !important; font-weight: 700 !important; margin-bottom: 2px !important; }
+        h2 { font-size: 20px !important; font-weight: 700 !important; margin-top: 2px !important; }
+        h3 { font-size: 16px !important; font-weight: 600 !important; margin-bottom: 4px !important; }
         
-        /* 3. Rediseño Estético de las Pestañas (Igual a las sub-tabs) */
+        /* 4. Unificación estética de las pestañas principales */
         .stTabs [data-baseweb="tab-list"] {
             gap: 4px;
             background-color: #f8f9fa;
-            padding: 6px 6px 0px 6px;
+            padding: 4px 6px 0px 6px;
             border-radius: 8px 8px 0px 0px;
             border-bottom: 1px solid #e5e7eb;
         }
         .stTabs [data-baseweb="tab"] {
-            height: 38px !important;
+            height: 36px !important;
             background-color: transparent;
             border-radius: 6px 6px 0px 0px;
-            padding: 4px 16px !important;
-            font-size: 13px !important; /* Mantenemos tus 13px de comodidad visual */
+            padding: 4px 14px !important;
+            font-size: 13px !important;
             font-weight: 500 !important;
             color: #6b7280 !important;
             border: none !important;
@@ -53,35 +55,11 @@ st.markdown("""
             background-color: #ffffff !important;
             color: #1f2937 !important;
             font-weight: 600 !important;
-            box-shadow: 0px -2px 4px rgba(0,0,0,0.05);
             border-bottom: 3px solid #3b82f6 !important;
         }
-
-        /* 4. Estilo de micro-tarjetas para los saldos superiores alineados */
-        .contenedor-saldo {
-            background-color: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 6px;
-            padding: 6px 10px;
-            text-align: right;
-            box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
-        }
-        .saldo-lbl {
-            font-size: 11px !important;
-            color: #6b7280;
-            margin: 0 !important;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .saldo-val {
-            font-size: 14px !important;
-            font-weight: 700 !important;
-            color: #111827;
-            margin: 0 !important;
-        }
     </style>
-""", unsafe_allow_html=True)
-# --- SIDEBAR DE CONFIGURACIÓN GLOBAL ---
+""", unsafe_allow_html=True)# --- SIDEBAR DE CONFIGURACIÓN GLOBAL ---
+
 st.sidebar.markdown("### 🛠️ Entorno de Desarrollo")
 rol_simulado = st.sidebar.selectbox("Rol Activo:", ["administrador", "gerente", "contador", "operador"])
 

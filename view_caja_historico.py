@@ -16,61 +16,94 @@ def render_historico(df_todos, rol_actual):
         mes_rep_nom = st.selectbox("Mes Consulta", list(meses.values()), key="h_mes")
         mes_rep_num = [k for k, v in meses.items() if v == mes_rep_nom][0]
 
+    # Procesamiento financiero aislado
     df_mes, _, saldos_fin = procesar_mes_aislado(df_todos, anho_rep, mes_rep_num)
     
-    df_global = st.session_state["df_movimientos"]
-    df_global["fecha_dt"] = pd.to_datetime(df_global["fecha"])
+    # Re-evaluación defensiva del candado de consolidación
+    df_global = st.session_state["df_movimientos"].copy()
+    df_global["fecha_dt"] = pd.to_datetime(df_global["fecha"], errors="coerce")
     mascara_mes = (df_global["fecha_dt"].dt.year == anho_rep) & (df_global["fecha_dt"].dt.month == mes_rep_num)
     
-    estado_consolidado = df_global[mascara_mes]["consolidado"].all() if not df_global[mascara_mes].empty else False
-    df_global.drop(columns=["fecha_dt"], inplace=True)
+    estado_consolidado = False
+    if not df_global[mascara_mes].empty:
+        estado_consolidado = df_global[mascara_mes]["consolidado"].all()
 
     if estado_consolidado:
         st.success("🔒 **ESTADO PERÍODO: CONSOLIDADO / COMPLETO**")
     else:
         st.warning("🔓 **ESTADO PERÍODO: ABIERTO / EN AUDITORÍA**")
 
-    # --- FILA DE SALDOS COMPACTOS CORREGIDOS ---
-    cols_alineacion = st.columns([100, 320, 160, 90, 140, 140, 140, 320])
-    
+    # --- BANNER DE SALDOS DE CIERRE SEGURO ---
     val_bs = float(saldos_fin.get('Bs', 0.0))
     val_ze = float(saldos_fin.get('Ze', 0.0))
     val_ch = float(saldos_fin.get('Ch', 0.0))
+    
+    st.markdown(f"""
+        <div style="font-size: 15px; background-color: #f8f9fa; padding: 8px 12px; border-radius: 6px; border-left: 4px solid #10b981; margin-bottom: 12px; line-height: 1.6;">
+            <strong>Cierre de Saldos Disponibles:</strong> &nbsp;&nbsp;&nbsp;&nbsp;
+            <span style="color: #111827; white-space: nowrap;">🟢 <b>Bs:</b> {val_bs:,.2f}</span> &nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;
+            <span style="color: #111827; white-space: nowrap;">🔵 <b>Zelle:</b> ${val_ze:,.2f}</span> &nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;
+            <span style="color: #111827; white-space: nowrap;">💵 <b>Cash:</b> ${val_ch:,.2f}</span>
+        </div>
+    """, unsafe_allow_html=True)
 
-    with cols_alineacion[4]:
-        st.markdown(f"<div class='contenedor-saldo'><p class='saldo-lbl'>Cierre Bs</p><p class='saldo-val'>{val_bs:,.2f}</p></div>", unsafe_allow_html=True)
-    with cols_alineacion[5]:
-        st.markdown(f"<div class='contenedor-saldo'><p class='saldo-lbl'>Cierre Zelle</p><p class='saldo-val'>${val_ze:,.2f}</p></div>", unsafe_allow_html=True)
-    with cols_alineacion[6]:
-        st.markdown(f"<div class='contenedor-saldo'><p class='saldo-lbl'>Cierre Cash</p><p class='saldo-val'>${val_ch:,.2f}</p></div>", unsafe_allow_html=True)
-
-    st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
-
+    st.markdown("#### 📋 Detalle de Movimientos del Período:")
+    
     if not df_mes.empty:
         df_hist_visual = df_mes.copy()
         df_hist_visual = preparar_columnas_monto(df_hist_visual)
         
-        # Corrección estricta de string de fecha
-        df_hist_visual["Fecha Ext"] = pd.to_datetime(df_hist_visual["fecha"]).dt.strftime("%d/%m/%Y")
+        try:
+            df_hist_visual["Fecha Ext"] = pd.to_datetime(df_hist_visual["fecha"]).dt.strftime("%d/%m/%Y")
+        except Exception:
+            df_hist_visual["Fecha Ext"] = df_hist_visual["fecha"].astype(str)
+            
         df_hist_visual = df_hist_visual.rename(columns={"detalle": "Descripción", "categoria": "Categoría", "tipo": "Tipo", "comentarios": "Comentario"})
         
+        # Tabla extendida a 20 filas sin ID expuesto
         st.dataframe(
             df_hist_visual[["Fecha Ext", "Descripción", "Categoría", "Tipo", "Monto Bs", "Monto $ Zelle", "Monto $ Cash", "Comentario"]],
             column_config={
                 "Fecha Ext": st.column_config.TextColumn("Fecha", width=100),
-                "Descripción": st.column_config.TextColumn("Descripción", width=320),
+                "Descripción": st.column_config.TextColumn("Descripción", width=340),
                 "Categoría": st.column_config.TextColumn("Categoría", width=160),
                 "Tipo": st.column_config.TextColumn("Tipo", width=90),
-                "Monto Bs": st.column_config.TextColumn("Monto Bs", width=140),
-                "Monto $ Zelle": st.column_config.TextColumn("Monto $ Zelle", width=140),
-                "Monto $ Cash": st.column_config.TextColumn("Monto $ Cash", width=140),
-                "Comentario": st.column_config.TextColumn("Comentario", width=320),
+                "Monto Bs": st.column_config.TextColumn("Monto Bs", width=130),
+                "Monto $ Zelle": st.column_config.TextColumn("Monto $ Zelle", width=130),
+                "Monto $ Cash": st.column_config.TextColumn("Monto $ Cash", width=130),
+                "Comentario": st.column_config.TextColumn("Comentario", width=340),
             },
             use_container_width=False,
             hide_index=True,
-            height=280
+            height=600
         )
     else:
         st.info("No existen registros operativos en el mes seleccionado.")
 
-    # ... Resto del código de botones de cerrado/apertura idéntico ...
+    # --- PANEL UNIFICADO DE BOTONES DE CONTROL (CONTABILIDAD / GERENCIA) ---
+    # Convertimos los roles a minúsculas para evitar rechazos por variaciones de caja de texto
+    rol_limpio = str(rol_actual).strip().lower()
+    if rol_limpio in ["administrador", "gerente"]:
+        st.markdown("---")
+        if not estado_consolidado:
+            if st.button("✅ Consolidar y Bloquear Mes Definición"):
+                df_maestro = st.session_state["df_movimientos"]
+                df_maestro["fecha_dt"] = pd.to_datetime(df_maestro["fecha"], errors="coerce")
+                indices = df_maestro[(df_maestro["fecha_dt"].dt.year == anho_rep) & (df_maestro["fecha_dt"].dt.month == mes_rep_num)].index
+                
+                st.session_state["df_movimientos"].loc[indices, "consolidado"] = True
+                st.session_state["df_movimientos"].loc[indices, "modificado_por"] = rol_actual
+                guardar_cambios_en_disco()
+                st.success(f"🎉 El período {mes_rep_nom} {anho_rep} ha sido cerrado de forma definitiva.")
+                st.rerun()
+        else:
+            if st.button("🔓 Reabrir Auditoría de este Mes"):
+                df_maestro = st.session_state["df_movimientos"]
+                df_maestro["fecha_dt"] = pd.to_datetime(df_maestro["fecha"], errors="coerce")
+                indices = df_maestro[(df_maestro["fecha_dt"].dt.year == anho_rep) & (df_maestro["fecha_dt"].dt.month == mes_rep_num)].index
+                
+                st.session_state["df_movimientos"].loc[indices, "consolidado"] = False
+                st.session_state["df_movimientos"].loc[indices, "modificado_por"] = rol_actual
+                guardar_cambios_en_disco()
+                st.success(f"🔓 El período {mes_rep_nom} {anho_rep} se encuentra abierto nuevamente para modificaciones.")
+                st.rerun()

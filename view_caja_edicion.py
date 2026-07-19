@@ -15,24 +15,25 @@ def render_edicion(df_mes, rol_actual, es_consolidado):
         st.warning("🔒 **EDICIÓN SUSPENDIDA:** Los registros están blindados por consolidación administrativa.")
         return
 
-    st.caption("💡 Haz doble clic sobre cualquier celda para modificar en línea. Los anchos están optimizados para evitar desbordes.")
+    st.caption("💡 Haz doble clic sobre cualquier celda para modificar en línea (Estilo Excel). Al finalizar, presiona el botón inferior.")
 
-    # Dataframe interactivo con control estricto de anchos y ordenamiento sin ID en pantalla
+    # Dataframe interactivo con control estricto de anchos, scrollbar horizontal y ~20 filas visibles
     df_editado = st.data_editor(
         df_mes,
         column_order=["fecha", "categoria", "detalle", "tipo", "monto", "tasa", "comentarios"],
         column_config={
-            "fecha": st.column_config.DateColumn("Fecha", width=110, format="DD/MM/YYYY"),
+            "fecha": st.column_config.DateColumn("Fecha", width=100, format="DD/MM/YYYY"),
             "categoria": st.column_config.TextColumn("Categoría", width=160),
-            "detalle": st.column_config.TextColumn("Descripción", width=320),
-            "tipo": st.column_config.SelectboxColumn("Tipo Cuenta", width=100, options=["IN-Bs", "EG-Bs", "IN-$Ze", "EG-$Ze", "IN-$Ch", "EG-$Ch"]),
+            "detalle": st.column_config.TextColumn("Descripción", width=340),
+            "tipo": st.column_config.SelectboxColumn("Tipo Cuenta", width=90, options=["IN-Bs", "EG-Bs", "IN-$Ze", "EG-$Ze", "IN-$Ch", "EG-$Ch"]),
             "monto": st.column_config.NumberColumn("Monto Base", width=130, min_value=0.0, format="%.2f"),
             "tasa": st.column_config.NumberColumn("Tasa Monitor", width=110, min_value=0.0, format="%.2f"),
-            "comentarios": st.column_config.TextColumn("Comentario", width=320)
+            "comentarios": st.column_config.TextColumn("Comentario", width=340)
         },
         disabled=es_consolidado_puro,
         hide_index=True,
-        use_container_width=False,
+        use_container_width=False, # Habilita el desplazamiento horizontal si la pantalla se reduce
+        height=600, # Ajustado para exponer ~20 filas continuas
         key="editor_excel_caja"
     )
 

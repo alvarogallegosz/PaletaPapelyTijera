@@ -15,9 +15,9 @@ def preparar_columnas_monto(df):
         except (ValueError, TypeError):
             monto_val = 0.0
 
-        if row["tipo"] == f"IN-{cuenta_esperada}":
+        if str(row.get("tipo", "")).strip() == f"IN-{cuenta_esperada}":
             return f"+{monto_val:,.2f}"
-        elif row["tipo"] == f"EG-{cuenta_esperada}":
+        elif str(row.get("tipo", "")).strip() == f"EG-{cuenta_esperada}":
             return f"-{monto_val:,.2f}"
         return ""
 
@@ -33,49 +33,47 @@ def render_visor(df_mes, mes_nombre, anho, saldos_fin):
         st.info("No se registran movimientos activos en este periodo.")
         return
 
-    # --- FILA DE SALDOS COMPACTOS ALINEADOS EXACTAMENTE CON SUS COLUMNAS ---
-    # Configuración de proporciones idénticas a los anchos de la tabla
-    # Columnas: Fecha(100px), Descripción(320px), Categoría(160px), Tipo(90px), MontoBs(140px), Zelle(140px), Cash(140px), Comentario(320px)
-    cols_alineacion = st.columns([100, 320, 160, 90, 140, 140, 140, 320])
-    
+    # --- BANNER DE TEXTO SEGURO (INMUNE A DEFORMACIONES POR PANTALLA VERTICAL) ---
     val_bs = float(saldos_fin.get('Bs', 0.0))
     val_ze = float(saldos_fin.get('Ze', 0.0))
     val_ch = float(saldos_fin.get('Ch', 0.0))
-
-    with cols_alineacion[4]: # Encima de Monto Bs
-        st.markdown(f"<div class='contenedor-saldo'><p class='saldo-lbl'>Saldo Bs</p><p class='saldo-val'>{val_bs:,.2f}</p></div>", unsafe_allow_html=True)
-    with cols_alineacion[5]: # Encima de Monto $ Zelle
-        st.markdown(f"<div class='contenedor-saldo'><p class='saldo-lbl'>Saldo Zelle</p><p class='saldo-val'>${val_ze:,.2f}</p></div>", unsafe_allow_html=True)
-    with cols_alineacion[6]: # Encima de Monto $ Cash
-        st.markdown(f"<div class='contenedor-saldo'><p class='saldo-lbl'>Saldo Cash</p><p class='saldo-val'>${val_ch:,.2f}</p></div>", unsafe_allow_html=True)
     
-    st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+    st.markdown(f"""
+        <div style="font-size: 15px; background-color: #f8f9fa; padding: 8px 12px; border-radius: 6px; border-left: 4px solid #3b82f6; margin-bottom: 10px; line-height: 1.6;">
+            <strong>Disponibilidad Neta en Cajas:</strong> &nbsp;&nbsp;&nbsp;&nbsp;
+            <span style="color: #111827; white-space: nowrap;">🟢 <b>Bs:</b> {val_bs:,.2f}</span> &nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;
+            <span style="color: #111827; white-space: nowrap;">🔵 <b>Zelle:</b> ${val_ze:,.2f}</span> &nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;
+            <span style="color: #111827; white-space: nowrap;">💵 <b>Cash:</b> ${val_ch:,.2f}</span>
+        </div>
+    """, unsafe_allow_html=True)
 
-    # Preparar visualización limpia
     df_visual = df_mes.copy()
     df_visual = preparar_columnas_monto(df_visual)
     
-    # 🛡️ Corrección de Fecha: Forzar formato String estricto DD/MM/YYYY para evitar herencias numéricas de Pandas
-    df_visual["Fecha Ext"] = pd.to_datetime(df_visual["fecha"]).dt.strftime("%d/%m/%Y")
+    # Formateo ultra-seguro de fecha string para evitar fallos de visualización
+    try:
+        df_visual["Fecha Ext"] = pd.to_datetime(df_visual["fecha"]).dt.strftime("%d/%m/%Y")
+    except Exception:
+        df_visual["Fecha Ext"] = df_visual["fecha"].astype(str)
     
     df_visual = df_visual.rename(columns={"detalle": "Descripción", "categoria": "Categoría", "tipo": "Tipo", "comentarios": "Comentario"})
     
-    # Se elimina por completo el ID del orden visual expuesto
+    # Exclusión definitiva de la columna ID
     cols_mostrar = ["Fecha Ext", "Descripción", "Categoría", "Tipo", "Monto Bs", "Monto $ Zelle", "Monto $ Cash", "Comentario"]
     
     st.dataframe(
         df_visual[cols_mostrar],
         column_config={
             "Fecha Ext": st.column_config.TextColumn("Fecha", width=100),
-            "Descripción": st.column_config.TextColumn("Descripción", width=320),
+            "Descripción": st.column_config.TextColumn("Descripción", width=340),
             "Categoría": st.column_config.TextColumn("Categoría", width=160),
             "Tipo": st.column_config.TextColumn("Tipo", width=90),
-            "Monto Bs": st.column_config.TextColumn("Monto Bs", width=140),
-            "Monto $ Zelle": st.column_config.TextColumn("Monto $ Zelle", width=140),
-            "Monto $ Cash": st.column_config.TextColumn("Monto $ Cash", width=140),
-            "Comentario": st.column_config.TextColumn("Comentario", width=320),
+            "Monto Bs": st.column_config.TextColumn("Monto Bs", width=130),
+            "Monto $ Zelle": st.column_config.TextColumn("Monto $ Zelle", width=130),
+            "Monto $ Cash": st.column_config.TextColumn("Monto $ Cash", width=130),
+            "Comentario": st.column_config.TextColumn("Comentario", width=340),
         },
-        use_container_width=False, # Mantiene los anchos fijos estrictos forzando el scrollbar nativo si sale de pantalla
+        use_container_width=False, # Habilita scrollbar horizontal si el ancho de la pantalla disminuye
         hide_index=True,
-        height=380
+        height=600 # Ajustado para mostrar ~20 filas de forma continua
     )
