@@ -480,11 +480,11 @@ def render_creacion_presupuestos(rol_simulado):
             <table class="tabla-remastered">
                 <thead>
                     <tr>
-                        <th style="width: 7%; text-align: center;">ITEM</th>
+                        <th style="width: 8%; text-align: center;">ITEM</th>
                         <th style="width: 44%; text-align: left;">{sec_titulo}</th>
-                        <th style="width: 21%; text-align: left;">MEDIDAS</th>
+                        <th style="width: 20%; text-align: left;">MEDIDAS</th>
                         <th style="width: 9%; text-align: center;">JUEGOS/KITS</th>
-                        <th style="width: 8%; text-align: center;">CANT.</th>
+                        <th style="width: 9%; text-align: center;">CANT.</th>
                         <th style="width: 11%; text-align: right;">PRECIO</th>
                     </tr>
                 </thead>
