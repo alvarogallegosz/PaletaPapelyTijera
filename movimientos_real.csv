@@ -1,224 +1,226 @@
 id;fecha;detalle;categoria;tipo;monto;tasa;comentarios;activo;consolidado;creado_por;modificado_por
-1;30/6/2026;CIERRE de Junio 2026;;cierre mes anterior;552,85;554;;True;True;administrador;administrador
-2;1/7/2026;Egreso de bs por pago puerto color cshea;Puerto Color Cashea;EG-Bs;7.036,68;633;;True;True;administrador;administrador
-3;1/7/2026;Egreso de bs por pago comision pago movil;Puerto Color Cashea;EG-Bs;21,11;633;;True;True;administrador;administrador
-4;1/7/2026;Egreso de $550 por zelle por pago alquiler casa paleta mes de julio;Alquiler casa;EG-$Ze;550;;;True;True;administrador;administrador
-5;2/7/2026;Egreso de bs por recaraga paleta;Recarga;EG-Bs;1.500,00;633;Factura 442;True;True;administrador;administrador
-6;3/7/2026;Egreso de bs por pago tirro para pintar ;Tirro;EG-Bs;646,4;633;;True;True;administrador;administrador
-7;3/7/2026;Egreso de bs por pago impresión vinil mp;Impresión;EG-Bs;8.253,57;650;;True;True;administrador;administrador
-8;3/7/2026;Egreso de bs por pago comision pago movil;Impresión;EG-Bs;24,76;650;;True;True;administrador;administrador
-9;3/7/2026;Ingreso de bs por pago decoracion vivo $100;Decoración;IN-Bs;74.732,71;747,33;Abonado a cuenta;True;True;administrador;administrador
-10;4/7/2026;Egreso de bs por pago sueldo semana Dani;Salario personal;EG-Bs;26.156,45;747,33;;True;True;administrador;administrador
-11;4/7/2026;Egreso de bs por pago comision pago movil;Salario personal;EG-Bs;78,47;747,33;;True;True;administrador;administrador
-12;4/7/2026;Egreso de bs por pago traslado yeli;Salario personal;EG-Bs;6.529,73;652;;True;True;administrador;administrador
-13;4/7/2026;Egreso de bs por pago comision pago movil;Salario personal;EG-Bs;19,59;652;;True;True;administrador;administrador
-14;4/7/2026;Egreso de bs por pago traslado semana Dani;Salario personal;EG-Bs;6.529,73;652;;True;True;administrador;administrador
+1;30/6/2026;CIERRE de Junio 2026;;IN-Bs;552,85;554;;True;True;administrador;administrador
+2;30/6/2026;CIERRE de Junio 2026;;IN-$Ze;552,85;554;;True;True;administrador;administrador
+3;30/6/2026;CIERRE de Junio 2026;;IN-$Ch;552,85;554;;True;True;administrador;administrador
+4;1/7/2026;Egreso de bs por pago puerto color cshea;Puerto Color Cashea;EG-Bs;7.036,68;633;;True;True;administrador;administrador
+5;1/7/2026;Egreso de bs por pago comision pago movil;Puerto Color Cashea;EG-Bs;21,11;633;;True;True;administrador;administrador
+6;1/7/2026;Egreso de $550 por zelle por pago alquiler casa paleta mes de julio;Alquiler casa;EG-$Ze;550;;;True;True;administrador;administrador
+7;2/7/2026;Egreso de bs por recaraga paleta;Recarga;EG-Bs;1.500,00;633;Factura 442;True;True;administrador;administrador
+8;3/7/2026;Egreso de bs por pago tirro para pintar ;Tirro;EG-Bs;646,4;633;;True;True;administrador;administrador
+9;3/7/2026;Egreso de bs por pago impresión vinil mp;Impresión;EG-Bs;8.253,57;650;;True;True;administrador;administrador
+10;3/7/2026;Egreso de bs por pago comision pago movil;Impresión;EG-Bs;24,76;650;;True;True;administrador;administrador
+11;3/7/2026;Ingreso de bs por pago decoracion vivo $100;Decoración;IN-Bs;74.732,71;747,33;Abonado a cuenta;True;True;administrador;administrador
+12;4/7/2026;Egreso de bs por pago sueldo semana Dani;Salario personal;EG-Bs;26.156,45;747,33;;True;True;administrador;administrador
+13;4/7/2026;Egreso de bs por pago comision pago movil;Salario personal;EG-Bs;78,47;747,33;;True;True;administrador;administrador
+14;4/7/2026;Egreso de bs por pago traslado yeli;Salario personal;EG-Bs;6.529,73;652;;True;True;administrador;administrador
 15;4/7/2026;Egreso de bs por pago comision pago movil;Salario personal;EG-Bs;19,59;652;;True;True;administrador;administrador
-16;4/7/2026;Egreso de $40 en cash por pago cestaticket Dani;Salario personal;EG-$Ch;40;;;True;True;administrador;administrador
-17;4/7/2026;Egreso de $40 en cash por pago sueldo Yeli;Salario personal;EG-$Ch;40;;;True;True;administrador;administrador
-18;4/7/2026;Egreso de bs por pago viajes de hoy transporte ida vivo;Transporte;EG-Bs;13.059,45;652;;True;True;administrador;administrador
-19;4/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;39,18;652;;True;True;administrador;administrador
-20;4/7/2026;Ingreso de bs por cambio $50 cash tasa 740;Cambio;IN-Bs;37.000,00;740;;True;True;administrador;administrador
-21;4/7/2026;Egreso de bs por pago zula $46;Zula;EG-Bs;30.036,74;652;;True;True;administrador;administrador
-22;4/7/2026;Egreso de bs por pago comision pago movil;Zula;EG-Bs;90,11;652;;True;True;administrador;administrador
-23;4/7/2026;ingreso de bs por pago caja del lunes $85;Caja;IN-Bs;64.872,00;763;Caja de rebeca;True;True;administrador;administrador
-24;5/7/2026;Egreso de $50 en cash por cambio de ayer;Cambio;EG-$Ch;50;;;True;True;administrador;administrador
-25;5/7/2026;Ingreso de bs por pago Diana $40 queda pendiente $25;Franela;IN-Bs;27.000,00;665;Diana debe $25, no ha retirado la franela;True;True;administrador;administrador
-26;5/7/2026;Egreso de bs por pago viajes de hoy transporte retorno vivo;Transporte;EG-Bs;13.059,45;652;;True;True;administrador;administrador
-27;5/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;39,18;652;;True;True;administrador;administrador
-28;5/7/2026;Egreso de bs por pago pruductos caja;Productos;EG-Bs;9.224,68;652;;True;True;administrador;administrador
-29;5/7/2026;Egreso de bs por pago pruductos caja;Uva;EG-Bs;3.831,83;652;;True;True;administrador;administrador
-30;5/7/2026;Egreso de bs por abono caja chica klim;Abono caja chica;EG-Bs;8.000,00;667;;True;True;administrador;administrador
-31;5/7/2026;Egreso de bs por pago comision pago movil;Abono caja chica;EG-Bs;24;667;;True;True;administrador;administrador
-32;6/7/2026;Egreso de bs por pago body fernanda;Body;EG-Bs;4.002,30;667;;True;True;administrador;administrador
-33;6/7/2026;Egreso de bs por pago comision pago movil;Body;EG-Bs;12,01;667;;True;True;administrador;administrador
-34;6/7/2026;Egreso de bs por pago dtf;Dtf;EG-Bs;4.402,00;667;;True;True;administrador;administrador
-35;6/7/2026;Egreso de bs por pago comision pago movil;Dtf;EG-Bs;13,21;667;;True;True;administrador;administrador
-36;6/7/2026;Egreso de bs por pago cashea puerto color;Puerto Color Cashea;EG-Bs;4.549,28;667;;True;True;administrador;administrador
-37;6/7/2026;Egreso de bs por pago cashea mp;Impresión;EG-Bs;24.614,14;667;;True;True;administrador;administrador
-38;6/7/2026;Ingreso de bs por retorno abono caja chica klim;Abono caja chica;IN-Bs;3.177,00;667;;True;True;administrador;administrador
-39;6/7/2026;Egreso de bs por pago internet;Inernet;EG-Bs;23.346,75;667;;True;True;administrador;administrador
-40;6/7/2026;Egreso de bs por pago comision pago movil;Inernet;EG-Bs;70,04;667;;True;True;administrador;administrador
-41;6/7/2026;Egreso de bs por pago viajes de hoy transporte ida kingland;Transporte;EG-Bs;13.341,00;667;;True;True;administrador;administrador
-42;6/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;40,02;667;;True;True;administrador;administrador
-43;6/7/2026;Ingreso de bs por pago $27 el 50% chaqueta sabrina;Chaqueta gallego;IN-Bs;18.010,35;667;;True;True;administrador;administrador
-44;6/7/2026;Ingreso de bs por pago $27 el 50% chaqueta Joaquim;Chaqueta gallego;IN-Bs;18.011,00;667;Le quedó grande hay que arreglarla;True;True;administrador;administrador
-45;7/7/2026;Egreso de bs por pago viajes de hoy transporte retorno kingland;Transporte;EG-Bs;13.498,61;674,93;;True;True;administrador;administrador
-46;7/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;40,5;674,93;;True;True;administrador;administrador
-47;7/7/2026;Egreso de bs por pago impresión mp cashea;Impresión;EG-Bs;4.857,33;674,93;;True;True;administrador;administrador
-48;7/7/2026;Egreso de bs por pago comision pago movil;Impresión;EG-Bs;14,57;674,93;;True;True;administrador;administrador
-49;7/7/2026;Egreso de bs por pago abono klim;Abono caja chica;EG-Bs;15.000,00;674,93;;True;True;administrador;administrador
-50;7/7/2026;Egreso de bs por pago comision pago movil;Abono caja chica;EG-Bs;45;674,93;;True;True;administrador;administrador
-51;7/7/2026;Egreso de bs por pago dtf;Dtf;EG-Bs;1.316,00;674,93;;True;True;administrador;administrador
-52;7/7/2026;Egreso de bs por pago comision pago movil;Dtf;EG-Bs;3,95;674,93;;True;True;administrador;administrador
-53;8/7/2026;Ingreso de bs por pago franela azul Gregorina;Franela;IN-Bs;16.462,56;685,94;Gregorina es chevere, pero quedo debiendo la mitad;True;True;administrador;administrador
-54;8/7/2026;Egreso de bs por pago abono klim;Abono caja chica;EG-Bs;2.600,00;685,94;;True;True;administrador;administrador
-55;8/7/2026;Egreso de bs por pago comision pago movil;Abono caja chica;EG-Bs;7,8;685,94;;True;True;administrador;administrador
-56;8/7/2026;Ingreso de bs por pago decoracion cambio de chemise;Decoración;IN-Bs;211.618,00;783,78;;True;True;administrador;administrador
-57;8/7/2026;Egreso de bs por pago flores;Flores;EG-Bs;49.387,87;685,94;;True;True;administrador;administrador
-58;8/7/2026;Egreso de bs por pago abono klim;Abono caja chica;EG-Bs;650;685,94;;True;True;administrador;administrador
-59;8/7/2026;Egreso de bs por pago comision pago movil;Abono caja chica;EG-Bs;1,95;685,94;;True;True;administrador;administrador
-60;8/7/2026;Egreso de bs por pago abono 50% de las chaquetas $81;Chaqueta gallego;EG-Bs;55.651,36;685,94;;True;True;administrador;administrador
-61;8/7/2026;Egreso de bs por pago viajes de hoy transporte retorno kingland;Transporte;EG-Bs;13.718,85;685,94;;True;True;administrador;administrador
-62;8/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;41,16;685,94;;True;True;administrador;administrador
-63;8/7/2026;Ingreso de bs por pago abono del 50% chaqueta Sophia;Chaqueta gallego;IN-Bs;18.520,45;685,94;;True;True;administrador;administrador
-64;9/7/2026;Ingreso de bs por pago del 50% decoracion italo preescolar $545 queda pendiente por cancelar el 40%  $436;Decoración;IN-Bs;435.068,05;798,29;;True;True;administrador;administrador
-65;9/7/2026;Egreso de bs por pago Adela junio $40;Contadora;EG-Bs;31.931,66;798,29;;True;True;administrador;administrador
-66;9/7/2026;Egreso de bs por pago comision pago movil;Contadora;EG-Bs;95,79;798,29;;True;True;administrador;administrador
-67;9/7/2026;Egreso de bs por pago oswaldo cubo $35;Oswaldo;EG-Bs;24.507,87;700;;True;True;administrador;administrador
-68;9/7/2026;Egreso de bs por pago comision pago movil;Oswaldo;EG-Bs;73,52;700;;True;True;administrador;administrador
-69;9/7/2026;Egreso de bs por pago otro abono 50% de las chaquetas $81, ya estaria pago completo;Chaqueta gallego;EG-Bs;56.718,22;700;;True;True;administrador;administrador
-70;9/7/2026;Egreso de bs por pago zula $56;Zula;EG-Bs;39.212,59;700;;True;True;administrador;administrador
-71;9/7/2026;Egreso de bs por pago comision pago movil;Zula;EG-Bs;117,64;700;;True;True;administrador;administrador
-72;9/7/2026;Ingreso de bs por pago caja para el sabado $68;Caja;IN-Bs;54.283,82;798,29;;True;True;administrador;administrador
-73;9/7/2026;Egreso de bs por pago reflectores;Reflectores;EG-Bs;17.348,94;700;;True;True;administrador;administrador
-74;9/7/2026;Egreso de bs por pago puerto color cshea;Puerto Color Cashea;EG-Bs;14.006,26;700;;True;True;administrador;administrador
-75;9/7/2026;Egreso de $228 por zelle por pago globos ccs;Globos ccs;EG-$Ze;228;;;True;True;administrador;administrador
-76;9/7/2026;Ingreso de bs por pago letras acrílicas;Acrílico;IN-Bs;63.863,30;798,29;;True;True;administrador;administrador
-77;9/7/2026;Egreso de bs por pago ligas;Ligas;EG-Bs;14.675,00;700;;True;True;administrador;administrador
-78;9/7/2026;Egreso de bs por pago zula $39;Zula;EG-Bs;27.308,77;700;;True;True;administrador;administrador
-79;9/7/2026;Egreso de bs por pago comision pago movil;Zula;EG-Bs;81,93;700;;True;True;administrador;administrador
-80;9/7/2026;Ingreso de bs por pago letras en vinil y dtf ;Dtf;IN-Bs;63.863,31;798,29;;True;True;administrador;administrador
-81;9/7/2026;Egreso de bs por pago dtf;Dtf;EG-Bs;12.604,00;700;;True;True;administrador;administrador
-82;9/7/2026;Egreso de bs por pago comision pago movil;Dtf;EG-Bs;37,81;700;;True;True;administrador;administrador
-83;9/7/2026;Egreso de bs por pago impresión mp;Impresión;EG-Bs;36.201,63;700;;True;True;administrador;administrador
-84;9/7/2026;Egreso de bs por pago comision pago movil;Impresión;EG-Bs;108,6;700;;True;True;administrador;administrador
-85;9/7/2026;Egreso de bs por pago sueldo Eliana;Sueldo socia;EG-Bs;100.000,00;700;;True;True;administrador;administrador
-86;9/7/2026;Egreso de bs por pago comision pago movil;Sueldo socia;EG-Bs;300;700;;True;True;administrador;administrador
-87;9/7/2026;Egreso de bs por pago sueldo Elimar;Sueldo socia;EG-Bs;100.000,00;700;;True;True;administrador;administrador
+16;4/7/2026;Egreso de bs por pago traslado semana Dani;Salario personal;EG-Bs;6.529,73;652;;True;True;administrador;administrador
+17;4/7/2026;Egreso de bs por pago comision pago movil;Salario personal;EG-Bs;19,59;652;;True;True;administrador;administrador
+18;4/7/2026;Egreso de $40 en cash por pago cestaticket Dani;Salario personal;EG-$Ch;40;;;True;True;administrador;administrador
+19;4/7/2026;Egreso de $40 en cash por pago sueldo Yeli;Salario personal;EG-$Ch;40;;;True;True;administrador;administrador
+20;4/7/2026;Egreso de bs por pago viajes de hoy transporte ida vivo;Transporte;EG-Bs;13.059,45;652;;True;True;administrador;administrador
+21;4/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;39,18;652;;True;True;administrador;administrador
+22;4/7/2026;Ingreso de bs por cambio $50 cash tasa 740;Cambio;IN-Bs;37.000,00;740;;True;True;administrador;administrador
+23;4/7/2026;Egreso de bs por pago zula $46;Zula;EG-Bs;30.036,74;652;;True;True;administrador;administrador
+24;4/7/2026;Egreso de bs por pago comision pago movil;Zula;EG-Bs;90,11;652;;True;True;administrador;administrador
+25;4/7/2026;ingreso de bs por pago caja del lunes $85;Caja;IN-Bs;64.872,00;763;Caja de rebeca;True;True;administrador;administrador
+26;5/7/2026;Egreso de $50 en cash por cambio de ayer;Cambio;EG-$Ch;50;;;True;True;administrador;administrador
+27;5/7/2026;Ingreso de bs por pago Diana $40 queda pendiente $25;Franela;IN-Bs;27.000,00;665;Diana debe $25, no ha retirado la franela;True;True;administrador;administrador
+28;5/7/2026;Egreso de bs por pago viajes de hoy transporte retorno vivo;Transporte;EG-Bs;13.059,45;652;;True;True;administrador;administrador
+29;5/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;39,18;652;;True;True;administrador;administrador
+30;5/7/2026;Egreso de bs por pago pruductos caja;Productos;EG-Bs;9.224,68;652;;True;True;administrador;administrador
+31;5/7/2026;Egreso de bs por pago pruductos caja;Uva;EG-Bs;3.831,83;652;;True;True;administrador;administrador
+32;5/7/2026;Egreso de bs por abono caja chica klim;Abono caja chica;EG-Bs;8.000,00;667;;True;True;administrador;administrador
+33;5/7/2026;Egreso de bs por pago comision pago movil;Abono caja chica;EG-Bs;24;667;;True;True;administrador;administrador
+34;6/7/2026;Egreso de bs por pago body fernanda;Body;EG-Bs;4.002,30;667;;True;True;administrador;administrador
+35;6/7/2026;Egreso de bs por pago comision pago movil;Body;EG-Bs;12,01;667;;True;True;administrador;administrador
+36;6/7/2026;Egreso de bs por pago dtf;Dtf;EG-Bs;4.402,00;667;;True;True;administrador;administrador
+37;6/7/2026;Egreso de bs por pago comision pago movil;Dtf;EG-Bs;13,21;667;;True;True;administrador;administrador
+38;6/7/2026;Egreso de bs por pago cashea puerto color;Puerto Color Cashea;EG-Bs;4.549,28;667;;True;True;administrador;administrador
+39;6/7/2026;Egreso de bs por pago cashea mp;Impresión;EG-Bs;24.614,14;667;;True;True;administrador;administrador
+40;6/7/2026;Ingreso de bs por retorno abono caja chica klim;Abono caja chica;IN-Bs;3.177,00;667;;True;True;administrador;administrador
+41;6/7/2026;Egreso de bs por pago internet;Inernet;EG-Bs;23.346,75;667;;True;True;administrador;administrador
+42;6/7/2026;Egreso de bs por pago comision pago movil;Inernet;EG-Bs;70,04;667;;True;True;administrador;administrador
+43;6/7/2026;Egreso de bs por pago viajes de hoy transporte ida kingland;Transporte;EG-Bs;13.341,00;667;;True;True;administrador;administrador
+44;6/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;40,02;667;;True;True;administrador;administrador
+45;6/7/2026;Ingreso de bs por pago $27 el 50% chaqueta sabrina;Chaqueta gallego;IN-Bs;18.010,35;667;;True;True;administrador;administrador
+46;6/7/2026;Ingreso de bs por pago $27 el 50% chaqueta Joaquim;Chaqueta gallego;IN-Bs;18.011,00;667;Le quedó grande hay que arreglarla;True;True;administrador;administrador
+47;7/7/2026;Egreso de bs por pago viajes de hoy transporte retorno kingland;Transporte;EG-Bs;13.498,61;674,93;;True;True;administrador;administrador
+48;7/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;40,5;674,93;;True;True;administrador;administrador
+49;7/7/2026;Egreso de bs por pago impresión mp cashea;Impresión;EG-Bs;4.857,33;674,93;;True;True;administrador;administrador
+50;7/7/2026;Egreso de bs por pago comision pago movil;Impresión;EG-Bs;14,57;674,93;;True;True;administrador;administrador
+51;7/7/2026;Egreso de bs por pago abono klim;Abono caja chica;EG-Bs;15.000,00;674,93;;True;True;administrador;administrador
+52;7/7/2026;Egreso de bs por pago comision pago movil;Abono caja chica;EG-Bs;45;674,93;;True;True;administrador;administrador
+53;7/7/2026;Egreso de bs por pago dtf;Dtf;EG-Bs;1.316,00;674,93;;True;True;administrador;administrador
+54;7/7/2026;Egreso de bs por pago comision pago movil;Dtf;EG-Bs;3,95;674,93;;True;True;administrador;administrador
+55;8/7/2026;Ingreso de bs por pago franela azul Gregorina;Franela;IN-Bs;16.462,56;685,94;Gregorina es chevere, pero quedo debiendo la mitad;True;True;administrador;administrador
+56;8/7/2026;Egreso de bs por pago abono klim;Abono caja chica;EG-Bs;2.600,00;685,94;;True;True;administrador;administrador
+57;8/7/2026;Egreso de bs por pago comision pago movil;Abono caja chica;EG-Bs;7,8;685,94;;True;True;administrador;administrador
+58;8/7/2026;Ingreso de bs por pago decoracion cambio de chemise;Decoración;IN-Bs;211.618,00;783,78;;True;True;administrador;administrador
+59;8/7/2026;Egreso de bs por pago flores;Flores;EG-Bs;49.387,87;685,94;;True;True;administrador;administrador
+60;8/7/2026;Egreso de bs por pago abono klim;Abono caja chica;EG-Bs;650;685,94;;True;True;administrador;administrador
+61;8/7/2026;Egreso de bs por pago comision pago movil;Abono caja chica;EG-Bs;1,95;685,94;;True;True;administrador;administrador
+62;8/7/2026;Egreso de bs por pago abono 50% de las chaquetas $81;Chaqueta gallego;EG-Bs;55.651,36;685,94;;True;True;administrador;administrador
+63;8/7/2026;Egreso de bs por pago viajes de hoy transporte retorno kingland;Transporte;EG-Bs;13.718,85;685,94;;True;True;administrador;administrador
+64;8/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;41,16;685,94;;True;True;administrador;administrador
+65;8/7/2026;Ingreso de bs por pago abono del 50% chaqueta Sophia;Chaqueta gallego;IN-Bs;18.520,45;685,94;;True;True;administrador;administrador
+66;9/7/2026;Ingreso de bs por pago del 50% decoracion italo preescolar $545 queda pendiente por cancelar el 40%  $436;Decoración;IN-Bs;435.068,05;798,29;;True;True;administrador;administrador
+67;9/7/2026;Egreso de bs por pago Adela junio $40;Contadora;EG-Bs;31.931,66;798,29;;True;True;administrador;administrador
+68;9/7/2026;Egreso de bs por pago comision pago movil;Contadora;EG-Bs;95,79;798,29;;True;True;administrador;administrador
+69;9/7/2026;Egreso de bs por pago oswaldo cubo $35;Oswaldo;EG-Bs;24.507,87;700;;True;True;administrador;administrador
+70;9/7/2026;Egreso de bs por pago comision pago movil;Oswaldo;EG-Bs;73,52;700;;True;True;administrador;administrador
+71;9/7/2026;Egreso de bs por pago otro abono 50% de las chaquetas $81, ya estaria pago completo;Chaqueta gallego;EG-Bs;56.718,22;700;;True;True;administrador;administrador
+72;9/7/2026;Egreso de bs por pago zula $56;Zula;EG-Bs;39.212,59;700;;True;True;administrador;administrador
+73;9/7/2026;Egreso de bs por pago comision pago movil;Zula;EG-Bs;117,64;700;;True;True;administrador;administrador
+74;9/7/2026;Ingreso de bs por pago caja para el sabado $68;Caja;IN-Bs;54.283,82;798,29;;True;True;administrador;administrador
+75;9/7/2026;Egreso de bs por pago reflectores;Reflectores;EG-Bs;17.348,94;700;;True;True;administrador;administrador
+76;9/7/2026;Egreso de bs por pago puerto color cshea;Puerto Color Cashea;EG-Bs;14.006,26;700;;True;True;administrador;administrador
+77;9/7/2026;Egreso de $228 por zelle por pago globos ccs;Globos ccs;EG-$Ze;228;;;True;True;administrador;administrador
+78;9/7/2026;Ingreso de bs por pago letras acrílicas;Acrílico;IN-Bs;63.863,30;798,29;;True;True;administrador;administrador
+79;9/7/2026;Egreso de bs por pago ligas;Ligas;EG-Bs;14.675,00;700;;True;True;administrador;administrador
+80;9/7/2026;Egreso de bs por pago zula $39;Zula;EG-Bs;27.308,77;700;;True;True;administrador;administrador
+81;9/7/2026;Egreso de bs por pago comision pago movil;Zula;EG-Bs;81,93;700;;True;True;administrador;administrador
+82;9/7/2026;Ingreso de bs por pago letras en vinil y dtf ;Dtf;IN-Bs;63.863,31;798,29;;True;True;administrador;administrador
+83;9/7/2026;Egreso de bs por pago dtf;Dtf;EG-Bs;12.604,00;700;;True;True;administrador;administrador
+84;9/7/2026;Egreso de bs por pago comision pago movil;Dtf;EG-Bs;37,81;700;;True;True;administrador;administrador
+85;9/7/2026;Egreso de bs por pago impresión mp;Impresión;EG-Bs;36.201,63;700;;True;True;administrador;administrador
+86;9/7/2026;Egreso de bs por pago comision pago movil;Impresión;EG-Bs;108,6;700;;True;True;administrador;administrador
+87;9/7/2026;Egreso de bs por pago sueldo Eliana;Sueldo socia;EG-Bs;100.000,00;700;;True;True;administrador;administrador
 88;9/7/2026;Egreso de bs por pago comision pago movil;Sueldo socia;EG-Bs;300;700;;True;True;administrador;administrador
-89;9/7/2026;Egreso de bs por pago sueldo Elisa;Sueldo socia;EG-Bs;100.000,00;700;;True;True;administrador;administrador
-90;9/7/2026;Egreso de bs por pago viajes de hoy transporte retorno orinoco;Transporte;EG-Bs;14.193,87;709,69;;True;True;administrador;administrador
-91;9/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;42,58;709,69;;True;True;administrador;administrador
-92;10/7/2026;Egreso de bs por pago materiales klim;Materiales;EG-Bs;5.536,00;709,69;;True;True;administrador;administrador
-93;10/7/2026;Egreso de bs por pago comision pago movil;Materiales;EG-Bs;16,61;709,69;;True;True;administrador;administrador
-94;10/7/2026;Egreso de $35 por zelle por pago globos ccs;Globos ccs;EG-$Ze;35;;;True;True;administrador;administrador
-95;10/7/2026;Egreso de bs por pago tijerazo;Tijerazo;EG-Bs;8.303,38;709,69;;True;True;administrador;administrador
-96;10/7/2026;Egreso de bs por pago comision pago movil;Tijerazo;EG-Bs;24,91;709,69;;True;True;administrador;administrador
-97;10/7/2026;Egreso de bs por pago yeli;Salario personal;EG-Bs;42.581,61;709,69;;True;True;administrador;administrador
-98;10/7/2026;Egreso de bs por pago comision pago movil;Salario personal;EG-Bs;127,74;709,69;;True;True;administrador;administrador
-99;10/7/2026;Egreso de bs por pago semana Dani;Salario personal;EG-Bs;28.400,73;811,45;;True;True;administrador;administrador
-100;10/7/2026;Egreso de bs por pago comision pago movil;Salario personal;EG-Bs;85,2;811,45;;True;True;administrador;administrador
-101;10/7/2026;Egreso de bs por pago traslado semana Dani;Salario personal;EG-Bs;8.114,49;811,45;;True;True;administrador;administrador
-102;10/7/2026;Egreso de bs por pago comision pago movil;Salario personal;EG-Bs;24,34;811,45;;True;True;administrador;administrador
-103;10/7/2026;Ingreso de $254 por zelle por pago deco de hoy;Decoración;IN-$Ze;254;;;True;True;administrador;administrador
-104;10/7/2026;Egreso de bs por pago cloro;Cloro;EG-Bs;2.129,07;709,69;;True;True;administrador;administrador
-105;10/7/2026;Egreso de bs por pago papel toalet;Toalet;EG-Bs;2.654,29;709,69;;True;True;administrador;administrador
-106;10/7/2026;Ingreso de $130 por zelle por pago restante bautizo;Decoración;IN-$Ze;130;;;True;True;administrador;administrador
-107;10/7/2026;Egreso de bs por pago camisas reina;Camisas;EG-Bs;17.750,00;709,69;;True;True;administrador;administrador
-108;10/7/2026;Egreso de bs por pago comision pago movil;Camisas;EG-Bs;53,25;709,69;;True;True;administrador;administrador
-109;10/7/2026;Egreso de bs por pago flores;Flores;EG-Bs;7.096,94;709,69;;True;True;administrador;administrador
-110;10/7/2026;Egreso de bs por pago viajes de hoy transporte ida bizza;Transporte;EG-Bs;14.193,87;709,69;;True;True;administrador;administrador
-111;10/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;42,58;709,69;;True;True;administrador;administrador
-112;10/7/2026;Egreso de $100 por zelle por pago papi;Papá;EG-$Ze;100;;;True;True;administrador;administrador
-113;11/7/2026;Egreso por pago  de embutidos;Embutidos;EG-Bs;13.961,83;709,69;;True;True;administrador;administrador
-114;11/7/2026;Egreso de bs por pago Dana;Dana;EG-Bs;5.841,28;709,69;;True;True;administrador;administrador
-115;11/7/2026;Egreso de bs por pago dtf;Dtf;EG-Bs;5.770,00;709,69;;True;True;administrador;administrador
-116;11/7/2026;Egreso de bs por pago comision pago movil;Dtf;EG-Bs;17,31;709,69;;True;True;administrador;administrador
-117;11/7/2026;Egreso de bs por pago baggels;Baggels;EG-Bs;3.578,68;709,69;;True;True;administrador;administrador
-118;11/7/2026;Egreso de bs por pago viajes de hoy transporte retorno bizza;Transporte;EG-Bs;14.193,87;709,69;;True;True;administrador;administrador
-119;11/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;42,58;709,69;;True;True;administrador;administrador
-120;11/7/2026;Ingreso de $70 por zelle por pago bandeja de mañana;Bandeja;IN-$Ze;70;;;True;True;administrador;administrador
-121;11/7/2026;Egreso de protector de aire con cashea;Protector aire;EG-Bs;3.555,08;709,69;;True;True;administrador;administrador
-122;11/7/2026;Egreso de bs por pago horquillas;Horquillas;EG-Bs;1.459,05;709,69;;True;True;administrador;administrador
-123;11/7/2026;Egreso de bs por pago manuel aire;Manuel aire;EG-Bs;17.742,34;709,69;;True;True;administrador;administrador
-124;11/7/2026;Egreso de bs por pago comision pago movil;Manuel aire;EG-Bs;53,23;709,69;;True;True;administrador;administrador
-125;11/7/2026;Egreso de bs por pago viajes de hoy transporte ida vivo;Transporte;EG-Bs;14.193,87;709,69;;True;True;administrador;administrador
-126;11/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;42,58;709,69;;True;True;administrador;administrador
-127;12/7/2026;Egreso de bs por pago viajes de hoy transporte retorno vivo;Transporte;EG-Bs;14.193,87;709,69;;True;True;administrador;administrador
-128;12/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;42,58;709,69;;True;True;administrador;administrador
-129;13/7/2026;Ingreso de $45 por zelle por pago bouquet miercoles;Bouquet;IN-$Ze;45;;;True;True;administrador;administrador
-130;13/7/2026;Ingreso de bs por pago Deco arrecife 1;Decoración;IN-Bs;51.496,41;823,94;;True;True;administrador;administrador
-131;13/7/2026;Ingreso de bs por pago Deco arrecife 2;Decoración;IN-Bs;51.496,41;823,94;;True;True;administrador;administrador
-132;13/7/2026;Ingreso de bs por pago 3 medallas para el jueves;Medallas;IN-Bs;17.302,74;823,94;;True;True;administrador;administrador
-133;13/7/2026;Ingreso de bs por pago Deco arrecife 3;Decoración;IN-Bs;51.496,41;823,94;;True;True;administrador;administrador
-134;13/7/2026;Ingreso de bs por pago Deco arrecife 4;Decoración;IN-Bs;51.497,00;823,94;;True;True;administrador;administrador
-135;13/7/2026;Ingreso de $70 por zelle por pago bandeja miled miercoles;Bandeja;IN-$Ze;70;;;True;True;administrador;administrador
-136;13/7/2026;Egreso de bs por pago envio globos malave;Malave;EG-Bs;11.000,00;721,35;;True;True;administrador;administrador
-137;13/7/2026;Egreso de bs por pago comision pago movil;Malave;EG-Bs;33;721,35;;True;True;administrador;administrador
-138;13/7/2026;Ingreso de bs por pago 50% chaqueta Mariangel Serrano ya completo su 100%;Chaqueta gallego;IN-Bs;19.476,33;721,35;;True;True;administrador;administrador
-139;13/7/2026;Egreso de bs por pago tijerazo cashea;Tijerazo Cashea;EG-Bs;4.151,95;721,35;;True;True;administrador;administrador
-140;13/7/2026;Egreso de bs por pago puero color cashea;Puerto color Cashea;EG-Bs;8.014,15;721,35;;True;True;administrador;administrador
-141;13/7/2026;Egreso de bs por pago viajes de hoy transporte ida orinoco;Transporte;EG-Bs;14.426,91;721,35;;True;True;administrador;administrador
-142;13/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;43,28;721,35;;True;True;administrador;administrador
-143;13/7/2026;Egreso de bs por pago pendiente de paleta a Klim;Abono caja chica;EG-Bs;3.340,00;721,35;;True;True;administrador;administrador
-144;13/7/2026;Egreso de bs por pago comision pago movil;Abono caja chica;EG-Bs;10,02;721,35;;True;True;administrador;administrador
-145;14/7/2026;Egreso de bs por pago reembolso nana;Abono caja chica;EG-Bs;3.235,00;724;;True;True;administrador;administrador
-146;14/7/2026;Egreso de bs por pago comision pago movil;Abono caja chica;EG-Bs;9,71;724;;True;True;administrador;administrador
-147;14/7/2026;Egreso de bs por pago reembolso klim;Abono caja chica;EG-Bs;1.666,00;724;;True;True;administrador;administrador
-148;14/7/2026;Egreso de bs por pago comision pago movil;Abono caja chica;EG-Bs;5;724;;True;True;administrador;administrador
-149;14/7/2026;Egreso de $25 en cash por pago mes diseño julio nana;Diseño;EG-$Ch;25;;;True;True;administrador;administrador
-150;14/7/2026;Egreso de bs por pago reembolso klim;Abono caja chica;EG-Bs;725;724;;True;True;administrador;administrador
-151;14/7/2026;Egreso de bs por pago comision pago movil;Abono caja chica;EG-Bs;2,18;724;;True;True;administrador;administrador
-152;14/7/2026;Egreso de bs por pago sueldo Eliana;Sueldo socia;EG-Bs;15.000,00;724;;True;True;administrador;administrador
-153;14/7/2026;Egreso de bs por pago comision pago movil;Sueldo socia;EG-Bs;45;724;;True;True;administrador;administrador
-154;14/7/2026;Egreso de bs por pago sueldo Elimar;Sueldo socia;EG-Bs;15.000,00;724;;True;True;administrador;administrador
+89;9/7/2026;Egreso de bs por pago sueldo Elimar;Sueldo socia;EG-Bs;100.000,00;700;;True;True;administrador;administrador
+90;9/7/2026;Egreso de bs por pago comision pago movil;Sueldo socia;EG-Bs;300;700;;True;True;administrador;administrador
+91;9/7/2026;Egreso de bs por pago sueldo Elisa;Sueldo socia;EG-Bs;100.000,00;700;;True;True;administrador;administrador
+92;9/7/2026;Egreso de bs por pago viajes de hoy transporte retorno orinoco;Transporte;EG-Bs;14.193,87;709,69;;True;True;administrador;administrador
+93;9/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;42,58;709,69;;True;True;administrador;administrador
+94;10/7/2026;Egreso de bs por pago materiales klim;Materiales;EG-Bs;5.536,00;709,69;;True;True;administrador;administrador
+95;10/7/2026;Egreso de bs por pago comision pago movil;Materiales;EG-Bs;16,61;709,69;;True;True;administrador;administrador
+96;10/7/2026;Egreso de $35 por zelle por pago globos ccs;Globos ccs;EG-$Ze;35;;;True;True;administrador;administrador
+97;10/7/2026;Egreso de bs por pago tijerazo;Tijerazo;EG-Bs;8.303,38;709,69;;True;True;administrador;administrador
+98;10/7/2026;Egreso de bs por pago comision pago movil;Tijerazo;EG-Bs;24,91;709,69;;True;True;administrador;administrador
+99;10/7/2026;Egreso de bs por pago yeli;Salario personal;EG-Bs;42.581,61;709,69;;True;True;administrador;administrador
+100;10/7/2026;Egreso de bs por pago comision pago movil;Salario personal;EG-Bs;127,74;709,69;;True;True;administrador;administrador
+101;10/7/2026;Egreso de bs por pago semana Dani;Salario personal;EG-Bs;28.400,73;811,45;;True;True;administrador;administrador
+102;10/7/2026;Egreso de bs por pago comision pago movil;Salario personal;EG-Bs;85,2;811,45;;True;True;administrador;administrador
+103;10/7/2026;Egreso de bs por pago traslado semana Dani;Salario personal;EG-Bs;8.114,49;811,45;;True;True;administrador;administrador
+104;10/7/2026;Egreso de bs por pago comision pago movil;Salario personal;EG-Bs;24,34;811,45;;True;True;administrador;administrador
+105;10/7/2026;Ingreso de $254 por zelle por pago deco de hoy;Decoración;IN-$Ze;254;;;True;True;administrador;administrador
+106;10/7/2026;Egreso de bs por pago cloro;Cloro;EG-Bs;2.129,07;709,69;;True;True;administrador;administrador
+107;10/7/2026;Egreso de bs por pago papel toalet;Toalet;EG-Bs;2.654,29;709,69;;True;True;administrador;administrador
+108;10/7/2026;Ingreso de $130 por zelle por pago restante bautizo;Decoración;IN-$Ze;130;;;True;True;administrador;administrador
+109;10/7/2026;Egreso de bs por pago camisas reina;Camisas;EG-Bs;17.750,00;709,69;;True;True;administrador;administrador
+110;10/7/2026;Egreso de bs por pago comision pago movil;Camisas;EG-Bs;53,25;709,69;;True;True;administrador;administrador
+111;10/7/2026;Egreso de bs por pago flores;Flores;EG-Bs;7.096,94;709,69;;True;True;administrador;administrador
+112;10/7/2026;Egreso de bs por pago viajes de hoy transporte ida bizza;Transporte;EG-Bs;14.193,87;709,69;;True;True;administrador;administrador
+113;10/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;42,58;709,69;;True;True;administrador;administrador
+114;10/7/2026;Egreso de $100 por zelle por pago papi;Papá;EG-$Ze;100;;;True;True;administrador;administrador
+115;11/7/2026;Egreso por pago  de embutidos;Embutidos;EG-Bs;13.961,83;709,69;;True;True;administrador;administrador
+116;11/7/2026;Egreso de bs por pago Dana;Dana;EG-Bs;5.841,28;709,69;;True;True;administrador;administrador
+117;11/7/2026;Egreso de bs por pago dtf;Dtf;EG-Bs;5.770,00;709,69;;True;True;administrador;administrador
+118;11/7/2026;Egreso de bs por pago comision pago movil;Dtf;EG-Bs;17,31;709,69;;True;True;administrador;administrador
+119;11/7/2026;Egreso de bs por pago baggels;Baggels;EG-Bs;3.578,68;709,69;;True;True;administrador;administrador
+120;11/7/2026;Egreso de bs por pago viajes de hoy transporte retorno bizza;Transporte;EG-Bs;14.193,87;709,69;;True;True;administrador;administrador
+121;11/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;42,58;709,69;;True;True;administrador;administrador
+122;11/7/2026;Ingreso de $70 por zelle por pago bandeja de mañana;Bandeja;IN-$Ze;70;;;True;True;administrador;administrador
+123;11/7/2026;Egreso de protector de aire con cashea;Protector aire;EG-Bs;3.555,08;709,69;;True;True;administrador;administrador
+124;11/7/2026;Egreso de bs por pago horquillas;Horquillas;EG-Bs;1.459,05;709,69;;True;True;administrador;administrador
+125;11/7/2026;Egreso de bs por pago manuel aire;Manuel aire;EG-Bs;17.742,34;709,69;;True;True;administrador;administrador
+126;11/7/2026;Egreso de bs por pago comision pago movil;Manuel aire;EG-Bs;53,23;709,69;;True;True;administrador;administrador
+127;11/7/2026;Egreso de bs por pago viajes de hoy transporte ida vivo;Transporte;EG-Bs;14.193,87;709,69;;True;True;administrador;administrador
+128;11/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;42,58;709,69;;True;True;administrador;administrador
+129;12/7/2026;Egreso de bs por pago viajes de hoy transporte retorno vivo;Transporte;EG-Bs;14.193,87;709,69;;True;True;administrador;administrador
+130;12/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;42,58;709,69;;True;True;administrador;administrador
+131;13/7/2026;Ingreso de $45 por zelle por pago bouquet miercoles;Bouquet;IN-$Ze;45;;;True;True;administrador;administrador
+132;13/7/2026;Ingreso de bs por pago Deco arrecife 1;Decoración;IN-Bs;51.496,41;823,94;;True;True;administrador;administrador
+133;13/7/2026;Ingreso de bs por pago Deco arrecife 2;Decoración;IN-Bs;51.496,41;823,94;;True;True;administrador;administrador
+134;13/7/2026;Ingreso de bs por pago 3 medallas para el jueves;Medallas;IN-Bs;17.302,74;823,94;;True;True;administrador;administrador
+135;13/7/2026;Ingreso de bs por pago Deco arrecife 3;Decoración;IN-Bs;51.496,41;823,94;;True;True;administrador;administrador
+136;13/7/2026;Ingreso de bs por pago Deco arrecife 4;Decoración;IN-Bs;51.497,00;823,94;;True;True;administrador;administrador
+137;13/7/2026;Ingreso de $70 por zelle por pago bandeja miled miercoles;Bandeja;IN-$Ze;70;;;True;True;administrador;administrador
+138;13/7/2026;Egreso de bs por pago envio globos malave;Malave;EG-Bs;11.000,00;721,35;;True;True;administrador;administrador
+139;13/7/2026;Egreso de bs por pago comision pago movil;Malave;EG-Bs;33;721,35;;True;True;administrador;administrador
+140;13/7/2026;Ingreso de bs por pago 50% chaqueta Mariangel Serrano ya completo su 100%;Chaqueta gallego;IN-Bs;19.476,33;721,35;;True;True;administrador;administrador
+141;13/7/2026;Egreso de bs por pago tijerazo cashea;Tijerazo Cashea;EG-Bs;4.151,95;721,35;;True;True;administrador;administrador
+142;13/7/2026;Egreso de bs por pago puero color cashea;Puerto color Cashea;EG-Bs;8.014,15;721,35;;True;True;administrador;administrador
+143;13/7/2026;Egreso de bs por pago viajes de hoy transporte ida orinoco;Transporte;EG-Bs;14.426,91;721,35;;True;True;administrador;administrador
+144;13/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;43,28;721,35;;True;True;administrador;administrador
+145;13/7/2026;Egreso de bs por pago pendiente de paleta a Klim;Abono caja chica;EG-Bs;3.340,00;721,35;;True;True;administrador;administrador
+146;13/7/2026;Egreso de bs por pago comision pago movil;Abono caja chica;EG-Bs;10,02;721,35;;True;True;administrador;administrador
+147;14/7/2026;Egreso de bs por pago reembolso nana;Abono caja chica;EG-Bs;3.235,00;724;;True;True;administrador;administrador
+148;14/7/2026;Egreso de bs por pago comision pago movil;Abono caja chica;EG-Bs;9,71;724;;True;True;administrador;administrador
+149;14/7/2026;Egreso de bs por pago reembolso klim;Abono caja chica;EG-Bs;1.666,00;724;;True;True;administrador;administrador
+150;14/7/2026;Egreso de bs por pago comision pago movil;Abono caja chica;EG-Bs;5;724;;True;True;administrador;administrador
+151;14/7/2026;Egreso de $25 en cash por pago mes diseño julio nana;Diseño;EG-$Ch;25;;;True;True;administrador;administrador
+152;14/7/2026;Egreso de bs por pago reembolso klim;Abono caja chica;EG-Bs;725;724;;True;True;administrador;administrador
+153;14/7/2026;Egreso de bs por pago comision pago movil;Abono caja chica;EG-Bs;2,18;724;;True;True;administrador;administrador
+154;14/7/2026;Egreso de bs por pago sueldo Eliana;Sueldo socia;EG-Bs;15.000,00;724;;True;True;administrador;administrador
 155;14/7/2026;Egreso de bs por pago comision pago movil;Sueldo socia;EG-Bs;45;724;;True;True;administrador;administrador
-156;14/7/2026;Egreso de bs por pago sueldo Elisa;Sueldo socia;EG-Bs;15.000,00;724;;True;True;administrador;administrador
-157;14/7/2026;Egreso de bs por pago viajes de hoy transporte ida oceania;Transporte;EG-Bs;14.479,98;724;;True;True;administrador;administrador
-158;14/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;43,44;724;;True;True;administrador;administrador
-159;14/7/2026;Ingreso de bs por pago decoracion orinoco años 80 $345;Decoración;IN-Bs;284.794,05;825,5;;True;True;administrador;administrador
-160;14/7/2026;Ingreso de bs por pago decoracion orinoco años 80 $100;Decoración;IN-Bs;82.549,00;825,5;;True;True;administrador;administrador
-161;14/7/2026;Egreso de bs por pago zula $42;Zula;EG-Bs;30.407,96;724;;True;True;administrador;administrador
-162;14/7/2026;Egreso de bs por pago comision pago movil;Zula;EG-Bs;91,22;724;;True;True;administrador;administrador
-163;14/7/2026;Egreso de bs por pago impresiones mp;Impresión;EG-Bs;68.164,51;724;;True;True;administrador;administrador
-164;14/7/2026;Egreso de bs por pago comision pago movil;Impresión;EG-Bs;204,49;724;;True;True;administrador;administrador
-165;15/7/2026;Egreso de bs por pago viajes de hoy transporte retorno  orinoco;Transporte;EG-Bs;14.514,94;725,75;;True;True;administrador;administrador
-166;15/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;43,54;725,75;;True;True;administrador;administrador
-167;15/7/2026;Ingreso de $30 por zelle por pago de globo con helio hoy;Globos con helio;IN-$Ze;30;;;True;True;administrador;administrador
-168;15/7/2026;Egreso de bs por pago diseño virgen Del Valle $40;Diseño;EG-Bs;33.225,28;830;;True;True;administrador;administrador
-169;15/7/2026;Egreso de bs por pago comision pago movil;Diseño;EG-Bs;99,68;830;;True;True;administrador;administrador
-170;15/7/2026;Egreso de bs por pago flores;Flores;EG-Bs;8.708,96;725,75;;True;True;administrador;administrador
-171;15/7/2026;Egreso de bs por pago impresiones mp;Impresión;EG-Bs;32.237,68;725,75;;True;True;administrador;administrador
-172;15/7/2026;Egreso de bs por pago comision pago movil;Impresión;EG-Bs;96,71;725,75;;True;True;administrador;administrador
-173;15/7/2026;Egreso de bs por pago vinil;Vinil cpo;EG-Bs;16.445,11;725,75;;True;True;administrador;administrador
-174;15/7/2026;Egreso de bs por pago comision pago movil;Vinil cpo;EG-Bs;49,34;725,75;;True;True;administrador;administrador
-175;15/7/2026;Egreso de bs por pago gomitas;Gomitas;EG-Bs;592,89;725,75;;True;True;administrador;administrador
-176;15/7/2026;Egreso de bs por pago de 6 láminas de foamboard;Foamboard;EG-Bs;20.466,09;725,75;;True;True;administrador;administrador
-177;15/7/2026;Ingreso de bs por la otra mitad de pago chaqueta Eliezer;Chaqueta gallego;IN-Bs;19.595,25;725,75;;True;True;administrador;administrador
-178;15/7/2026;Ingreso de bs por pago 2 carteritas niñas;Carteras;IN-Bs;26.580,22;830;;True;True;administrador;administrador
-179;15/7/2026;Egreso de bs por pago sueldo Eliana;Sueldo socia;EG-Bs;19.595,25;830;;True;True;administrador;administrador
-180;15/7/2026;Egreso de bs por pago comision pago movil;Sueldo socia;EG-Bs;58,79;830;;True;True;administrador;administrador
-181;15/7/2026;Egreso de bs por pago sueldo Elimar;Sueldo socia;EG-Bs;19.595,25;830;;True;True;administrador;administrador
+156;14/7/2026;Egreso de bs por pago sueldo Elimar;Sueldo socia;EG-Bs;15.000,00;724;;True;True;administrador;administrador
+157;14/7/2026;Egreso de bs por pago comision pago movil;Sueldo socia;EG-Bs;45;724;;True;True;administrador;administrador
+158;14/7/2026;Egreso de bs por pago sueldo Elisa;Sueldo socia;EG-Bs;15.000,00;724;;True;True;administrador;administrador
+159;14/7/2026;Egreso de bs por pago viajes de hoy transporte ida oceania;Transporte;EG-Bs;14.479,98;724;;True;True;administrador;administrador
+160;14/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;43,44;724;;True;True;administrador;administrador
+161;14/7/2026;Ingreso de bs por pago decoracion orinoco años 80 $345;Decoración;IN-Bs;284.794,05;825,5;;True;True;administrador;administrador
+162;14/7/2026;Ingreso de bs por pago decoracion orinoco años 80 $100;Decoración;IN-Bs;82.549,00;825,5;;True;True;administrador;administrador
+163;14/7/2026;Egreso de bs por pago zula $42;Zula;EG-Bs;30.407,96;724;;True;True;administrador;administrador
+164;14/7/2026;Egreso de bs por pago comision pago movil;Zula;EG-Bs;91,22;724;;True;True;administrador;administrador
+165;14/7/2026;Egreso de bs por pago impresiones mp;Impresión;EG-Bs;68.164,51;724;;True;True;administrador;administrador
+166;14/7/2026;Egreso de bs por pago comision pago movil;Impresión;EG-Bs;204,49;724;;True;True;administrador;administrador
+167;15/7/2026;Egreso de bs por pago viajes de hoy transporte retorno  orinoco;Transporte;EG-Bs;14.514,94;725,75;;True;True;administrador;administrador
+168;15/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;43,54;725,75;;True;True;administrador;administrador
+169;15/7/2026;Ingreso de $30 por zelle por pago de globo con helio hoy;Globos con helio;IN-$Ze;30;;;True;True;administrador;administrador
+170;15/7/2026;Egreso de bs por pago diseño virgen Del Valle $40;Diseño;EG-Bs;33.225,28;830;;True;True;administrador;administrador
+171;15/7/2026;Egreso de bs por pago comision pago movil;Diseño;EG-Bs;99,68;830;;True;True;administrador;administrador
+172;15/7/2026;Egreso de bs por pago flores;Flores;EG-Bs;8.708,96;725,75;;True;True;administrador;administrador
+173;15/7/2026;Egreso de bs por pago impresiones mp;Impresión;EG-Bs;32.237,68;725,75;;True;True;administrador;administrador
+174;15/7/2026;Egreso de bs por pago comision pago movil;Impresión;EG-Bs;96,71;725,75;;True;True;administrador;administrador
+175;15/7/2026;Egreso de bs por pago vinil;Vinil cpo;EG-Bs;16.445,11;725,75;;True;True;administrador;administrador
+176;15/7/2026;Egreso de bs por pago comision pago movil;Vinil cpo;EG-Bs;49,34;725,75;;True;True;administrador;administrador
+177;15/7/2026;Egreso de bs por pago gomitas;Gomitas;EG-Bs;592,89;725,75;;True;True;administrador;administrador
+178;15/7/2026;Egreso de bs por pago de 6 láminas de foamboard;Foamboard;EG-Bs;20.466,09;725,75;;True;True;administrador;administrador
+179;15/7/2026;Ingreso de bs por la otra mitad de pago chaqueta Eliezer;Chaqueta gallego;IN-Bs;19.595,25;725,75;;True;True;administrador;administrador
+180;15/7/2026;Ingreso de bs por pago 2 carteritas niñas;Carteras;IN-Bs;26.580,22;830;;True;True;administrador;administrador
+181;15/7/2026;Egreso de bs por pago sueldo Eliana;Sueldo socia;EG-Bs;19.595,25;830;;True;True;administrador;administrador
 182;15/7/2026;Egreso de bs por pago comision pago movil;Sueldo socia;EG-Bs;58,79;830;;True;True;administrador;administrador
-183;15/7/2026;Egreso de bs por pago sueldo Elisa;Sueldo socia;EG-Bs;19.595,25;830;;True;True;administrador;administrador
-184;16/7/2026;Egreso de bs por pago viajes de hoy transporte retorno oceania;Transporte;EG-Bs;14.549,02;727,45;;True;True;administrador;administrador
-185;16/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;43,65;727,45;;True;True;administrador;administrador
-186;16/7/2026;Egreso de bs por pago impresiones mp;Impresión;EG-Bs;18.564,55;727,45;;True;True;administrador;administrador
-187;16/7/2026;Egreso de bs por pago comision pago movil;Impresión;EG-Bs;55,69;727,45;;True;True;administrador;administrador
-188;16/7/2026;ingreso de bs por pago decoracion italo preescolar 40% $427,28  ya estaria completo el pago;Decoración;IN-Bs;355.602,85;832,25;;True;True;administrador;administrador
-189;16/7/2026;Ingreso de $440 en cash por pago Manolys;Decoración;IN-$Ch;440;;;True;True;administrador;administrador
-190;16/7/2026;Egrso de bs por recarga saldo paleta;Recarga;EG-Bs;2.600,00;727,45;;True;True;administrador;administrador
-191;16/7/2026;Ingreso de bs por pago desayuno dìa del niño;Día del niño;IN-Bs;98.205,24;832,25;;True;True;administrador;administrador
-192;16/7/2026;Egreso de bs por pago viajes de hoy transporte ida punta palma;Transporte;EG-Bs;14.549,02;727,45;;True;True;administrador;administrador
-193;16/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;43,65;727,45;;True;True;administrador;administrador
-194;16/7/2026;egreso de bs por pago torta marisabelle;Marisabelle;EG-Bs;112.353,46;832,25;;True;True;administrador;administrador
-195;16/7/2026;Egreso de bs por pago comision pago movil;Marisabelle;EG-Bs;337,06;832,25;;True;True;administrador;administrador
-196;16/7/2026;Egreso de bs por pago pensiones seniat;Seniat;EG-Bs;40.371,83;832,25;;True;True;administrador;administrador
-197;16/7/2026;Egreso de bs por pago comision pago movil;Seniat;EG-Bs;121,12;832,25;;True;True;administrador;administrador
-198;16/7/2026;Egreso de $16 por zelle por pago vela klim;Vela;EG-$Ze;16;;;True;True;administrador;administrador
-199;16/7/2026;Egreso de $21 por zelle por pago pulsera adorada;Adorada;EG-$Ze;21;;;True;True;administrador;administrador
-200;16/7/2026;Egreso de $300 por zelle por pago sueldo Elimar;Sueldo socia;EG-$Ze;300;;;True;True;administrador;administrador
-201;16/7/2026;Egreso de $300 por zelle por pago sueldo Elisa;Sueldo socia;EG-$Ze;300;;;True;True;administrador;administrador
-202;16/7/2026;Egreso de bs por pago sueldo Eliana;Sueldo socia;EG-Bs;72.745,12;727,45;;True;True;administrador;administrador
-203;16/7/2026;Egreso de bs por pago comision pago movil;Sueldo socia;EG-Bs;218,24;727,45;;True;True;administrador;administrador
-204;16/7/2026;Egreso de bs por pago sueldo Elimar;Sueldo socia;EG-Bs;72.745,12;727,45;;True;True;administrador;administrador
+183;15/7/2026;Egreso de bs por pago sueldo Elimar;Sueldo socia;EG-Bs;19.595,25;830;;True;True;administrador;administrador
+184;15/7/2026;Egreso de bs por pago comision pago movil;Sueldo socia;EG-Bs;58,79;830;;True;True;administrador;administrador
+185;15/7/2026;Egreso de bs por pago sueldo Elisa;Sueldo socia;EG-Bs;19.595,25;830;;True;True;administrador;administrador
+186;16/7/2026;Egreso de bs por pago viajes de hoy transporte retorno oceania;Transporte;EG-Bs;14.549,02;727,45;;True;True;administrador;administrador
+187;16/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;43,65;727,45;;True;True;administrador;administrador
+188;16/7/2026;Egreso de bs por pago impresiones mp;Impresión;EG-Bs;18.564,55;727,45;;True;True;administrador;administrador
+189;16/7/2026;Egreso de bs por pago comision pago movil;Impresión;EG-Bs;55,69;727,45;;True;True;administrador;administrador
+190;16/7/2026;ingreso de bs por pago decoracion italo preescolar 40% $427,28  ya estaria completo el pago;Decoración;IN-Bs;355.602,85;832,25;;True;True;administrador;administrador
+191;16/7/2026;Ingreso de $440 en cash por pago Manolys;Decoración;IN-$Ch;440;;;True;True;administrador;administrador
+192;16/7/2026;Egrso de bs por recarga saldo paleta;Recarga;EG-Bs;2.600,00;727,45;;True;True;administrador;administrador
+193;16/7/2026;Ingreso de bs por pago desayuno dìa del niño;Día del niño;IN-Bs;98.205,24;832,25;;True;True;administrador;administrador
+194;16/7/2026;Egreso de bs por pago viajes de hoy transporte ida punta palma;Transporte;EG-Bs;14.549,02;727,45;;True;True;administrador;administrador
+195;16/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;43,65;727,45;;True;True;administrador;administrador
+196;16/7/2026;egreso de bs por pago torta marisabelle;Marisabelle;EG-Bs;112.353,46;832,25;;True;True;administrador;administrador
+197;16/7/2026;Egreso de bs por pago comision pago movil;Marisabelle;EG-Bs;337,06;832,25;;True;True;administrador;administrador
+198;16/7/2026;Egreso de bs por pago pensiones seniat;Seniat;EG-Bs;40.371,83;832,25;;True;True;administrador;administrador
+199;16/7/2026;Egreso de bs por pago comision pago movil;Seniat;EG-Bs;121,12;832,25;;True;True;administrador;administrador
+200;16/7/2026;Egreso de $16 por zelle por pago vela klim;Vela;EG-$Ze;16;;;True;True;administrador;administrador
+201;16/7/2026;Egreso de $21 por zelle por pago pulsera adorada;Adorada;EG-$Ze;21;;;True;True;administrador;administrador
+202;16/7/2026;Egreso de $300 por zelle por pago sueldo Elimar;Sueldo socia;EG-$Ze;300;;;True;True;administrador;administrador
+203;16/7/2026;Egreso de $300 por zelle por pago sueldo Elisa;Sueldo socia;EG-$Ze;300;;;True;True;administrador;administrador
+204;16/7/2026;Egreso de bs por pago sueldo Eliana;Sueldo socia;EG-Bs;72.745,12;727,45;;True;True;administrador;administrador
 205;16/7/2026;Egreso de bs por pago comision pago movil;Sueldo socia;EG-Bs;218,24;727,45;;True;True;administrador;administrador
-206;16/7/2026;Egreso de bs por pago sueldo Elisa;Sueldo socia;EG-Bs;72.745,12;727,45;;True;True;administrador;administrador
-207;17/7/2026;Egreso de $300 en cash por pago sueldo Eliana;Sueldo socia;EG-$Ch;300;;;True;True;administrador;administrador
-208;17/7/2026;Egreso de bs por pago tequeños;Tequeños;EG-Bs;7.031,81;732,48;;True;True;administrador;administrador
-209;17/7/2026;Egreso de bs por pago comision pago movil;Tequeños;EG-Bs;21,1;732,48;;True;True;administrador;administrador
-210;17/7/2026;Egreso de bs por pago yeli semana y regalo;Salario personal;EG-Bs;118.000,00;732,48;;True;True;administrador;administrador
-211;17/7/2026;Egreso de bs por pago comision pago movil;Salario personal;EG-Bs;354;732,48;;True;True;administrador;administrador
-212;17/7/2026;Egreso de bs por pago salario Dani;Salario personal;EG-Bs;29.332,29;838,07;;True;True;administrador;administrador
-213;17/7/2026;Egreso de bs por pago comision pago movil;Salario personal;EG-Bs;88;838,07;;True;True;administrador;administrador
-214;17/7/2026;Egreso de bs por pago salario Dani;Salario personal;EG-Bs;8.380,66;838,07;;True;True;administrador;administrador
-215;17/7/2026;Egreso de bs por pago regalo Renata;Regalo Renata;EG-Bs;10.547,71;732,48;;True;True;administrador;administrador
-216;17/7/2026;Ingreso de bs por pago chaqueta sabrina $27;Chaqueta gallego;IN-Bs;19.776,92;732,48;;True;True;administrador;administrador
-217;17/7/2026;Egreso de bs por pago rio;Rio;EG-Bs;10.822,66;732,48;;True;True;administrador;administrador
-218;17/7/2026;Egreso de bs por pago klim compras paleta;Abono caja chica;EG-Bs;12.350,00;732,48;;True;True;administrador;administrador
-219;17/7/2026;Egreso de bs por pago comision pago movil;Abono caja chica;EG-Bs;37,05;732,48;;True;True;administrador;administrador
-220;17/7/2026;Ingreso de $393 por zelle por pago genesis;Decoración;IN-$Ze;393;;;True;True;administrador;administrador
-221;18/7/2026;Egreso de bs por pago viajes de hoy transporte retorno punta palma;Transporte;EG-Bs;14.649,57;732,48;;True;True;administrador;administrador
-222;18/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;43,95;732,48;;True;True;administrador;administrador
-223;18/7/2026;Egreso de bs por pago donas;Donas;EG-Bs;3.389,89;732,48;;True;True;administrador;administrador
+206;16/7/2026;Egreso de bs por pago sueldo Elimar;Sueldo socia;EG-Bs;72.745,12;727,45;;True;True;administrador;administrador
+207;16/7/2026;Egreso de bs por pago comision pago movil;Sueldo socia;EG-Bs;218,24;727,45;;True;True;administrador;administrador
+208;16/7/2026;Egreso de bs por pago sueldo Elisa;Sueldo socia;EG-Bs;72.745,12;727,45;;True;True;administrador;administrador
+209;17/7/2026;Egreso de $300 en cash por pago sueldo Eliana;Sueldo socia;EG-$Ch;300;;;True;True;administrador;administrador
+210;17/7/2026;Egreso de bs por pago tequeños;Tequeños;EG-Bs;7.031,81;732,48;;True;True;administrador;administrador
+211;17/7/2026;Egreso de bs por pago comision pago movil;Tequeños;EG-Bs;21,1;732,48;;True;True;administrador;administrador
+212;17/7/2026;Egreso de bs por pago yeli semana y regalo;Salario personal;EG-Bs;118.000,00;732,48;;True;True;administrador;administrador
+213;17/7/2026;Egreso de bs por pago comision pago movil;Salario personal;EG-Bs;354;732,48;;True;True;administrador;administrador
+214;17/7/2026;Egreso de bs por pago salario Dani;Salario personal;EG-Bs;29.332,29;838,07;;True;True;administrador;administrador
+215;17/7/2026;Egreso de bs por pago comision pago movil;Salario personal;EG-Bs;88;838,07;;True;True;administrador;administrador
+216;17/7/2026;Egreso de bs por pago salario Dani;Salario personal;EG-Bs;8.380,66;838,07;;True;True;administrador;administrador
+217;17/7/2026;Egreso de bs por pago regalo Renata;Regalo Renata;EG-Bs;10.547,71;732,48;;True;True;administrador;administrador
+218;17/7/2026;Ingreso de bs por pago chaqueta sabrina $27;Chaqueta gallego;IN-Bs;19.776,92;732,48;;True;True;administrador;administrador
+219;17/7/2026;Egreso de bs por pago rio;Rio;EG-Bs;10.822,66;732,48;;True;True;administrador;administrador
+220;17/7/2026;Egreso de bs por pago klim compras paleta;Abono caja chica;EG-Bs;12.350,00;732,48;;True;True;administrador;administrador
+221;17/7/2026;Egreso de bs por pago comision pago movil;Abono caja chica;EG-Bs;37,05;732,48;;True;True;administrador;administrador
+222;17/7/2026;Ingreso de $393 por zelle por pago genesis;Decoración;IN-$Ze;393;;;True;True;administrador;administrador
+223;18/7/2026;Egreso de bs por pago viajes de hoy transporte retorno punta palma;Transporte;EG-Bs;14.649,57;732,48;;True;True;administrador;administrador
+224;18/7/2026;Egreso de bs por pago comision pago movil;Transporte;EG-Bs;43,95;732,48;;True;True;administrador;administrador
+225;18/7/2026;Egreso de bs por pago donas;Donas;EG-Bs;3.389,89;732,48;;True;True;administrador;administrador
