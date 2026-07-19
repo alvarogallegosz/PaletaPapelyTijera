@@ -16,13 +16,13 @@ st.markdown("""
         /* 1. Ajuste del lienzo superior para respetar la barra de herramientas de Streamlit */
         .block-container {
             padding-top: 2.4rem !important; 
-            padding-bottom: 1.5rem !important;
+            padding-bottom: 1rem !important;
             max-width: 98% !important;     
         }
         
         /* 2. Compactar espacio muerto entre elementos */
         div[data-testid="stVerticalBlock"] {
-            gap: 0.3rem !important; 
+            gap: 0.5rem !important; 
         }
         .element-container {
             margin-bottom: 0px !important;
