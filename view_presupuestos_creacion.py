@@ -262,11 +262,14 @@ def render_creacion_presupuestos(rol_simulado):
             if st.button("💾 Guardar en BD", disabled=rol_simulado not in ["administrador", "gerente"], type="primary", use_container_width=True):
                 st.success("🎉 Guardado.")
 
-    # ===================================================
-    # 🖨️ MODO VISTA PREVIA (CONSOLIDACIÓN DE CADENA HTML)
+# ===================================================
+    # 🖨️ MODO VISTA PREVIA (BLINDADO CONTRA KEYERRORS)
     # ===================================================
     else:
-        meta = st.session_state.meta_presupuesto
+        # Uso seguro de .get() para inmunizar la sesión contra llaves faltantes
+        meta = st.session_state.get("meta_presupuesto", {})
+        clausulas_txt = st.session_state.get("clausulas_presupuesto", "")
+        secciones_activas = st.session_state.get("lista_secciones", [])
         
         st.markdown("### 👁️ Vista Previa del Documento")
         col_pv1, col_pv2 = st.columns(2)
@@ -280,23 +283,7 @@ def render_creacion_presupuestos(rol_simulado):
         st.info("💡 Para guardar el PDF limpio: Presiona **Ctrl + P** o **Cmd + P**.")
         st.markdown("---")
         
-        # RASTREO ROBUSTO DEL LOGO CORPORATIVO (.PNG)
-        rutas_logo = [
-            "Encabezado_Paleta.png", "encabezado_paleta.png",
-            os.path.join(os.getcwd(), "Encabezado_Paleta.png"),
-            os.path.join(os.path.dirname(__file__), "Encabezado_Paleta.png")
-        ]
-        logo_path = next((r for r in rutas_logo if os.path.exists(r)), None)
-        
-        if logo_path:
-            import base64
-            with open(logo_path, "rb") as f:
-                data_img = base64.b64encode(f.read()).decode("utf-8")
-            html_logo = f'<img src="data:image/png;base64,{data_img}" style="width:100%; height:auto; display:block; margin-bottom:10px;">'
-        else:
-            html_logo = '<div style="background-color:#f2f2f2; border:2px dashed #cbd5e1; padding:20px; text-align:center; font-weight:bold; color:#64748b; margin-bottom:10px;">[ LOGO: ENCABEZADO_PALETA.PNG NO DETECTADO ]</div>'
-
- # --- 🏗️ CONSTRUCCIÓN CONSOLIDADA DEL HTML DE IMPRESIÓN ---
+        # RASTREO ULTRA-SIMPLIFICADO DEL LOGO (SÓLO MINÚSCULAS, SIN VERIFICACIONES EXTRA)
         ruta_logo = os.path.join(os.path.dirname(__file__), "encabezado_paleta.png")
         
         if os.path.exists(ruta_logo):
@@ -307,18 +294,24 @@ def render_creacion_presupuestos(rol_simulado):
         else:
             html_logo = '<div style="background-color:#f2f2f2; border:2px dashed #cbd5e1; padding:20px; text-align:center; font-weight:bold; color:#64748b; margin-bottom:10px;">[ LOGO: encabezado_paleta.png NO DETECTADO ]</div>'
 
-        # Construcción limpia de la cabecera
+        # Extracción e inmunización de textos de cabecera
+        p_nombre = str(meta.get('nombre', '') or '').upper() or 'PRESUPUESTO'
+        p_fecha_evt = str(meta.get('fecha_evento', '') or '').upper() or 'N/A'
+        p_cliente = str(meta.get('cliente', '') or '').upper() or 'N/A'
+        p_lugar = str(meta.get('lugar', '') or '').upper() or 'N/A'
+        p_emision = str(meta.get('fecha_larga', '') or '').upper() or 'N/A'
+
         html_cuerpo = f"""
         <div class="documento-hoja">
             {html_logo}
             <div class="meta-contenedor">
                 <div class="meta-izquierda">
-                    <b>{meta['nombre'].upper() if meta['nombre'] else 'PRESUPUESTO'}</b><br>
-                    FECHA DEL EVENTO: {meta['fecha_evento'].upper() if meta['fecha_evento'] else 'N/A'}<br>
-                    CLIENTE: {meta['cliente'].upper() if meta['cliente'] else 'N/A'} | LUGAR: {meta['lugar'].upper() if meta['lugar'] else 'N/A'}
+                    <b>{p_nombre}</b><br>
+                    FECHA DEL EVENTO: {p_fecha_evt}<br>
+                    CLIENTE: {p_cliente} | LUGAR: {p_lugar}
                 </div>
                 <div class="meta-derecha">
-                    EMISIÓN: {meta['fecha_larga'] if meta['fecha_larga'] else 'N/A'}
+                    EMISIÓN: {p_emision}
                 </div>
             </div>
             <div class="banner-verde-principal">PRESUPUESTO DETALLADO</div>
@@ -326,8 +319,12 @@ def render_creacion_presupuestos(rol_simulado):
         
         total_general = 0.0
         
-        for idx_sec, sec in enumerate(st.session_state.lista_secciones):
-            df_sec = st.session_state[f"df_{sec['id']}"]
+        for idx_sec, sec in enumerate(secciones_activas):
+            sec_id = sec.get('id', '')
+            sec_titulo = sec.get('titulo', f'SECCIÓN {idx_sec+1}')
+            
+            # Obtención segura del DataFrame de la sección
+            df_sec = st.session_state.get(f"df_{sec_id}", pd.DataFrame())
             th_style = 'style="background-color: #f2f2f2 !important;"' if idx_sec > 0 else ''
             
             html_cuerpo += f"""
@@ -335,7 +332,7 @@ def render_creacion_presupuestos(rol_simulado):
                 <thead>
                     <tr>
                         <th style="width: 3.2%; text-align: center;" {th_style}>ITEM</th>
-                        <th style="width: 51.3%; text-align: left;" {th_style}>{sec['titulo']}</th>
+                        <th style="width: 51.3%; text-align: left;" {th_style}>{sec_titulo}</th>
                         <th style="width: 25.6%; text-align: left;" {th_style}>MEDIDAS</th>
                         <th style="width: 7.1%; text-align: center;" {th_style}>JUEGOS/KITS</th>
                         <th style="width: 5.1%; text-align: center;" {th_style}>CANTIDAD</th>
@@ -348,42 +345,41 @@ def render_creacion_presupuestos(rol_simulado):
             subtotal_seccion = 0.0
             item_numeral = 1
             
-            # Iteración blindada basada en diccionarios para evitar el bug de indices cruzados
-            for row in df_sec.to_dict('records'):
-                desc = str(row.get('descripción', '') or '').strip()
-                med = str(row.get('medidas', '') or '').strip()
-                
-                try: jk_val = float(row.get('juegos/kits')) if pd.notna(row.get('juegos/kits')) and row.get('juegos/kits') != '' else 0.0
-                except: jk_val = 0.0
-                try: cant_val = float(row.get('cantidad')) if pd.notna(row.get('cantidad')) and row.get('cantidad') != '' else 0.0
-                except: cant_val = 0.0
-                try: pu_val = float(row.get('precio_unitario')) if pd.notna(row.get('precio_unitario')) and row.get('precio_unitario') != '' else 0.0
-                except: pu_val = 0.0
-
-                # Auto-numera solo si la fila tiene alguna actividad real o precio válido
-                if desc or med or jk_val or cant_val or pu_val:
-                    if jk_val == 0.0:
-                        total_fila = cant_val * pu_val
-                        jk_str = ""
-                    else:
-                        total_fila = jk_val * cant_val * pu_val
-                        jk_str = f"{int(jk_val) if jk_val.is_integer() else jk_val}"
-                        
-                    subtotal_seccion += total_fila
-                    precio_str = f"${total_fila:,.2f}"
-                    cant_str = f"{int(cant_val) if cant_val.is_integer() else cant_val}" if cant_val > 0 else ""
+            if not df_sec.empty:
+                for row in df_sec.to_dict('records'):
+                    desc = str(row.get('descripción', '') or '').strip()
+                    med = str(row.get('medidas', '') or '').strip()
                     
-                    html_cuerpo += f"""
-                    <tr>
-                        <td style="text-align: center;">{item_numeral}</td>
-                        <td style="text-align: left;">{desc}</td>
-                        <td style="text-align: left;">{med}</td>
-                        <td style="text-align: center;">{jk_str}</td>
-                        <td style="text-align: center;">{cant_str}</td>
-                        <td style="text-align: right;">{precio_str}</td>
-                    </tr>
-                    """
-                    item_numeral += 1
+                    try: jk_val = float(row.get('juegos/kits')) if pd.notna(row.get('juegos/kits')) and row.get('juegos/kits') != '' else 0.0
+                    except: jk_val = 0.0
+                    try: cant_val = float(row.get('cantidad')) if pd.notna(row.get('cantidad')) and row.get('cantidad') != '' else 0.0
+                    except: cant_val = 0.0
+                    try: pu_val = float(row.get('precio_unitario')) if pd.notna(row.get('precio_unitario')) and row.get('precio_unitario') != '' else 0.0
+                    except: pu_val = 0.0
+
+                    if desc or med or jk_val or cant_val or pu_val:
+                        if jk_val == 0.0:
+                            total_fila = cant_val * pu_val
+                            jk_str = ""
+                        else:
+                            total_fila = jk_val * cant_val * pu_val
+                            jk_str = f"{int(jk_val) if jk_val.is_integer() else jk_val}"
+                            
+                        subtotal_seccion += total_fila
+                        precio_str = f"${total_fila:,.2f}"
+                        cant_str = f"{int(cant_val) if cant_val.is_integer() else cant_val}" if cant_val > 0 else ""
+                        
+                        html_cuerpo += f"""
+                        <tr>
+                            <td style="text-align: center;">{item_numeral}</td>
+                            <td style="text-align: left;">{desc}</td>
+                            <td style="text-align: left;">{med}</td>
+                            <td style="text-align: center;">{jk_str}</td>
+                            <td style="text-align: center;">{cant_str}</td>
+                            <td style="text-align: right;">{precio_str}</td>
+                        </tr>
+                        """
+                        item_numeral += 1
             
             if item_numeral == 1:
                 html_cuerpo += '<tr><td colspan="6" style="text-align: center; color: #a0aec0; padding: 8px;">Sección sin registros activos</td></tr>'
@@ -392,7 +388,7 @@ def render_creacion_presupuestos(rol_simulado):
                 </tbody>
             </table>
             <div class="contenedor-subtotal">
-                <span>SUB TOTAL {sec['titulo']}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                <span>SUB TOTAL {sec_titulo}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
                 <span>${subtotal_seccion:,.2f}</span>
             </div>
             """
@@ -405,10 +401,10 @@ def render_creacion_presupuestos(rol_simulado):
             </div>
             <div class="clausulas-container">
                 <div class="clausulas-header">CLAUSULAS:</div>
-                {st.session_state.clausulas_presupuesto}
+                {clausulas_txt}
             </div>
         </div>
         """
         
-        # Renderizado final absoluto y limpio
+        # Renderizado final seguro
         st.markdown(html_cuerpo, unsafe_allow_html=True)
