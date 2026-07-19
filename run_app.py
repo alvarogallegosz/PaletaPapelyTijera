@@ -4,102 +4,76 @@ from datetime import datetime
 from db_connection import obtener_movimientos_locales
 from core_finance_engine import procesar_mes_especifico
 
-# Importaciones de Vistas de la Caja
-from view_caja_visor import render_visor
 from view_caja_carga import render_carga
+from view_caja_visor import render_visor
 from view_caja_historico import render_historico
 from view_caja_edicion import render_edicion
 
-# --- ENTOCKADO DE SIMULACIÓN PARA PRUEBAS RÁPIDAS ---
-st.sidebar.markdown("### 🛠️ Consola de Simulación")
-rol_simulado = st.sidebar.selectbox(
-    "Identidad del Sistema (Rol):",
-    ["operador", "administrador", "contador", "gerente", "soporte"]
-)
+# Reducción global del tamaño de letra de títulos nativos de Streamlit vía CSS inyectado
+st.markdown("""
+    <style>
+    h1 { font-size: 24px !important; font-weight: 700 !important; margin-bottom: 5px !important; }
+    h2 { font-size: 20px !important; margin-top: 5px !important; }
+    h3 { font-size: 16px !important; font-weight: 600 !important; color: #333; }
+    .stTabs [data-baseweb="tab"] { font-size: 13px !important; padding: 6px 12px !important; }
+    </style>
+""", unsafe_html=True)
 
-# Cargar la data temporal del Session State
+st.sidebar.markdown("### 🛠️ Entorno de Desarrollo")
+rol_simulado = st.sidebar.selectbox("Rol Activo:", ["administrador", "gerente", "contador", "operador", "soporte"])
+
 df_completo = obtener_movimientos_locales()
 
-# --- SELECTORES DE TIEMPO COMUNES ---
 st.sidebar.markdown("---")
-st.sidebar.subheader("📅 Filtro Temporal")
+st.sidebar.subheader("📅 Filtro Global Temporal")
 meses_nombres = {1:"Enero", 2:"Febrero", 3:"Marzo", 4:"Abril", 5:"Mayo", 6:"Junio", 7:"Julio", 8:"Agosto", 9:"Septiembre", 10:"Octubre", 11:"Noviembre", 12:"Diciembre"}
-anho_sel = st.sidebar.selectbox("Año comercial", [2026, 2025])
-mes_sel_nombre = st.sidebar.selectbox("Mes de trabajo", list(meses_nombres.values()), index=datetime.now().month - 1)
+anho_sel = st.sidebar.selectbox("Año", [2026, 2025])
+mes_sel_nombre = st.sidebar.selectbox("Mes", list(meses_nombres.values()), index=datetime.now().month - 1)
 mes_sel_num = [k for k, v in meses_nombres.items() if v == mes_sel_nombre][0]
 
-# Procesar la matemática del mes
 df_mes, saldos_ini, saldos_fin = procesar_mes_especifico(df_completo, anho_sel, mes_sel_num)
 
-# --- CABECERA DE LA APP ---
-st.title("📊 Paleta, Papel y Tijera — ERP")
-st.caption(f"Visualizando aplicación con permisos asignados al rol: **{rol_simulado.upper()}**")
-st.markdown("---")
+# Título Ejecutivo Compacto
+st.markdown(f"<h1>📊 Control Maestro ERP — Rol: {rol_simulado.upper()}</h1>", unsafe_html=True)
 
-# --- CONTROL DE MAPEO DE COLUMNAS (MÓDULOS DE LA IMAGEN) ---
 modulos_validos = []
+if rol_simulado in ["administrador", "gerente", "soporte"]: modulos_validos.append("REGISTROS DE CAJA")
+if rol_simulado in ["operador", "administrador", "gerente", "soporte"]: modulos_validos.append("PRESUPUESTOS")
+if rol_simulado in ["contador", "administrador", "gerente", "soporte"]: modulos_validos.append("FACTURACION")
+if rol_simulado in ["contador", "administrador", "gerente", "soporte"]: modulos_validos.append("ADMINISTRACIÓN")
+if rol_simulado in ["soporte"]: modulos_validos.append("SOPORTE")
 
-# Validar visibilidad de módulos según la matriz de reglas establecida
-if rol_simulado in ["administrador", "gerente", "soporte"]:
-    modulos_validos.append("REGISTROS DE CAJA")
-if rol_simulado in ["operador", "administrador", "gerente", "soporte"]:
-    modulos_validos.append("PRESUPUESTOS")
-if rol_simulado in ["contador", "administrador", "gerente", "soporte"]:
-    modulos_validos.append("FACTURACION")
-if rol_simulado in ["contador", "administrador", "gerente", "soporte"]:
-    modulos_validos.append("ADMINISTRACIÓN")
-if rol_simulado in ["soporte"]:
-    modulos_validos.append("SOPORTE EXCLUSIVO")
-
-if not modulos_validos:
-    st.warning("No tienes módulos asignados a tu perfil.")
-else:
-    modulo_activo = st.radio("Módulos de Sistema disponibles:", modulos_validos, horizontal=True)
+if modulos_validos:
+    modulo_activo = st.radio("Módulos:", modulos_validos, horizontal=True)
     st.markdown("---")
 
-    # --- DESARROLLO MÓDULO 1: REGISTROS DE CAJA ---
     if modulo_activo == "REGISTROS DE CAJA":
-        # KPIs en la zona superior del módulo
+        # Totales expresados SOBRE los encabezados de pestañas
         col1, col2, col3 = st.columns(3)
-        col1.metric("🏁 Saldo Neto USD", f"${saldos_fin['Neto']:,.2f}")
-        col2.metric("💵 Caja Efectivo", f"${saldos_fin['Ch']:,.2f}")
-        col3.metric("📱 Zelle", f"${saldos_fin['Ze']:,.2f}")
+        col1.metric("🏁 SALDO NETO USD", f"${saldos_fin['Neto']:,.2f}", f"${saldos_fin['Neto'] - saldos_ini['Neto']:,.2f} flujo")
+        col2.metric("💵 EFECTIVO CASH", f"${saldos_fin['Ch']:,.2f}")
+        col3.metric("📱 DIGITAL ZELLE", f"${saldos_fin['Ze']:,.2f}")
+        
         st.markdown("---")
 
-        # Render de las 4 Sub-Pestañas exactas de la columna 1
-        t_visor, t_carga, t_hist, t_edit = st.tabs([
-            "Visualización Analítica", "Carga Movimientos", "Reporte Consolidado", "Consola de Edición"
+        # NUEVO ORDEN SOLICITADO DE SUBPESTAÑAS
+        t_carga, t_visor, t_hist, t_edit = st.tabs([
+            "📝 Cargar Nueva Operación", 
+            "🔍 Libro de Caja del Mes", 
+            "📚 Reporte Consolidado de Cierres", 
+            "⚙️ Consola de Edición"
         ])
         
-        with t_visor:
-            render_visor(df_mes, saldos_ini, saldos_fin, mes_sel_nombre, anho_sel)
         with t_carga:
             render_carga(rol_simulado)
+        with t_visor:
+            render_visor(df_mes, saldos_ini, saldos_fin, mes_sel_nombre, anho_sel)
         with t_hist:
-            render_historico(df_completo)
+            render_historico(df_completo, rol_simulado)
         with t_edit:
             render_edicion(df_completo, rol_simulado)
-
-    # --- MARCADORES PARA PRÓXIMAS ETAPAS DE DESARROLLO ---
-    elif modulo_activo == "PRESUPUESTOS":
-        st.header("🎯 Módulo de Presupuestos (Servicios al Cliente)")
-        st.info("Estructura lista para inyectar las subtánbs de Creación, Modificación y Recarga de Plantillas.")
-        
-    elif modulo_activo == "FACTURACION":
-        st.header("🧾 Módulo de Facturación")
-        st.info("Estructura lista para Emisión e Impresión según formato.")
-
-    elif modulo_activo == "ADMINISTRACIÓN":
-        st.header("🛡️ Administración General")
-        st.info("Por definir: Módulos de compras, ventas y conciliación bancaria.")
-
-    elif modulo_activo == "SOPORTE EXCLUSIVO":
-        st.header("⚙️ Panel de Soporte Técnico (Auditorías)")
-        st.warning("⚠️ POLÍTICA DE PRIVACIDAD: Esta zona es restrictiva para ingenieros de soporte.")
-        
-        st.subheader("Historial Completo de Eliminaciones (Soft Delete)")
+            
+    elif modulo_activo == "SOPORTE":
+        st.markdown("### ⚙️ Panel Técnico (Auditoría Soft Delete)")
         df_anulados = df_completo[df_completo["activo"] == False]
-        if df_anulados.empty:
-            st.success("No existen transacciones anuladas en el sistema.")
-        else:
-            st.dataframe(df_anulados, use_container_width=True, hide_index=True)
+        st.dataframe(df_anulados, use_container_width=True, hide_index=True)
