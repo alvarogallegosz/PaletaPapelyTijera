@@ -1,43 +1,52 @@
 # view_caja_historico.py
 import streamlit as st
 import pandas as pd
-from core_finance_engine import procesar_mes_especifico
+from core_finance_engine import procesar_mes_aislado
+from db_connection import guardar_cambios_en_disco
 
 def render_historico(df_todos, rol_actual):
-    st.markdown("### 📚 Reporte Consolidado de Cierres de Mes")
+    st.markdown("### 📚 Reporte e Histórico de Cierres de Mes")
     
     c1, c2 = st.columns(2)
     with c1:
-        anho_rep = st.selectbox("Seleccionar Año Consulta", [2026, 2025], key="rep_anho")
+        anho_rep = st.selectbox("Año Consulta", [2026, 2025], key="h_anho")
     with c2:
-        meses_nombres = {1:"Enero", 2:"Febrero", 3:"Marzo", 4:"Abril", 5:"Mayo", 6:"Junio", 7:"Julio", 8:"Agosto", 9:"Septiembre", 10:"Octubre", 11:"Noviembre", 12:"Diciembre"}
-        mes_rep_nom = st.selectbox("Seleccionar Mes Consulta", list(meses_nombres.values()), key="rep_mes")
-        mes_rep_num = [k for k, v in meses_nombres.items() if v == mes_rep_nom][0]
+        meses = {1:"Enero", 2:"Febrero", 3:"Marzo", 4:"Abril", 5:"Mayo", 6:"Junio", 7:"Julio", 8:"Agosto", 9:"Septiembre", 10:"Octubre", 11:"Noviembre", 12:"Diciembre"}
+        mes_rep_nom = st.selectbox("Mes Consulta", list(meses.values()), key="h_mes")
+        mes_rep_num = [k for k, v in meses.items() if v == mes_rep_nom][0]
 
-    df_mes, _, saldos_fin = procesar_mes_especifico(df_todos, anho_rep, mes_rep_num)
+    df_mes, _, saldos_fin = procesar_mes_aislado(df_todos, anho_rep, mes_rep_num)
     
-    if df_mes.empty:
-        st.info("Sin transacciones registradas en este periodo seleccionado.")
-        return
-
-    df_general = st.session_state["df_movimientos"]
-    mascara_mes = (pd.to_datetime(df_general["fecha"]).dt.year == anho_rep) & (pd.to_datetime(df_general["fecha"]).dt.month == mes_rep_num)
-    estado_consolidado = df_general[mascara_mes]["consolidado"].all() if not df_general[mascara_mes].empty else False
+    df_global = st.session_state["df_movimientos"]
+    df_global["fecha_dt"] = pd.to_datetime(df_global["fecha"])
+    mascara_mes = (df_global["fecha_dt"].dt.year == anho_rep) & (df_global["fecha_dt"].dt.month == mes_rep_num)
+    
+    estado_consolidado = df_global[mascara_mes]["consolidado"].all() if not df_global[mascara_mes].empty else False
+    df_global.drop(columns=["fecha_dt"], inplace=True)
 
     if estado_consolidado:
-        st.success("🔒 **ESTADO: CONSOLIDADO Y APROBADO POR GERENCIA**")
+        st.success("🔒 **ESTADO PERÍODO: CONSOLIDADO / COMPLETO**")
     else:
-        st.warning("🔓 **ESTADO: FLUJO PENDIENTE DE REVISIÓN**")
+        st.warning("🔓 **ESTADO PERÍODO: ABIERTO / EN AUDITORÍA**")
 
-    st.markdown("**Detalle Operativo Analítico de la Consulta:**")
-    # Mostramos la categoría en la vista previa del cierre histórico
-    st.dataframe(df_mes[["id", "fecha", "categoria", "detalle", "tipo", "monto"]], use_container_width=True, hide_index=True, height=220)
+    st.markdown("**Saldos de Cierre del Período:**")
+    st.write(f"**Disponibilidad Bs:** {saldos_fin['Bs']:,.2f} | **Disponibilidad Zelle:** ${saldos_fin['Ze']:,.2f} | **Disponibilidad Cash:** ${saldos_fin['Ch']:,.2f}")
 
-    if not estado_consolidado:
-        if rol_actual in ["administrador", "gerente"]:
-            if st.button("✅ Aprobar Cierre y Consolidar Mes"):
-                indices_mes = df_general[mascara_mes].index
-                st.session_state["df_movimientos"].loc[indices_mes, "consolidated"] = True
-                st.session_state["df_movimientos"].loc[indices_mes, "modificado_por"] = rol_actual
-                st.success("El período ha sido cerrado administrativamente de forma exitosa.")
+    if rol_actual in ["administrador", "gerente"]:
+        st.markdown("---")
+        if not estado_consolidado:
+            if st.button("✅ Consolidar y Bloquear Mes"):
+                indices = df_global[mascara_mes].index
+                st.session_state["df_movimientos"].loc[indices, "consolidado"] = True
+                st.session_state["df_movimientos"].loc[indices, "modificado_por"] = rol_actual
+                guardar_cambios_en_disco()
+                st.success("Mes cerrado administrativamente.")
+                st.rerun()
+        else:
+            if st.button("🔓 Reabrir Auditoría de este Mes"):
+                indices = df_global[mascara_mes].index
+                st.session_state["df_movimientos"].loc[indices, "consolidado"] = False
+                st.session_state["df_movimientos"].loc[indices, "modificado_por"] = rol_actual
+                guardar_cambios_en_disco()
+                st.success("El mes se encuentra abierto de nuevo para modificaciones.")
                 st.rerun()
