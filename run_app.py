@@ -7,6 +7,7 @@ from view_caja_carga import render_carga
 from view_caja_visor import render_visor
 from view_caja_edicion import render_edicion
 from view_caja_historico import render_historico
+from view_presupuestos_creacion import render_creacion_presupuestos
 
 st.set_page_config(page_title="Estructura Administrativa PaletaPapelyTijera", layout="wide")
 
@@ -129,7 +130,10 @@ if modulo_activo == "📦 Registro Movimientos de Caja":
 elif modulo_activo == "📊 Presupuestos (Servicios al Cliente)":
     st.markdown("### 📊 Panel General de Presupuestos")
     st.info("Módulo de generación de presupuestos de servicios al cliente.")
-
+    tab1, tab2, tab3 = st.tabs(["📝 Creación y Carga", "🔄 Gestión y Aprobación", "📚 Plantillas e Histórico"])
+    with tab1:
+        render_creacion_presupuestos(rol_simulado)
+        
 # III. FACTURACIÓN
 elif modulo_activo == "📊 Facturación":
     st.markdown("### 📊 Panel General de facturación")
