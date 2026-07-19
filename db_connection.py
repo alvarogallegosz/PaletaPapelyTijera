@@ -9,7 +9,7 @@ def obtener_movimientos_locales():
         ruta_archivo = "movimientos_real.csv"
         if os.path.exists(ruta_archivo):
             # Lectura inteligente: configuramos el delimitador y formato numérico hispano
-            df = pd.read_csv(ruta_archivo, sep=';', decimal=',', thousands='.')
+            df = pd.read_csv(ruta_archivo, sep=';', decimal=',', thousands='.', encoding='latin-1')
             
             # Formato de fecha flexible para soportar días y meses de un solo dígito (Ej: 1/7/2026)
             df["fecha"] = pd.to_datetime(df["fecha"], format="%d/%m/%Y").dt.date
