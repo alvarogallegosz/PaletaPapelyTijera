@@ -1,143 +1,105 @@
+# app.py
 import streamlit as st
-import pandas as pd
 from datetime import datetime
+from db_connection import obtener_movimientos_locales
+from core_finance_engine import procesar_mes_especifico
 
-# Configuración de la página
-st.set_page_config(
-    page_title="Paleta, Papel y Tijera - Control de Costos",
-    page_icon="📊",
-    layout="wide"
+# Importaciones de Vistas de la Caja
+from view_caja_visor import render_visor
+from view_caja_carga import render_carga
+from view_caja_historico import render_historico
+from view_caja_edicion import render_edicion
+
+# --- ENTOCKADO DE SIMULACIÓN PARA PRUEBAS RÁPIDAS ---
+st.sidebar.markdown("### 🛠️ Consola de Simulación")
+rol_simulado = st.sidebar.selectbox(
+    "Identidad del Sistema (Rol):",
+    ["operador", "administrador", "contador", "gerente", "soporte"]
 )
 
-st.title("📊 Paleta, Papel y Tijera")
-st.subheader("Estructura de Costos y Flujo de Caja Dinámico")
+# Cargar la data temporal del Session State
+df_completo = obtener_movimientos_locales()
+
+# --- SELECTORES DE TIEMPO COMUNES ---
+st.sidebar.markdown("---")
+st.sidebar.subheader("📅 Filtro Temporal")
+meses_nombres = {1:"Enero", 2:"Febrero", 3:"Marzo", 4:"Abril", 5:"Mayo", 6:"Junio", 7:"Julio", 8:"Agosto", 9:"Septiembre", 10:"Octubre", 11:"Noviembre", 12:"Diciembre"}
+anho_sel = st.sidebar.selectbox("Año comercial", [2026, 2025])
+mes_sel_nombre = st.sidebar.selectbox("Mes de trabajo", list(meses_nombres.values()), index=datetime.now().month - 1)
+mes_sel_num = [k for k, v in meses_nombres.items() if v == mes_sel_nombre][0]
+
+# Procesar la matemática del mes
+df_mes, saldos_ini, saldos_fin = procesar_mes_especifico(df_completo, anho_sel, mes_sel_num)
+
+# --- CABECERA DE LA APP ---
+st.title("📊 Paleta, Papel y Tijera — ERP")
+st.caption(f"Visualizando aplicación con permisos asignados al rol: **{rol_simulado.upper()}**")
 st.markdown("---")
 
-# --- DATOS DE PRUEBA (MOCK DATA) ---
-# Simulamos lo que vendría de Supabase
-if 'movimientos' not in st.session_state:
-    st.session_state.movimientos = pd.DataFrame([
-        {"id": 1, "Fecha": "2026-06-01", "Detalle": "CIERRE de mayo de 2024", "Tipo": "Inicial", "Monto": 1787.74, "Tasa": 40.18, "Comentarios": "Saldo arrastrado de cuentas auditadas"},
-        {"id": 2, "Fecha": "2026-06-01", "Detalle": "Egreso por pago platos lander", "Tipo": "EG-Bs", "Monto": 1332.00, "Tasa": 40.18, "Comentarios": "Almuerzo de equipo por cierre de proyecto"},
-        {"id": 3, "Fecha": "2026-06-03", "Detalle": "Egreso por pago envío inflables", "Tipo": "EG-$Ze", "Monto": 66.00, "Tasa": None, "Comentarios": "Pago a proveedor logístico VIP"},
-        {"id": 4, "Fecha": "2026-06-03", "Detalle": "Egreso en cash pago contador", "Tipo": "EG-$Ch", "Monto": 40.00, "Tasa": None, "Comentarios": "Honorarios correspondientes a mayo"},
-        {"id": 5, "Fecha": "2026-06-04", "Detalle": "Ingreso en cash por pago de georgette", "Tipo": "IN-$Ch", "Monto": 1600.00, "Tasa": None, "Comentarios": "Anticipo de cliente recurrente"},
-    ])
+# --- CONTROL DE MAPEO DE COLUMNAS (MÓDULOS DE LA IMAGEN) ---
+modulos_validos = []
 
-# --- ORGANIZACIÓN POR PESTAÑAS ---
-tab_carga, tab_visor, tab_edicion = st.tabs([
-    "📝 Carga de Movimientos", 
-    "🔍 Visor de Flujo e Historial", 
-    "⚙️ Correcciones y Ajustes"
-])
+# Validar visibilidad de módulos según la matriz de reglas establecida
+if rol_simulado in ["administrador", "gerente", "soporte"]:
+    modulos_validos.append("REGISTROS DE CAJA")
+if rol_simulado in ["operador", "administrador", "gerente", "soporte"]:
+    modulos_validos.append("PRESUPUESTOS")
+if rol_simulado in ["contador", "administrador", "gerente", "soporte"]:
+    modulos_validos.append("FACTURACION")
+if rol_simulado in ["contador", "administrador", "gerente", "soporte"]:
+    modulos_validos.append("ADMINISTRACIÓN")
+if rol_simulado in ["soporte"]:
+    modulos_validos.append("SOPORTE EXCLUSIVO")
 
-# =========================================================================
-# PESTAÑA 1: CARGA DE DATOS
-# =========================================================================
-with tab_carga:
-    st.header("Registrar Nuevo Movimiento")
-    
-    # Formulario limpio para evitar recargas molestas en cada clic
-    with st.form("form_carga", clear_on_submit=True):
+if not modulos_validos:
+    st.warning("No tienes módulos asignados a tu perfil.")
+else:
+    modulo_activo = st.radio("Módulos de Sistema disponibles:", modulos_validos, horizontal=True)
+    st.markdown("---")
+
+    # --- DESARROLLO MÓDULO 1: REGISTROS DE CAJA ---
+    if modulo_activo == "REGISTROS DE CAJA":
+        # KPIs en la zona superior del módulo
         col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            fecha = st.date_input("Fecha del Movimiento", datetime.now())
-            detalle = st.text_input("Detalle / Concepto", placeholder="Ej. Pago de alquiler local")
-            
-        with col2:
-            tipo_mov = st.selectbox(
-                "Tipo de Movimiento",
-                ["IN-Bs", "EG-Bs", "IN-$Ze", "EG-$Ze", "IN-$Ch", "EG-$Ch"]
-            )
-            monto = st.number_input("Monto", min_value=0.0, step=0.01, format="%.2f")
-            
-        with col3:
-            # Tasa de cambio condicional en la mente del usuario (la app la pide siempre, pero se usa si es Bs)
-            tasa = st.number_input("Tasa de Cambio Monitor (Si aplica)", min_value=0.0, step=0.01, value=39.79)
-            comentarios = st.text_area("Comentarios Ocultos (Notas internas)", placeholder="Detalles extra que no deben saturar el reporte principal...")
-            
-        btn_guardar = st.form_submit_button("🚀 Registrar en Sistema")
-        
-        if btn_guardar:
-            if detalle and monto > 0:
-                # Lógica temporal para el prototipo
-                nuevo_id = len(st.session_state.movimientos) + 1
-                nueva_fila = {
-                    "id": nuevo_id,
-                    "Fecha": str(fecha),
-                    "Detalle": detalle,
-                    "Tipo": tipo_mov,
-                    "Monto": monto,
-                    "Tasa": tasa if "Bs" in tipo_mov else None,
-                    "Comentarios": comentarios if comentarios else ""
-                }
-                st.session_state.movimientos = pd.concat([st.session_state.movimientos, pd.DataFrame([nueva_fila])], ignore_index=True)
-                st.success(f"¡Movimiento '{detalle}' registrado con éxito!")
-                st.rerun()
-            else:
-                st.error("Por favor, rellena el detalle y un monto mayor a 0.")
+        col1.metric("🏁 Saldo Neto USD", f"${saldos_fin['Neto']:,.2f}")
+        col2.metric("💵 Caja Efectivo", f"${saldos_fin['Ch']:,.2f}")
+        col3.metric("📱 Zelle", f"${saldos_fin['Ze']:,.2f}")
+        st.markdown("---")
 
-# =========================================================================
-# PESTAÑA 2: VISOR E HISTORIAL (CON COMENTARIOS DINÁMICOS)
-# =========================================================================
-with tab_visor:
-    st.header("Historial de Transacciones")
-    st.markdown("*Haz clic en cualquier celda para seleccionar una fila y revelar sus comentarios ocultos en el panel lateral.*")
-    
-    # Columnas para separar la tabla de la visualización de notas
-    col_tabla, col_lateral = st.columns([3, 1])
-    
-    df_visor = st.session_state.movimientos.copy()
-    
-    with col_tabla:
-        # Usamos la selección integrada de Streamlit (Dataframe selection)
-        seleccion = st.dataframe(
-            df_visor[["id", "Fecha", "Detalle", "Tipo", "Monto", "Tasa"]], 
-            use_container_width=True,
-            hide_index=True,
-            on_select="rerun",
-            selection_mode="single-row"
-        )
+        # Render de las 4 Sub-Pestañas exactas de la columna 1
+        t_visor, t_carga, t_hist, t_edit = st.tabs([
+            "Visualización Analítica", "Carga Movimientos", "Reporte Consolidado", "Consola de Edición"
+        ])
         
-    with col_lateral:
-        st.subheader("💬 Notas e Información")
+        with t_visor:
+            render_visor(df_mes, saldos_ini, saldos_fin, mes_sel_nombre, anho_sel)
+        with t_carga:
+            render_carga(rol_simulado)
+        with t_hist:
+            render_historico(df_completo)
+        with t_edit:
+            render_edicion(df_completo, rol_simulado)
+
+    # --- MARCADORES PARA PRÓXIMAS ETAPAS DE DESARROLLO ---
+    elif modulo_activo == "PRESUPUESTOS":
+        st.header("🎯 Módulo de Presupuestos (Servicios al Cliente)")
+        st.info("Estructura lista para inyectar las subtánbs de Creación, Modificación y Recarga de Plantillas.")
         
-        # Verificar si hay una fila seleccionada
-        if seleccion and len(seleccion["selection"]["rows"]) > 0:
-            idx_seleccionado = seleccion["selection"]["rows"][0]
-            fila_real = df_visor.iloc[idx_seleccionado]
-            
-            st.info(f"**ID Seleccionado:** #{fila_real['id']}")
-            st.markdown(f"**Concepto:** {fila_real['Detalle']}")
-            
-            # El "comentario oculto" se invoca dinámicamente aquí
-            if fila_real["Comentarios"]:
-                st.success(f"**Comentario Oculto:**\n\n{fila_real['Comentarios']}")
-            else:
-                st.caption("Esta transacción no incluye notas aclaratorias.")
+    elif modulo_activo == "FACTURACION":
+        st.header("🧾 Módulo de Facturación")
+        st.info("Estructura lista para Emisión e Impresión según formato.")
+
+    elif modulo_activo == "ADMINISTRACIÓN":
+        st.header("🛡️ Administración General")
+        st.info("Por definir: Módulos de compras, ventas y conciliación bancaria.")
+
+    elif modulo_activo == "SOPORTE EXCLUSIVO":
+        st.header("⚙️ Panel de Soporte Técnico (Auditorías)")
+        st.warning("⚠️ POLÍTICA DE PRIVACIDAD: Esta zona es restrictiva para ingenieros de soporte.")
+        
+        st.subheader("Historial Completo de Eliminaciones (Soft Delete)")
+        df_anulados = df_completo[df_completo["activo"] == False]
+        if df_anulados.empty:
+            st.success("No existen transacciones anuladas en el sistema.")
         else:
-            st.caption("👈 Selecciona una fila de la tabla para inspeccionar los comentarios explicativos.")
-
-# =========================================================================
-# PESTAÑA 3: CORRECCIONES Y EDICIÓN
-# =========================================================================
-with tab_edicion:
-    st.header("Módulo de Modificaciones Rápidas")
-    st.warning("⚠️ Cualquier cambio realizado aquí modificará la base de datos de manera inmediata.")
-    
-    # El st.data_editor permite editar directamente como si fuera un Excel
-    df_editable = st.session_state.movimientos.copy()
-    
-    datos_corregidos = st.data_editor(
-        df_editable,
-        hide_index=True,
-        disabled=["id"], # El ID no se toca por seguridad
-        use_container_width=True,
-        num_rows="dynamic" # Permite eliminar filas si es necesario
-    )
-    
-    if st.button("💾 Guardar Correcciones"):
-        st.session_state.movimientos = datos_corregidos
-        st.success("¡Base de datos actualizada correctamente con las correcciones!")
-        st.rerun()
+            st.dataframe(df_anulados, use_container_width=True, hide_index=True)
