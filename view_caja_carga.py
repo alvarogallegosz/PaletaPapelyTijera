@@ -19,7 +19,7 @@ def render_carga(rol_actual, es_consolidado):
         c1, c2 = st.columns(2)
         with c1:
             f_ins = st.date_input("Fecha de Operación", datetime.now(), disabled=es_consolidado)
-            cat_ins = st.text_input("Categoría", placeholder="Ej: SALARIO PERSONAL, IMPRESIÓN...", disabled=es_consolidated:=es_consolidado)
+            cat_ins = st.text_input("Categoría", placeholder="Ej: SALARIO PERSONAL, IMPRESIÓN...", disabled=es_consolidado)
             det_ins = st.text_input("Detalle / Concepto", placeholder="Ej. Pago de arriendo...", disabled=es_consolidado)
         with c2:
             t_ins = st.selectbox("Tipo Cuenta", ["IN-Bs", "EG-Bs", "IN-$Ze", "EG-$Ze", "IN-$Ch", "EG-$Ch"], disabled=es_consolidado)
