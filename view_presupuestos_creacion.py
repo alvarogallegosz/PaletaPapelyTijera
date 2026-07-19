@@ -1,8 +1,16 @@
 # view_presupuestos_creacion.py
+import os
 import streamlit as st
 import pandas as pd
 
 def render_creacion_presupuestos(rol_simulado):
+    # 🔍 LOCALIZADOR DINÁMICO DE ARCHIVOS
+    dir_actual = os.path.dirname(__file__)  # Directorio de este archivo
+    ruta_logo = os.path.join(dir_actual, "encabezado_paleta.png")
+    
+    # Si el logo está en la raíz del proyecto (un nivel arriba de las vistas)
+    if not os.path.exists(ruta_logo):
+        ruta_logo = os.path.join(os.path.dirname(dir_actual), "encabezado_paleta.png")
     # --- 🎨 ESTILOS CSS INYECTADOS PARA EMULACIÓN EXACTA DE IMPRESIÓN ---
     st.markdown("""
         <style>
