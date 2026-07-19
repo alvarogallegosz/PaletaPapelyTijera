@@ -110,7 +110,7 @@ if modulo_activo == "📦 Registro Movimientos de Caja":
     tab1, tab2, tab3, tab4 = st.tabs([
         "📝 Carga de Movimientos", 
         "🔍 Libro Diario", 
-        "🛠️ Modificaciones/Ajustes", 
+        "🛠️ Modificaciones/Auditoría", 
         "📚 Histórico de Cierres Mensuales"
     ])
     
@@ -123,10 +123,15 @@ if modulo_activo == "📦 Registro Movimientos de Caja":
     with tab4:
         render_historico(df_completo, rol_simulado)
 
-elif modulo_activo == "📊 REPORTES DE DIRECTIVA":
-    st.markdown("### 📊 Panel General de Reportes Financieros")
-    st.info("Módulo de analítica y métricas de directiva en fase de consolidación.")
-
-elif modulo_activo == "⚙️ CONFIGURACIÓN":
+elif modulo_activo == "📊 Presupuestos (Servicios al Cliente)":
+    st.markdown("### 📊 Panel General de Presupuestos")
+    st.info("Módulo de generación de presupuestos de servicios al cliente.")
+elif modulo_activo == "📊 Facturación":
+    st.markdown("### 📊 Panel General de facturación")
+    st.info("Módulo de generación de facturas fiscales por servicios al cliente.")
+elif modulo_activo == "📊 Administración":
+    st.markdown("### 📊 Panel General de Administración")
+    st.info("Módulo de bancos, compras, ventas, cuantas por pagar, cuentas por cobrar.")
+elif modulo_activo == "⚙️ Soporte Técnico":
     st.markdown("### ⚙️ Configuración Global del Sistema")
-    st.info("Panel de control de variables del entorno de desarrollo.")
+    st.info("Panel de control de variables del entorno de desarrollo y respaldos de BD.")
