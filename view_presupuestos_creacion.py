@@ -3,16 +3,9 @@ import streamlit as st
 import pandas as pd
 
 def render_creacion_presupuestos(rol_simulado):
-    # --- 🎨 ESTILOS CSS INYECTADOS A MEDIDA (EMULACIÓN FOTOGRÁFICA) ---
+    # --- 🎨 ESTILOS CSS INYECTADOS PARA EMULACIÓN EXACTA DE IMPRESIÓN ---
     st.markdown("""
         <style>
-            /* Variables de Estilo Oficiales */
-            :root {
-                --verde-banner: #b8d7a3;
-                --crema-columnas: #fffdeb;
-                --gris-seccion: #f2f2f2;
-            }
-
             @media print {
                 section[data-testid="stSidebar"], 
                 div[data-testid="stSegmentedControl"],
@@ -29,7 +22,7 @@ def render_creacion_presupuestos(rol_simulado):
                 tr { page-break-inside: avoid; }
             }
 
-            /* Estructura del Documento */
+            /* Estructura Base de la Hoja de Impresión */
             .documento-hoja {
                 font-family: 'Arial', sans-serif;
                 color: #000000;
@@ -37,7 +30,7 @@ def render_creacion_presupuestos(rol_simulado):
                 padding: 10px;
             }
 
-            /* Contenedor Flex para la Metadata Superior */
+            /* Metadata Superior Separada */
             .meta-contenedor {
                 display: flex;
                 justify-content: space-between;
@@ -54,7 +47,7 @@ def render_creacion_presupuestos(rol_simulado):
                 font-weight: bold;
             }
 
-            /* Banners e Hitos Visuales */
+            /* Banner Principal Verde Suave */
             .banner-verde-principal {
                 background-color: #b8d7a3 !important;
                 color: #ffffff !important;
@@ -68,14 +61,14 @@ def render_creacion_presupuestos(rol_simulado):
                 margin-bottom: 10px;
             }
 
-            /* Tablas de Presupuesto con Colores Fieles */
+            /* Tablas de Presupuesto */
             .tabla-remastered {
                 width: 100%;
                 border-collapse: collapse;
                 margin-bottom: 0px;
             }
             .tabla-remastered th {
-                background-color: #fffdeb !important; /* Sombreado crema de columnas */
+                background-color: #fffdeb !important; /* Color Crema para cabeceras */
                 border-bottom: 1px solid #cbd5e1;
                 color: #000000;
                 font-weight: bold;
@@ -89,7 +82,7 @@ def render_creacion_presupuestos(rol_simulado):
                 vertical-align: top;
             }
 
-            /* Subtotales Dinámicos por Sección */
+            /* Subtotales Dinámicos */
             .fila-subtotal-seccion {
                 background-color: #ffffff;
                 font-weight: bold;
@@ -100,7 +93,7 @@ def render_creacion_presupuestos(rol_simulado):
                 border-bottom: 1px solid #cbd5e1;
             }
 
-            /* Gran Banner de Total Final */
+            /* Banner de Total Final */
             .banner-total-general {
                 background-color: #b8d7a3 !important;
                 color: #000000 !important;
@@ -114,7 +107,7 @@ def render_creacion_presupuestos(rol_simulado):
                 align-items: center;
             }
 
-            /* Cláusulas Legales */
+            /* Cláusulas Comerciales */
             .clausulas-container {
                 font-size: 11px;
                 margin-top: 15px;
@@ -130,49 +123,48 @@ def render_creacion_presupuestos(rol_simulado):
         </style>
     """, unsafe_allow_html=True)
 
-    # --- CONTROLES DE FLUJO EN SIDEBAR ---
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🖨️ Formato de Pantalla")
-    modo_impresion = st.sidebar.checkbox("👁️ Activar Vista de Impresión (PDF)", value=False)
+    # --- 🔄 INTERRUPTOR DE VISTA MEDIANTE SESSION STATE ---
+    if "modo_vista" not in st.session_state:
+        st.session_state.modo_vista = "edicion"  # Opciones: 'edicion' o 'previa'
 
-    # --- INICIALIZACIÓN DE VARIABLES ESTRUCTURALES ---
+    # --- INITIALIZACIÓN CON CAMPOS EN BLANCO (MUESTRAN SUGERENCIAS) ---
+    if "meta_presupuesto" not in st.session_state:
+        st.session_state.meta_presupuesto = {
+            "cliente": "",
+            "nombre": "",
+            "fecha_evento": "",
+            "lugar": "",
+            "fecha_larga": ""
+        }
+
     if "secciones_presupuesto" not in st.session_state:
         st.session_state.secciones_presupuesto = [
             {"titulo": "DECORACIÓN PRINCIPAL (ALQUILER)", "df": pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])},
             {"titulo": "ZONA DE CENTRO DE MESA", "df": pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])}
         ]
 
-    if "meta_presupuesto" not in st.session_state:
-        st.session_state.meta_presupuesto = {
-            "cliente": "REST. LA CASONA",
-            "nombre": "MOD 2 DECORACIÓN COMUNIÓN",
-            "fecha_evento": "SÁBADO 25 DE JULIO DE 2026",
-            "lugar": "LECHERÍA, ESTADO ANZOATEGUI",
-            "fecha_larga": "17 de julio de 2026"
-        }
-
     # ===================================================
-    # 📝 MODO DE EDICIÓN (PANEL OPERATIVO)
+    # 📝 FLUJO A: MODO DE EDICIÓN Y CARGA
     # ===================================================
-    if not modo_impresion:
-        st.markdown("## 📝 Maquetación Libre de Presupuesto")
+    if st.session_state.modo_vista == "edicion":
+        st.markdown("## 📝 Maquetación de Presupuesto")
         
-        # Bloque de Entrada de Metadata
+        # Formulario de Metadata con Sugerencias (Placeholders)
         with st.container(border=True):
-            st.markdown("#### 🏛️ Datos de Cabecera Ejecutiva")
+            st.markdown("#### 🏛️ Configuración de Cabecera")
             c1, c2, c3 = st.columns(3)
             with c1:
-                st.session_state.meta_presupuesto["nombre"] = st.text_input("Nombre del Presupuesto:", value=st.session_state.meta_presupuesto["nombre"])
-                st.session_state.meta_presupuesto["cliente"] = st.text_input("Cliente / Razón Social:", value=st.session_state.meta_presupuesto["cliente"])
+                st.session_state.meta_presupuesto["nombre"] = st.text_input("Nombre del Presupuesto:", value=st.session_state.meta_presupuesto["nombre"], placeholder="Ej. MOD 2 DECORACIÓN COMUNIÓN")
+                st.session_state.meta_presupuesto["cliente"] = st.text_input("Cliente / Razón Social:", value=st.session_state.meta_presupuesto["cliente"], placeholder="Ej. REST. LA CASONA")
             with c2:
-                st.session_state.meta_presupuesto["fecha_evento"] = st.text_input("Fecha del Evento:", value=st.session_state.meta_presupuesto["fecha_evento"])
-                st.session_state.meta_presupuesto["lugar"] = st.text_input("Lugar del Evento:", value=st.session_state.meta_presupuesto["lugar"])
+                st.session_state.meta_presupuesto["fecha_evento"] = st.text_input("Fecha del Evento:", value=st.session_state.meta_presupuesto["fecha_evento"], placeholder="Ej. SÁBADO 25 DE JULIO DE 2026")
+                st.session_state.meta_presupuesto["lugar"] = st.text_input("Lugar del Evento:", value=st.session_state.meta_presupuesto["lugar"], placeholder="Ej. LECHERÍA, ESTADO ANZOATEGUI")
             with c3:
-                st.session_state.meta_presupuesto["fecha_larga"] = st.text_input("Fecha Larga Emisión:", value=st.session_state.meta_presupuesto["fecha_larga"])
-                categoria_filtro = st.selectbox("Categoría Analítica (Filtro BD):", ["Decoración", "Fiesta", "Alquiler", "Suministro", "Otro"])
+                st.session_state.meta_presupuesto["fecha_larga"] = st.text_input("Fecha de Emisión (Tope Der.):", value=st.session_state.meta_presupuesto["fecha_larga"], placeholder="Ej. 17 de julio de 2026")
+                categoria_filtro = st.selectbox("Categoría Indexación (Filtro):", ["Decoración", "Fiesta", "Alquiler", "Suministro", "Otro"])
 
-        # Control Dinámico de Secciones con Tope Fijo de 5
-        st.markdown("#### 📦 Secciones del Presupuesto")
+        # Control Dinámico de Secciones (Tope Máximo 5)
+        st.markdown("#### 📦 Bloques del Presupuesto")
         if st.button("➕ Añadir Nueva Sección Física", disabled=len(st.session_state.secciones_presupuesto) >= 5):
             st.session_state.secciones_presupuesto.append({
                 "titulo": f"NUEVA SECCIÓN {len(st.session_state.secciones_presupuesto) + 1}",
@@ -180,80 +172,100 @@ def render_creacion_presupuestos(rol_simulado):
             })
             st.rerun()
 
-        # Despliegue de Editores Limpios (Sin índices nativos confusos)
+        # Renderizado de Tablas Dinámicas Limpias
         for idx, sec in enumerate(st.session_state.secciones_presupuesto):
             with st.container(border=True):
                 col_t1, col_t2 = st.columns([5, 1])
                 with col_t1:
-                    tit_sec = st.text_input(f"Título de la Sección {idx+1}:", value=sec["titulo"], key=f"sec_tit_{idx}")
-                    st.session_state.secciones_presupuesto[idx]["titulo"] = tit_sec.upper()
+                    tit_sec = st.text_input(f"Título de la Sección {idx+1}:", value=sec["titulo"], key=f"sec_tit_{idx}", placeholder="Ej. ZONA DE CENTRO DE MESA")
+                    st.session_state.secciones_presupuesto[idx]["titulo"] = tit_sec.upper() if tit_sec else f"SECCIÓN {idx+1}"
                 with col_t2:
                     st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
                     if st.button("🗑️", key=f"del_sec_{idx}", use_container_width=True) and len(st.session_state.secciones_presupuesto) > 1:
                         st.session_state.secciones_presupuesto.pop(idx)
                         st.rerun()
 
-                # Editor Limpio con Ocultación de Índices e IDs basura
+                # Editor de datos sin indexación basura de pandas
                 df_editado = st.data_editor(
                     sec["df"],
                     key=f"editor_clean_{idx}",
                     num_rows="dynamic",
                     use_container_width=True,
-                    hide_index=True,  # 🌟 Elimina la columna 0 de desarrollo
+                    hide_index=True,
                     column_config={
-                        "descripción": st.column_config.TextColumn("Descripción / Detalle", required=True),
-                        "medidas": st.column_config.TextColumn("Medidas / Notas"),
-                        "juegos/kits": st.column_config.NumberColumn("Juegos/Kits (Vacío = Null)"),
+                        "descripción": st.column_config.TextColumn("Descripción / Detalle", required=True, placeholder="Describa el artículo..."),
+                        "medidas": st.column_config.TextColumn("Medidas / Notas", placeholder="Ej. 2,20 m x 1,70 m"),
+                        "juegos/kits": st.column_config.NumberColumn("Juegos/Kits (Dejar vacío si es Null)", min_value=1),
                         "cantidad": st.column_config.NumberColumn("Cantidad", min_value=1, default=1),
-                        "precio_unitario": st.column_config.NumberColumn("Precio Unitario ($)", min_value=0.0)
+                        "precio_unitario": st.column_config.NumberColumn("Precio Unitario ($)", min_value=0.0, format="$%.2f")
                     }
                 )
                 st.session_state.secciones_presupuesto[idx]["df"] = df_editado
 
+        # --- BOTONERA INFERIOR DE ACCIÓN ---
         st.markdown("---")
-        permite_escritura = rol_simulado in ["administrador", "gerente"]
-        if st.button("💾 Guardar Cambios Estructurales en BD", disabled=not permite_escritura, type="primary", use_container_width=True):
-            st.success("🎉 Datos consolidados correctamente en el objeto JSON transaccional.")
+        col_acc1, col_acc2 = st.columns(2)
+        with col_acc1:
+            if st.button("👁️ Generar Vista Previa de Impresión", type="secondary", use_container_width=True):
+                st.session_state.modo_vista = "previa"
+                st.rerun()
+        with col_acc2:
+            permite_escritura = rol_simulado in ["administrador", "gerente"]
+            if st.button("💾 Guardar Directamente en Base de Datos", disabled=not permite_escritura, type="primary", use_container_width=True):
+                st.success("🎉 Estructura multi-sección JSON almacenada exitosamente en la base de datos.")
 
     # ===================================================
-    # 🖨️ MODO VISTA DE IMPRESIÓN (EMULACIÓN EXACTA)
+    # 🖨️ FLUJO B: MODAL DE VISTA PREVIA DE IMPRESIÓN
     # ===================================================
     else:
         meta = st.session_state.meta_presupuesto
         
-        st.info("ℹ️ Formato de impresión activo. Utiliza **Ctrl + P** para exportar a PDF de forma limpia.")
+        # Botonera de Control de la Vista Previa (No se imprime)
+        st.markdown("### 👁️ Vista Previa del Documento")
+        col_pv1, col_pv2 = st.columns(2)
+        with col_pv1:
+            if st.button("✏️ Regresar a Modo Edición", type="secondary", use_container_width=True):
+                st.session_state.modo_vista = "edicion"
+                st.rerun()
+        with col_pv2:
+            permite_escritura = rol_simulado in ["administrador", "gerente"]
+            if st.button("💾 Confirmar y Guardar Cambios en BD", disabled=not permite_escritura, type="primary", use_container_width=True):
+                st.success("🎉 Presupuesto consolidado y guardado con éxito.")
         
+        st.info("💡 Presiona **Ctrl + P** en tu teclado para mandar a imprimir o guardar como PDF limpio.")
+        st.markdown("---")
+        
+        # --- LIENZO DE IMPRESIÓN ---
         st.markdown('<div class="documento-hoja">', unsafe_allow_html=True)
         
-        # 1. Carga del Logo desde la Raíz
+        # 1. Encabezado Corporativo
         st.image("encabezado_paleta.png", use_container_width=True)
         
-        # 2. Render de la Metadata con Disposición Exacta
+        # 2. Bloques de Metadata con Orientación Exacta
         st.markdown(f"""
             <div class="meta-contenedor">
                 <div class="meta-izquierda">
-                    <b>{meta['nombre']}</b><br>
-                    FECHA {meta['fecha_evento']}<br>
-                    {meta['cliente']}, {meta['lugar']}
+                    <b>{meta['nombre'] if meta['nombre'] else '[NOMBRE DEL PRESUPUESTO]'}</b><br>
+                    FECHA {meta['fecha_evento'] if meta['fecha_evento'] else '[FECHA DEL EVENTO]'}<br>
+                    {meta['cliente'] if meta['cliente'] else '[CLIENTE]'}, {meta['lugar'] if meta['lugar'] else '[LUGAR]'}
                 </div>
                 <div class="meta-derecha">
-                    {meta['fecha_larga']}
+                    {meta['fecha_larga'] if meta['fecha_larga'] else '[FECHA DE EMISIÓN]'}
                 </div>
             </div>
         """, unsafe_allow_html=True)
         
-        # 3. Franja Verde Principal del Presupuesto
-        st.markdown(f'<div class="banner-verde-principal">PRESUPUESTO {meta["nombre"]}</div>', unsafe_allow_html=True)
+        # 3. Franja Verde Principal
+        st.markdown(f'<div class="banner-verde-principal">PRESUPUESTO {meta["nombre"] if meta["nombre"] else ""}</div>', unsafe_allow_html=True)
         
-        # 4. Tablas del Cuerpo con Lógica Operacional e Incrementales Autogenerados
+        # 4. Tablas Físicas y Lógica del Multiplicador
         total_general = 0.0
         
         for idx_sec, sec in enumerate(st.session_state.secciones_presupuesto):
             df_sec = sec["df"]
             
-            # Encabezado secundario con sombreado gris si es la sección 2 o más
-            is_secondary = idx_sec > 0
-            th_style = 'style="background-color: #f2f2f2 !important;"' if is_secondary else ''
+            # Sombreado gris alterno de columnas si es la sección 2 o posterior
+            th_style = 'style="background-color: #f2f2f2 !important;"' if idx_sec > 0 else ''
             
             html_tabla = f"""
             <table class="tabla-remastered">
@@ -278,11 +290,10 @@ def render_creacion_presupuestos(rol_simulado):
                     cant = getattr(row, 'cantidad', 1)
                     pu = getattr(row, 'precio_unitario', 0.0)
                     
-                    # Normalización de variables numéricas para evitar quiebres por celdas vacías
                     cant = cant if pd.notna(cant) else 1
                     pu = pu if pd.notna(pu) else 0.0
                     
-                    # 🌟 REGLA DINÁMICA: Si Juegos/Kits es Null/NaN/0, no multiplica
+                    # LÓGICA: Si juegos_kits es nulo/NaN/0, no multiplica en la ecuación
                     if pd.isna(jk) or jk is None or jk == 0:
                         total_fila = cant * pu
                         jk_str = ""
@@ -306,12 +317,12 @@ def render_creacion_presupuestos(rol_simulado):
                     </tr>
                     """
             else:
-                html_tabla += '<tr><td colspan="6" style="text-align: center; color: #a0aec0; padding: 10px;">Sección vacía</td></tr>'
+                html_tabla += '<tr><td colspan="6" style="text-align: center; color: #a0aec0; padding: 10px;">Sección sin registros</td></tr>'
                 
             html_tabla += "</tbody></table>"
             st.markdown(html_tabla, unsafe_allow_html=True)
             
-            # Mapeo del Subtotal Dinámico amarrado al nombre del campo
+            # Subtotal Vincular por Sección
             st.markdown(f"""
                 <div class="fila-subtotal-seccion">
                     <span>SUB TOTAL {sec['titulo']}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
@@ -321,7 +332,7 @@ def render_creacion_presupuestos(rol_simulado):
             
             total_general += subtotal_seccion
             
-        # 5. Banner de Cierre - Total a Cancelar
+        # 5. Franja de Gran Total
         st.markdown(f"""
             <div class="banner-total-general">
                 <span>TOTAL A CANCELAR</span>
@@ -329,7 +340,7 @@ def render_creacion_presupuestos(rol_simulado):
             </div>
         """, unsafe_allow_html=True)
         
-        # 6. Cláusulas Fijas con Color Magenta en Título
+        # 6. Cláusulas Fijas
         st.markdown("""
             <div class="clausulas-container">
                 <div class="clausulas-header">CLAUSULAS:</div>
