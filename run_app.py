@@ -15,7 +15,7 @@ st.markdown("""
     <style>
         /* 1. Ajuste del lienzo superior para respetar la barra de herramientas de Streamlit */
         .block-container {
-            padding-top: 2.7rem !important; 
+            padding-top: 2.4rem !important; 
             padding-bottom: 1rem !important;
             max-width: 98% !important;     
         }
