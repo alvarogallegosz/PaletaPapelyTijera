@@ -25,7 +25,7 @@ st.markdown("""
             gap: 0.5rem !important; 
         }
         .element-container {
-            margin-bottom: 0px !important;
+            margin-bottom: 5px !important;
         }
         
         /* 3. Control estricto de tipografías y márgenes para evitar solapamientos */
