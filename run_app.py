@@ -13,30 +13,35 @@ st.set_page_config(page_title="Estructura Administrativa PaletaPapelyTijera", la
 # --- INYECCIÓN DE CSS GLOBAL OPTIMIZADO (ESPACIOS ULTRA COMPACTOS) ---
 st.markdown("""
     <style>
-        /* 1. Ajuste de respiro superior para evitar que el título se oculte */
+        /* 1. Ajuste de respiro superior (ACTUALIZADO A 1.5rem para pegar arriba) */
         .block-container {
-            padding-top: 1.8rem !important;
+            padding-top: 1.5rem !important; 
             padding-bottom: 1rem !important;
-            max-width: 98% !important;
+            max-width: 98% !important;     
         }
         
-        /* 2. Compactar espacio muerto entre elementos y selectores */
+        /* 2. Compactar espacio muerto entre elementos (ACTUALIZADO A 0.3rem) */
         div[data-testid="stVerticalBlock"] {
-            gap: 0.3rem !important;
+            gap: 0.3rem !important; 
         }
         .element-container {
             margin-bottom: 0px !important;
         }
         
         /* 3. Control estricto de tipografías y márgenes inferiores */
-        h1 { font-size: 22px !important; font-weight: 700 !important; margin-bottom: 0px !important; padding-bottom: 2px !important; }
+        h1 { 
+            font-size: 22px !important; 
+            font-weight: 700 !important; 
+            margin-bottom: 12px !important; 
+            padding-bottom: 0px !important; 
+        }
         h2 { font-size: 18px !important; font-weight: 700 !important; margin-top: 2px !important; }
         h3 { font-size: 15px !important; font-weight: 600 !important; margin-bottom: 2px !important; }
         
-        /* Reducción extra del contenedor del segmented control para evitar brincos de línea */
+        /* Ajuste de 7mm (26px) para bajar st.segmented_control y evitar el solapamiento */
         div[data-testid="stSegmentedControl"] {
-            margin-top: 2px !important;
-            margin-bottom: 2px !important;
+            margin-top: 26px !important;    
+            margin-bottom: 8px !important;
         }
 
         /* 4. Unificación estética de las subpestañas */
@@ -56,7 +61,7 @@ st.markdown("""
             font-weight: 500 !important;
             color: #6b7280 !important;
             border: none !important;
-        }
+            }
         .stTabs [aria-selected="true"] {
             background-color: #ffffff !important;
             color: #1f2937 !important;
