@@ -22,7 +22,7 @@ def render_carga(rol_actual, es_consolidado):
             cat_ins = st.text_input("Categoría", placeholder="Ej: SALARIO PERSONAL, IMPRESIÓN...", disabled=es_consolidado)
             det_ins = st.text_input("Detalle / Concepto", placeholder="Ej. Pago de arriendo...", disabled=es_consolidado)
         with c2:
-            t_ins = st.selectbox("Tipo Cuenta", ["IN-Bs", "EG-Bs", "IN-$Ze", "EG-$Ze", "IN-$Ch", "EG-$Ch", "IN-$Fn", "EG-$Fn"], disabled=es_consolidado)
+            t_ins = st.selectbox("Tipo Cuenta", ["IN-Bs", "EG-Bs", "IN-$Ze", "EG-$Ze", "IN-$Ch", "EG-$Ch", "IN-$AhZe", "EG-$AhZe", "IN-$AhCh", "EG-$AhCh"], disabled=es_consolidado)
             monto_raw = st.text_input("Monto Ocurrencia", value="0.00", disabled=es_consolidado)
             tas_ins = st.number_input("Tasa Monitor", min_value=0.0, value=40.00, step=0.1, disabled=es_consolidado)
             
