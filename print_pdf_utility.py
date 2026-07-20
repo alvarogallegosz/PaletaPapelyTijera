@@ -14,10 +14,10 @@ def generar_pdf_presupuesto_nativo():
     doc = SimpleDocTemplate(
         buffer,
         pagesize=letter,
-        leftMargin=36,
-        rightMargin=36,
-        topMargin=36,
-        bottomMargin=36
+        leftMargin=30,
+        rightMargin=30,
+        topMargin=25,
+        bottomMargin=25
     )
     
     styles = getSampleStyleSheet()
