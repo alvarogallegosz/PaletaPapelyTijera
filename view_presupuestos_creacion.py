@@ -280,30 +280,25 @@ def render_creacion_presupuestos(rol_simulado):
         st.info("💡 Para guardar el PDF limpio: Presiona **Ctrl + P** o **Cmd + P**.")
         st.markdown("---")
         
-        # RASTREO ROBUSTO DEL LOGO CORPORATIVO (.PNG)
-        rutas_logo = [
-            "Encabezado_Paleta.png", "encabezado_paleta.png",
-            os.path.join(os.getcwd(), "Encabezado_Paleta.png"),
-            os.path.join(os.path.dirname(__file__), "Encabezado_Paleta.png")
-        ]
-        logo_path = next((r for r in rutas_logo if os.path.exists(r)), None)
+# --- 🏗️ CONSTRUCCIÓN CONSOLIDADA DEL HTML DE IMPRESIÓN ---
+        ruta_logo = os.path.join(os.path.dirname(__file__), "encabezado_paleta.png")
         
-        if logo_path:
+        if os.path.exists(ruta_logo):
             import base64
-            with open(logo_path, "rb") as f:
+            with open(ruta_logo, "rb") as f:
                 data_img = base64.b64encode(f.read()).decode("utf-8")
             html_logo = f'<img src="data:image/png;base64,{data_img}" style="width:100%; height:auto; display:block; margin-bottom:10px;">'
         else:
-            html_logo = '<div style="background-color:#f2f2f2; border:2px dashed #cbd5e1; padding:20px; text-align:center; font-weight:bold; color:#64748b; margin-bottom:10px;">[ LOGO: ENCABEZADO_PALETA.PNG NO DETECTADO ]</div>'
+            html_logo = '<div style="background-color:#f2f2f2; border:2px dashed #cbd5e1; padding:20px; text-align:center; font-weight:bold; color:#64748b; margin-bottom:10px;">[ LOGO: encabezado_paleta.png NO DETECTADO ]</div>'
 
-        # Construcción limpia sin cierres prematuros de string
+        # Construcción limpia de la cabecera
         html_cuerpo = f"""
         <div class="documento-hoja">
             {html_logo}
             <div class="meta-contenedor">
                 <div class="meta-izquierda">
                     <b>{meta['nombre'].upper() if meta['nombre'] else 'PRESUPUESTO'}</b><br>
-                    FECHA DEL EVENTO: {meta['fecha_evento'].upper() if meta['meta_presupuesto']['fecha_evento'] else 'N/A'}<br>
+                    FECHA DEL EVENTO: {meta['fecha_evento'].upper() if meta['fecha_evento'] else 'N/A'}<br>
                     CLIENTE: {meta['cliente'].upper() if meta['cliente'] else 'N/A'} | LUGAR: {meta['lugar'].upper() if meta['lugar'] else 'N/A'}
                 </div>
                 <div class="meta-derecha">
