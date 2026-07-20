@@ -1,8 +1,10 @@
 # view_caja_edicion.py
 import streamlit as st
 import pandas as pd
-from db_connection import guardar_cambios_en_disco
 
+from db_connection import guardar_cambios_en_disco
+from db_connection import actualizar_movimiento_db, obtener_movimientos_locales
+        
 def render_edicion(df_mes, rol_actual, es_consolidado):
     st.markdown("### 🛠️ Modificaciones Generales de Auditoría")
     
@@ -39,21 +41,20 @@ def render_edicion(df_mes, rol_actual, es_consolidado):
 
     if not es_consolidado_puro:
         if st.button("💾 Aplicar Cambios Consolidados en Base de Datos"):
-            df_global = st.session_state["df_movimientos"]
-            
             for _, row_editada in df_editado.iterrows():
-                idx_original = df_global[df_global["id"] == row_editada["id"]].index
-                if not idx_original.empty:
-                    idx = idx_original[0]
-                    df_global.at[idx, "fecha"] = row_editada["fecha"]
-                    df_global.at[idx, "categoria"] = str(row_editada["categoria"]).strip().upper()
-                    df_global.at[idx, "detalle"] = str(row_editada["detalle"]).strip()
-                    df_global.at[idx, "tipo"] = row_editada["tipo"]
-                    df_global.at[idx, "monto"] = float(row_editada["monto"])
-                    df_global.at[idx, "tasa"] = float(row_editada["tasa"]) if pd.notnull(row_editada["tasa"]) else 1.0
-                    df_global.at[idx, "comentarios"] = str(row_editada["comentarios"]).strip()
-                    df_global.at[idx, "modificado_por"] = rol_actual
-            
-            guardar_cambios_en_disco()
-            st.success("🎉 ¡Todos los cambios han sido consolidados de forma masiva!")
+                id_reg = int(row_editada["id"])
+                cambios = {
+                    "fecha": str(row_editada["fecha"]),
+                    "categoria": str(row_editada["categoria"]).strip().upper(),
+                    "detalle": str(row_editada["detalle"]).strip(),
+                    "tipo": row_editada["tipo"],
+                    "monto": float(row_editada["monto"]),
+                    "tasa": float(row_editada["tasa"]) if pd.notnull(row_editada["tasa"]) else 1.0,
+                    "comentarios": str(row_editada["comentarios"]).strip(),
+                    "modificado_por": rol_actual
+                }
+                actualizar_movimiento_db(id_reg, cambios)
+        
+            obtener_movimientos_locales()
+            st.success("🎉 ¡Todos los cambios han sido consolidados en Supabase!")
             st.rerun()
