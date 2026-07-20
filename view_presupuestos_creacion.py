@@ -513,19 +513,19 @@ def render_creacion_presupuestos(rol_simulado):
             
             if incluir_precios_pdf:
                 th_cols = f"""
-                    <th style="width: 8%; text-align: center; white-space: nowrap;">ITEM</th>
+                    <th style="width: 7%; text-align: center; white-space: nowrap;">ITEM</th>
                     <th style="width: 44%; text-align: left;">{sec_titulo}</th>
                     <th style="width: 20%; text-align: left;">MEDIDAS</th>
-                    <th style="width: 9%; text-align: center;">JUEGOS/KITS</th>
+                    <th style="width: 10%; text-align: center;">JUEGOS/KITS</th>
                     <th style="width: 8%; text-align: center; white-space: nowrap;">CANT.</th>
                     <th style="width: 11%; text-align: right; white-space: nowrap;">PRECIO</th>
                 """
             else:
                 th_cols = f"""
-                    <th style="width: 8%; text-align: center; white-space: nowrap;">ITEM</th>
+                    <th style="width: 7%; text-align: center; white-space: nowrap;">ITEM</th>
                     <th style="width: 52%; text-align: left;">{sec_titulo}</th>
                     <th style="width: 23%; text-align: left;">MEDIDAS</th>
-                    <th style="width: 9%; text-align: center;">JUEGOS/KITS</th>
+                    <th style="width: 10%; text-align: center;">JUEGOS/KITS</th>
                     <th style="width: 8%; text-align: center; white-space: nowrap;">CANT.</th>
                 """
 
