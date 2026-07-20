@@ -53,17 +53,23 @@ def generar_pdf_presupuesto_nativo():
 
     story = []
     
-    # --- 🖼️ CARGA E INCRUSTACIÓN DEL LOGO ---
+# --- 🖼️ CARGA E INCRUSTACIÓN DEL LOGO (SINCRONIZADO AL 80%) ---
     logo_nombre = "encabezado_paleta.png"
     ruta_script = os.path.join(os.path.dirname(__file__), logo_nombre)
     ruta_raiz = os.path.join(os.getcwd(), logo_nombre)
     ruta_final = ruta_script if os.path.exists(ruta_script) else (ruta_raiz if os.path.exists(ruta_raiz) else None)
     
     if ruta_final:
-        # Forzar el ancho al área imprimible total (540 puntos)
-        story.append(Image(ruta_final, width=540, height=95))
-        story.append(Spacer(1, 10))
+        # El área máxima imprimible es 540 puntos.
+        # Si en pantalla es 80%, calculamos el 80% de 540 = 432 puntos.
+        ancho_pdf = 432  
         
+        # Reducimos proporcionalmente la altura original (95 * 0.80 = 76) para evitar deformaciones
+        altura_pdf = 76  
+        
+        # 🌟 Usamos hAlign='CENTER' para que ReportLab lo coloque perfectamente alineado al medio
+        story.append(Image(ruta_final, width=ancho_pdf, height=altura_pdf, hAlign='CENTER'))
+        story.append(Spacer(1, 10))        
     # --- 📄 BLOQUE METADATA ---
     meta = st.session_state.get("meta_presupuesto", {})
     p_nombre = str(meta.get('nombre', '') or '').upper() or 'PRESUPUESTO'
