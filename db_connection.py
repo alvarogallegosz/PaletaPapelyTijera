@@ -1,49 +1,83 @@
-# db_connection.py
 import streamlit as st
 import pandas as pd
-import os
+from supabase import create_client, Client
 
-RUTA_ARCHIVO = "movimientos_real.csv"
+@st.cache_resource
+def init_supabase() -> Client:
+    """Inicializa el cliente de Supabase leyendo st.secrets (soportando minúsculas y mayúsculas)."""
+    supabase_secrets = st.secrets["supabase"]
+    url = supabase_secrets.get("url") or supabase_secrets.get("SUPABASE_URL")
+    key = supabase_secrets.get("key") or supabase_secrets.get("SUPABASE_KEY")
+    return create_client(url, key)
 
 def obtener_movimientos_locales():
-    """Carga los datos reales desde el CSV en el Session State con tipado correcto."""
-    if "df_movimientos" not in st.session_state:
-        if os.path.exists(RUTA_ARCHIVO):
-            # Lectura tolerante a eñes, acentos y formato numérico hispano
-            df = pd.read_csv(RUTA_ARCHIVO, sep=';', decimal=',', thousands='.', encoding='latin-1')
+    """Consulta los movimientos en tiempo real desde Supabase y los procesa para Streamlit."""
+    try:
+        supabase = init_supabase()
+        response = supabase.table("movimientos").select("*").order("fecha", desc=False).order("id", desc=False).execute()
+        
+        if response.data:
+            df = pd.DataFrame(response.data)
             
-            # Forzar parseo de fechas sin romper por días/meses de un solo dígito
-            df["fecha"] = pd.to_datetime(df["fecha"], format="%d/%m/%Y").dt.date
-            df["activo"] = df["activo"].astype(bool)
-            df["consolidado"] = df["consolidado"].astype(bool)
-            df["categoria"] = df["categoria"].fillna("").astype(str)
+            # Formateo y tipado estricto
+            df["fecha"] = pd.to_datetime(df["fecha"]).dt.date
+            df["activo"] = df["activo"].fillna(True).astype(bool) if "activo" in df.columns else True
+            df["consolidado"] = df["consolidado"].fillna(False).astype(bool) if "consolidado" in df.columns else False
+            df["categoria"] = df["categoria"].fillna("GENERAL").astype(str) if "categoria" in df.columns else "GENERAL"
+            df["detalle"] = df["detalle"].fillna("").astype(str)
+            df["comentarios"] = df["comentarios"].fillna("").astype(str)
             
-            # 🛡️ BLINDAJE CONTRA TYPEERROR: Forzar a que los montos y tasas sean estrictamente numéricos
             df["monto"] = pd.to_numeric(df["monto"], errors="coerce").fillna(0.0).astype(float)
             df["tasa"] = pd.to_numeric(df["tasa"], errors="coerce").fillna(1.0).astype(float)
             
+            # Garantizar columnas obligatorias de auditoría
+            for col in ["activo", "consolidado", "categoria", "creado_por", "modificado_por"]:
+                if col not in df.columns:
+                    df[col] = "sistema" if "por" in col else ("GENERAL" if col == "categoria" else False)
+            
             st.session_state["df_movimientos"] = df
         else:
-            # Estructura base si el archivo no existe
             st.session_state["df_movimientos"] = pd.DataFrame(columns=[
                 "id", "fecha", "categoria", "detalle", "tipo", "monto", "tasa", 
                 "comentarios", "activo", "consolidado", "creado_por", "modificado_por"
             ])
+    except Exception as e:
+        st.error(f"⚠️ Error al conectar con Supabase: {e}")
+        if "df_movimientos" not in st.session_state:
+            st.session_state["df_movimientos"] = pd.DataFrame(columns=[
+                "id", "fecha", "categoria", "detalle", "tipo", "monto", "tasa", 
+                "comentarios", "activo", "consolidado", "creado_por", "modificado_por"
+            ])
+            
     return st.session_state["df_movimientos"]
 
-def guardar_cambios_en_disco():
-    """Guarda el estado actual de session_state directamente en el archivo CSV."""
-    df = st.session_state["df_movimientos"].copy()
-    # Convertir las fechas a formato string estándar D/M/YYYY antes de guardar
-    df["fecha"] = pd.to_datetime(df["fecha"]).dt.strftime("%d/%m/%Y")
-    df.to_csv(RUTA_ARCHIVO, sep=';', decimal=',', index=False, encoding='latin-1')
-
 def guardar_movimiento_local(nuevo_registro):
-    """Inserta un nuevo registro en la cola del DataFrame y persiste en disco."""
-    df = st.session_state["df_movimientos"]
-    nuevo_id = int(df["id"].max() + 1) if not df.empty else 1
-    nuevo_registro["id"] = nuevo_id
+    """Inserta una nueva transacción directamente en la tabla 'movimientos' de Supabase."""
+    supabase = init_supabase()
     
-    df_nuevo = pd.DataFrame([nuevo_registro])
-    st.session_state["df_movimientos"] = pd.concat([df, df_nuevo], ignore_index=True)
-    guardar_cambios_en_disco()
+    registro_db = nuevo_registro.copy()
+    registro_db["fecha"] = str(registro_db["fecha"])
+    registro_db.pop("id", None) # Supabase autogenera el ID
+    
+    response = supabase.table("movimientos").insert(registro_db).execute()
+    obtener_movimientos_locales()
+    return response
+
+def actualizar_movimiento_db(id_registro: int, campos_actualizar: dict):
+    """Edita celdas específicas de un registro existente en Supabase."""
+    supabase = init_supabase()
+    if "fecha" in campos_actualizar:
+        campos_actualizar["fecha"] = str(campos_actualizar["fecha"])
+        
+    response = supabase.table("movimientos").update(campos_actualizar).eq("id", id_registro).execute()
+    return response
+
+def actualizar_consolidado_mes_db(ids_list: list, estado_consolidado: bool, rol_actual: str):
+    """Cierra o reabre masivamente un período mensual en Supabase."""
+    if not ids_list:
+        return
+    supabase = init_supabase()
+    supabase.table("movimientos").update({
+        "consolidado": estado_consolidado,
+        "modificado_por": rol_actual
+    }).in_("id", ids_list).execute()
