@@ -28,7 +28,7 @@ def generar_pdf_presupuesto_nativo():
         parent=styles['Normal'],
         fontName='Helvetica',
         fontSize=9,
-        leading=12,
+        leading=11,
         textColor=colors.HexColor('#000000')
     )
     
@@ -103,7 +103,7 @@ def generar_pdf_presupuesto_nativo():
     total_general = 0.0
     
     # Distribución fija milimétrica de anchos (Suma exactamente 540 puntos del área imprimible)
-    anchos_columnas = [25, 245, 140, 45, 35, 50] 
+    anchos_columnas = [35, 225, 120, 65, 40, 55] 
     
     for idx_sec, sec in enumerate(secciones_activas):
         sec_id = sec.get('id', '')
@@ -117,7 +117,7 @@ def generar_pdf_presupuesto_nativo():
             Paragraph("<b>MEDIDAS</b>", style_header_left),
             Paragraph("<b>JUEGOS<br/>/KITS</b>", style_header_center),
             Paragraph("<b>CANT.</b>", style_header_center),
-            Paragraph("<b>PRECIO</b>", style_header_center)
+            Paragraph("<b>PRECIO $</b>", style_header_center)
         ]]
         
         subtotal_seccion = 0.0
