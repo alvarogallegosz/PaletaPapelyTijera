@@ -278,7 +278,6 @@ def render_creacion_presupuestos(rol_simulado):
                 "id": nuevo_id,
                 "titulo": sug_titulo
             })
-            # DataFrame semilla estático
             st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])
             st.rerun()
 
@@ -286,10 +285,9 @@ def render_creacion_presupuestos(rol_simulado):
 
         for idx, sec in enumerate(st.session_state.lista_secciones):
             sec_id = sec["id"]
-            df_key = f"df_{sec_id}"       # Estructura estática base
-            res_key = f"res_{sec_id}"     # Captura de datos activos en vivo
+            df_key = f"df_{sec_id}"       # Base estática de la tabla
+            res_key = f"res_{sec_id}"     # Captura en vivo
             
-            # Inicialización única de la estructura semilla
             if df_key not in st.session_state:
                 st.session_state[df_key] = pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])
             
@@ -314,16 +312,12 @@ def render_creacion_presupuestos(rol_simulado):
                         st.session_state.pop(res_key, None)
                         st.rerun()
 
-                # SOLUCIÓN DEFINITIVA:
-                # hide_index=True oculta la columna de índice de la izquierda.
-                # Se pasa la estructura base st.session_state[df_key] sin reescribirla cada ciclo, 
-                # permitiendo que st.data_editor mantenga sus datos 100% estables.
                 df_vivo = st.data_editor(
                     st.session_state[df_key],
                     key=f"editor_widget_{sec_id}",
                     num_rows="dynamic",
                     use_container_width=True,
-                    hide_index=True,  # Oculta el índice de la izquierda
+                    hide_index=True,
                     column_config={
                         "descripción": st.column_config.TextColumn("Descripción (80 ch)"),
                         "medidas": st.column_config.TextColumn("Medidas (40 ch)"),
@@ -333,17 +327,14 @@ def render_creacion_presupuestos(rol_simulado):
                     }
                 )
 
-                # Limitar a máximo de filas configurado
                 if len(df_vivo) > max_filas:
                     st.error(f"⚠️ Sección {idx+1} limitada a {max_filas} líneas máximas.")
                     df_guardar = df_vivo.head(max_filas)
                 else:
                     df_guardar = df_vivo
 
-                # Almacenar en res_key para no alterar el input base y prevenir el reset del widget
                 st.session_state[res_key] = df_guardar
 
-                # Cálculo del Subtotal para la pantalla de carga
                 subtotal_seccion = calcular_subtotal_df(df_guardar)
                 total_acumulado_presupuesto += subtotal_seccion
 
@@ -358,7 +349,6 @@ def render_creacion_presupuestos(rol_simulado):
                         unsafe_allow_html=True
                     )
 
-        # --- 🟢 TOTAL GENERAL EN PANTALLA DE CARGA ---
         st.markdown(
             f"""
             <div style="background-color: #b8d7a3; padding: 10px 18px; border-radius: 6px; margin-top: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #86efac;">
@@ -390,7 +380,17 @@ def render_creacion_presupuestos(rol_simulado):
         meta = st.session_state.get("meta_presupuesto", {})
         clausulas_txt = st.session_state.get("clausulas_presupuesto", "")
         secciones_activas = st.session_state.get("lista_secciones", [])
-        
+
+        # --- 🔄 PASO CLAVE: SINCRONIZACIÓN DE DATOS PARA PDF ---
+        # Sincronizamos las capturas en vivo (res_sec_id) a la clave primaria (df_sec_id)
+        # para que print_pdf_utility lea los ítems completos.
+        for sec in secciones_activas:
+            sec_id = sec.get('id', '')
+            res_key = f"res_{sec_id}"
+            df_key = f"df_{sec_id}"
+            if res_key in st.session_state:
+                st.session_state[df_key] = st.session_state[res_key]
+
         st.markdown("### 👁️ Vista Previa del Documento")
         
         incluir_precios_pdf = st.toggle(
@@ -399,6 +399,7 @@ def render_creacion_presupuestos(rol_simulado):
             help="Activa para mostrar el precio individual de cada ítem, o desactiva para mostrar solo los subtotales."
         )
         
+        # Generar el PDF ahora con los datos completamente sincronizados
         pdf_bytes = generar_pdf_presupuesto_nativo(incluir_precios=incluir_precios_pdf)
         nombre_cliente = str(meta.get("cliente", "cliente")).strip().replace(" ", "_").lower() or "cliente"
         
@@ -482,7 +483,6 @@ def render_creacion_presupuestos(rol_simulado):
         for idx_sec, sec in enumerate(secciones_activas):
             sec_id = sec.get('id', '')
             sec_titulo = sec.get('titulo', f'SECCIÓN {idx_sec+1}').upper()
-            # Lee de res_key (datos en vivo) o recae sobre df_key si estuviera vacío
             df_sec = st.session_state.get(f"res_{sec_id}", st.session_state.get(f"df_{sec_id}", pd.DataFrame()))
             
             if incluir_precios_pdf:
