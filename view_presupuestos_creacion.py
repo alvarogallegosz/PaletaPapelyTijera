@@ -5,21 +5,16 @@ import time
 import base64
 from print_pdf_utility import generar_pdf_presupuesto_nativo
 
-def calcular_totales_df(df_input):
+def calcular_subtotal_df(df_input):
     """
-    Calcula dinámicamente la columna auditada 'total_partida' (Juegos/Kits * Cantidad * PU)
-    para visualización inmediata estilo Excel en el editor.
+    Calcula el subtotal dinámico (Juegos/Kits * Cantidad * PU) para los
+    indicadores de pantalla sin alterar la estructura del data_editor.
     """
     if df_input is None or df_input.empty:
-        return pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario", "total_partida"])
+        return 0.0
 
-    df = df_input.copy()
-    for col in ["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"]:
-        if col not in df.columns:
-            df[col] = None
-            
-    totales = []
-    for _, row in df.iterrows():
+    subtotal = 0.0
+    for _, row in df_input.iterrows():
         # Juegos / Kits
         jk_raw = row.get('juegos/kits')
         try:
@@ -42,10 +37,9 @@ def calcular_totales_df(df_input):
             pu_val = 0.0
 
         total_fila = (jk_val * cant_val * pu_val) if jk_val > 0 else (cant_val * pu_val)
-        totales.append(round(total_fila, 2))
+        subtotal += total_fila
         
-    df["total_partida"] = totales
-    return df
+    return round(subtotal, 2)
 
 
 def render_creacion_presupuestos(rol_simulado):
@@ -213,7 +207,6 @@ def render_creacion_presupuestos(rol_simulado):
         st.session_state.lista_secciones = [
             {"id": "sec_inicial_1", "titulo": "DECORACIÓN PRINCIPAL (ALQUILER)"}
         ]
-        st.session_state["df_sec_inicial_1"] = pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])
 
     sugerencias_titulos = [
         "DECORACIÓN PRINCIPAL (ALQUILER)",
@@ -277,11 +270,6 @@ def render_creacion_presupuestos(rol_simulado):
         st.markdown("#### 📦 Bloques de Catálogo")
         
         if st.button("➕ Añadir Nueva Sección Física", disabled=len(st.session_state.lista_secciones) >= 11):
-            for s in st.session_state.lista_secciones:
-                k = f"df_{s['id']}"
-                if f"final_{k}" in st.session_state:
-                    st.session_state[k] = st.session_state[f"final_{k}"]
-            
             nuevo_id = f"sec_{int(time.time() * 1000)}"
             idx_nuevo = len(st.session_state.lista_secciones)
             sug_titulo = sugerencias_titulos[idx_nuevo] if idx_nuevo < len(sugerencias_titulos) else f"NUEVA ZONA {idx_nuevo + 1}"
@@ -299,6 +287,10 @@ def render_creacion_presupuestos(rol_simulado):
             sec_id = sec["id"]
             df_key = f"df_{sec_id}"
             
+            # Garantizar inicialización limpia
+            if df_key not in st.session_state:
+                st.session_state[df_key] = pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])
+            
             max_filas = 24 if idx == 0 else 15
             sug_placeholder = sugerencias_titulos[idx] if idx < len(sugerencias_titulos) else f"Ej: ZONA {idx+1}"
                 
@@ -315,21 +307,13 @@ def render_creacion_presupuestos(rol_simulado):
                 with col_t2:
                     st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
                     if st.button("🗑️", key=f"del_{sec_id}", use_container_width=True) and len(st.session_state.lista_secciones) > 1:
-                        for s in st.session_state.lista_secciones:
-                            k = f"df_{s['id']}"
-                            if f"final_{k}" in st.session_state:
-                                st.session_state[k] = st.session_state[f"final_{k}"]
                         st.session_state.lista_secciones.pop(idx)
                         st.session_state.pop(df_key, None)
-                        st.session_state.pop(f"final_{df_key}", None)
                         st.rerun()
 
-                # Obtener el DataFrame actual y precalcular columna auditada
-                df_actual = st.session_state.get(df_key, pd.DataFrame())
-                df_con_totales = calcular_totales_df(df_actual)
-
+                # Editor nativo totalmente estable conectado a session_state
                 df_vivo = st.data_editor(
-                    df_con_totales,
+                    st.session_state[df_key],
                     key=f"editor_widget_{sec_id}",
                     num_rows="dynamic",
                     use_container_width=True,
@@ -339,25 +323,21 @@ def render_creacion_presupuestos(rol_simulado):
                         "medidas": st.column_config.TextColumn("Medidas (40 ch)"),
                         "juegos/kits": st.column_config.NumberColumn("Juegos/Kits (11 ch)", min_value=1),
                         "cantidad": st.column_config.NumberColumn("Cantidad (8 ch)", min_value=1, default=1),
-                        "precio_unitario": st.column_config.NumberColumn("Precio ($)", min_value=0.0, format="$%.2f"),
-                        "total_partida": st.column_config.NumberColumn("Total Partida ($)", format="$%.2f", disabled=True)
+                        "precio_unitario": st.column_config.NumberColumn("Precio ($)", min_value=0.0, format="$%.2f")
                     }
                 )
 
-                # 🚀 RECALCULAR SOBRE df_vivo PARA CAPTURAR LOS VALORES RECIÉN EDITADOS EN PANTALLA
-                df_procesado = calcular_totales_df(df_vivo)
-
-                if len(df_procesado) > max_filas:
+                if len(df_vivo) > max_filas:
                     st.error(f"⚠️ Sección {idx+1} limitada a {max_filas} líneas máximas.")
-                    df_guardar = df_procesado.head(max_filas)
+                    df_guardar = df_vivo.head(max_filas)
                 else:
-                    df_guardar = df_procesado
+                    df_guardar = df_vivo
 
-                # Actualizar el estado del DataFrame principal con la columna de totales calculada
+                # Guardar estado vivo limpio
                 st.session_state[df_key] = df_guardar
 
-                # Subtotal dinámico garantizado
-                subtotal_seccion = float(df_guardar["total_partida"].sum())
+                # Cálculo del Subtotal de la Sección para pantalla en tiempo real
+                subtotal_seccion = calcular_subtotal_df(df_guardar)
                 total_acumulado_presupuesto += subtotal_seccion
 
                 col_sub_l, col_sub_r = st.columns([2, 2])
@@ -371,11 +351,7 @@ def render_creacion_presupuestos(rol_simulado):
                         unsafe_allow_html=True
                     )
 
-                # Guardar solo las columnas base por si se requieren en exportaciones
-                cols_base = [c for c in ["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"] if c in df_guardar.columns]
-                st.session_state[f"final_{df_key}"] = df_guardar[cols_base]
-
-        # --- 🟢 DISPLAY DEL TOTAL GENERAL EN LA PANTALLA DE CARGA ---
+        # --- 🟢 TOTAL GENERAL EN PANTALLA DE CARGA ---
         st.markdown(
             f"""
             <div style="background-color: #b8d7a3; padding: 10px 18px; border-radius: 6px; margin-top: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #86efac;">
@@ -394,10 +370,6 @@ def render_creacion_presupuestos(rol_simulado):
         col_acc1, col_acc2 = st.columns(2)
         with col_acc1:
             if st.button("👁️ Generar Vista Previa de Impresión", type="secondary", use_container_width=True):
-                for s in st.session_state.lista_secciones:
-                    k = f"df_{s['id']}"
-                    if f"final_{k}" in st.session_state:
-                        st.session_state[k] = st.session_state[f"final_{k}"]
                 st.session_state.modo_vista = "previa"
                 st.rerun()
         with col_acc2:
