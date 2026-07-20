@@ -1,4 +1,3 @@
-# view_presupuestos_creacion.py
 import streamlit as st
 import pandas as pd
 import os
@@ -172,7 +171,6 @@ def render_creacion_presupuestos(rol_simulado):
         ]
         st.session_state["df_sec_inicial_1"] = pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])
 
-    # Lista de sugerencias para títulos de secciones
     sugerencias_titulos = [
         "DECORACIÓN PRINCIPAL (ALQUILER)",
         "ZONA DE CENTRO DE MESA",
@@ -218,7 +216,6 @@ def render_creacion_presupuestos(rol_simulado):
                     value=st.session_state.meta_presupuesto.get("fecha_larga", ""),
                     placeholder="Ej: 17 de julio de 2026"
                 )
-                # 📌 Campo exclusivo para ayuda de búsqueda en BD (no impreso)
                 opciones_tipo = ["Decoración", "Alquiler", "Fiesta", "Cajas", "Otros"]
                 idx_sel = opciones_tipo.index(st.session_state.meta_presupuesto.get("tipo_presupuesto", "Decoración")) if st.session_state.meta_presupuesto.get("tipo_presupuesto") in opciones_tipo else 0
                 st.session_state.meta_presupuesto["tipo_presupuesto"] = st.selectbox(
@@ -454,7 +451,6 @@ def render_creacion_presupuestos(rol_simulado):
             </style>
         """, unsafe_allow_html=True)
 
-        # Carga local del Logo
         ancho_logo_deseado = "80%"
         logo_nombre = "encabezado_paleta.png"
         ruta_script = os.path.join(os.path.dirname(__file__), logo_nombre)
@@ -492,7 +488,6 @@ def render_creacion_presupuestos(rol_simulado):
         p_lugar = str(meta.get('lugar', '') or '').upper() or 'N/A'
         p_emision = str(meta.get('fecha_larga', '') or '').upper() or 'N/A'
 
-        # Inicialización garantizada de HTML
         html_cuerpo = f"""
         <div class="documento-hoja">
             {html_logo}
@@ -516,7 +511,6 @@ def render_creacion_presupuestos(rol_simulado):
             sec_titulo = sec.get('titulo', f'SECCIÓN {idx_sec+1}').upper()
             df_sec = st.session_state.get(f"df_{sec_id}", pd.DataFrame())
             
-            # Sincronización exacta de columnas de la vista previa con la modalidad del PDF
             if incluir_precios_pdf:
                 th_cols = f"""
                     <th style="width: 8%; text-align: center; white-space: nowrap;">ITEM</th>
@@ -551,12 +545,20 @@ def render_creacion_presupuestos(rol_simulado):
                     desc = str(row.get('descripción', '') or '').strip().replace("\n", " ").replace("\r", "").replace("  ", " ")
                     med = str(row.get('medidas', '') or '').strip().replace("\n", " ").replace("\r", "").replace("  ", " ")
                     
-                    try: jk_val = float(row.get('juegos/kits')) if pd.notna(row.get('juegos/kits')) and row.get('juegos/kits') != '' else 0.0
-                    except: jk_val = 0.0
-                    try: cant_val = float(row.get('cantidad')) if pd.notna(row.get('cantidad')) and row.get('cantidad') != '' else 0.0
-                    except: cant_val = 0.0
-                    try: pu_val = float(row.get('precio_unitario')) if pd.notna(row.get('precio_unitario')) and row.get('precio_unitario') != '' else 0.0
-                    except: pu_val = 0.0
+                    try:
+                        jk_val = float(row.get('juegos/kits')) if pd.notna(row.get('juegos/kits')) and row.get('juegos/kits') != '' else 0.0
+                    except Exception:
+                        jk_val = 0.0
+                        
+                    try:
+                        cant_val = float(row.get('cantidad')) if pd.notna(row.get('cantidad')) and row.get('cantidad') != '' else 0.0
+                    except Exception:
+                        cant_val = 0.0
+                        
+                    try:
+                        pu_val = float(row.get('precio_unitario')) if pd.notna(row.get('precio_unitario')) and row.get('precio_unitario') != '' else 0.0
+                    except Exception:
+                        pu_val = 0.0
 
                     if desc or med or jk_val or cant_val or pu_val:
                         total_fila = (jk_val * cant_val * pu_val) if jk_val > 0 else (cant_val * pu_val)
@@ -615,10 +617,5 @@ def render_creacion_presupuestos(rol_simulado):
         </div>
         """
         
-        html_compreso = " ".join([line.strip() for line in html_cuerpo.splitlines()])
-        st.markdown(html_compreso, unsafe_allow_html=True)
-        """
-        
-        # Compresión del string en una sola línea para evitar rupturas de Markdown en pantalla
         html_compreso = " ".join([line.strip() for line in html_cuerpo.splitlines()])
         st.markdown(html_compreso, unsafe_allow_html=True)
