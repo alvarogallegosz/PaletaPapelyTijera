@@ -14,10 +14,10 @@ def generar_pdf_presupuesto_nativo():
     doc = SimpleDocTemplate(
         buffer,
         pagesize=letter,
-        leftMargin=25,
-        rightMargin=25,
-        topMargin=25,
-        bottomMargin=25
+        leftMargin=36,
+        rightMargin=36,
+        topMargin=36,
+        bottomMargin=36
     )
     
     styles = getSampleStyleSheet()
@@ -28,7 +28,7 @@ def generar_pdf_presupuesto_nativo():
         parent=styles['Normal'],
         fontName='Helvetica',
         fontSize=9,
-        leading=11,
+        leading=12,
         textColor=colors.HexColor('#000000')
     )
     
@@ -39,7 +39,7 @@ def generar_pdf_presupuesto_nativo():
         fontSize=9,
         leading=11,
         textColor=colors.HexColor('#000000'),
-        alignment=1 # Centrado
+        alignment=1
     )
     
     style_header_left = ParagraphStyle(
@@ -53,21 +53,15 @@ def generar_pdf_presupuesto_nativo():
 
     story = []
     
-# --- 🖼️ CARGA E INCRUSTACIÓN DEL LOGO (SINCRONIZADO AL 80%) ---
+    # --- 🖼️ CARGA E INCRUSTACIÓN DEL LOGO ---
     logo_nombre = "encabezado_paleta.png"
     ruta_script = os.path.join(os.path.dirname(__file__), logo_nombre)
     ruta_raiz = os.path.join(os.getcwd(), logo_nombre)
     ruta_final = ruta_script if os.path.exists(ruta_script) else (ruta_raiz if os.path.exists(ruta_raiz) else None)
     
     if ruta_final:
-        # El área máxima imprimible es 540 puntos.
-        # Si en pantalla es 80%, calculamos el 80% de 540 = 432 puntos.
-        ancho_pdf = 432  
-        
-        # Reducimos proporcionalmente la altura original (95 * 0.80 = 76) para evitar deformaciones
+        ancho_pdf = 432  # 80% de 540 puntos disponibles
         altura_pdf = 76  
-        
-        # 🌟 Usamos hAlign='CENTER' para que ReportLab lo coloque perfectamente alineado al medio
         story.append(Image(ruta_final, width=ancho_pdf, height=altura_pdf, hAlign='CENTER'))
         story.append(Spacer(1, 10))
         
@@ -105,26 +99,25 @@ def generar_pdf_presupuesto_nativo():
     story.append(banner_tabla)
     story.append(Spacer(1, 10))
     
-    # --- 📊 CONSTRUCCIÓN DE TABLAS ---
+    # --- 📊 CONSTRUCCIÓN DE TABLAS (SIN COLUMNA DE PRECIOS UNITARIOS) ---
     secciones_activas = st.session_state.get("lista_secciones", [])
     total_general = 0.0
     
-    # Distribución fija milimétrica de anchos (Suma exactamente 540 puntos del área imprimible)
-    anchos_columnas = [35, 225, 120, 65, 40, 55] 
+    # 🔥 RECONFIGURADO: Ahora son 5 columnas. Eliminamos la de precio y expandimos Descripción y Medidas
+    anchos_columnas = [35, 260, 140, 65, 40] 
     
     for idx_sec, sec in enumerate(secciones_activas):
         sec_id = sec.get('id', '')
         sec_titulo = sec.get('titulo', f'SECCIÓN {idx_sec+1}').upper()
         df_sec = st.session_state.get(f"df_{sec_id}", pd.DataFrame())
         
-        # Estructura de cabecera de la sección
+        # Cabecera de la tabla sin la columna "PRECIO"
         tabla_datos = [[
             Paragraph("<b>ITEM</b>", style_header_center),
             Paragraph(f"<b>{sec_titulo}</b>", style_header_left),
             Paragraph("<b>MEDIDAS</b>", style_header_left),
             Paragraph("<b>JUEGOS<br/>/KITS</b>", style_header_center),
-            Paragraph("<b>CANT.</b>", style_header_center),
-            Paragraph("<b>PRECIO $</b>", style_header_center)
+            Paragraph("<b>CANT.</b>", style_header_center)
         ]]
         
         subtotal_seccion = 0.0
@@ -132,8 +125,8 @@ def generar_pdf_presupuesto_nativo():
         
         if not df_sec.empty:
             for row in df_sec.to_dict('records'):
-                desc = str(row.get('descripción', '') or '').strip().replace("\n", "<br/>")
-                med = str(row.get('medidas', '') or '').strip().replace("\n", "<br/>")
+                desc = str(row.get('descripción', '') or '').strip().replace("\n", " ").replace("\r", "")
+                med = str(row.get('medidas', '') or '').strip().replace("\n", " ").replace("\r", "")
                 
                 try: jk_val = float(row.get('juegos/kits')) if pd.notna(row.get('juegos/kits')) and row.get('juegos/kits') != '' else 0.0
                 except: jk_val = 0.0
@@ -143,28 +136,26 @@ def generar_pdf_presupuesto_nativo():
                 except: pu_val = 0.0
 
                 if desc or med or jk_val or cant_val or pu_val:
+                    # La matemática se sigue ejecutando perfectamente en segundo plano
                     total_fila = (jk_val * cant_val * pu_val) if jk_val > 0 else (cant_val * pu_val)
                     subtotal_seccion += total_fila
                     
-                    # 🌟 CAMBIO SOLICITADO: Filas sin $, solo el valor numérico formateado
-                    precio_str = f"{total_fila:,.2f}"
                     jk_str = f"{int(jk_val) if jk_val.is_integer() else jk_val}" if jk_val > 0 else ""
                     cant_str = f"{int(cant_val) if cant_val.is_integer() else cant_val}" if cant_val > 0 else ""
                     
+                    # Insertamos la fila omitiendo los datos económicos del ítem
                     tabla_datos.append([
                         Paragraph(str(item_numeral), style_header_center),
                         Paragraph(desc, style_normal),
                         Paragraph(med, style_normal),
                         Paragraph(jk_str, style_header_center),
-                        Paragraph(cant_str, style_header_center),
-                        Paragraph(precio_str, ParagraphStyle('P', parent=style_normal, alignment=2))
+                        Paragraph(cant_str, style_header_center)
                     ])
                     item_numeral += 1
         
         if item_numeral == 1:
-            tabla_datos.append([Paragraph("Sección sin registros activos", style_header_center), "", "", "", "", ""])
+            tabla_datos.append([Paragraph("Sección sin registros activos", style_header_center), "", "", "", ""])
             
-        # Instanciar tabla con anchos físicos estrictos
         t = Table(tabla_datos, colWidths=anchos_columnas, repeatRows=1)
         t_style = [
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#fffdeb')),
@@ -175,12 +166,12 @@ def generar_pdf_presupuesto_nativo():
             ('LINEBELOW', (0,0), (-1,0), 1, colors.HexColor('#cbd5e1')),
         ]
         if item_numeral == 1:
-            t_style.append(('SPAN', (0,1), (5,1)))
+            t_style.append(('SPAN', (0,1), (4,1))) # Ajustado el SPAN a 4 columnas
             
         t.setStyle(TableStyle(t_style))
         story.append(t)
         
-        # Subtotal de la sección (Lleva $)
+        # 🌟 EL SUBTOTAL SÍ SE MUESTRA: Mantiene la transparencia del costo global de la sección
         txt_subtotal = f"<b>SUB TOTAL {sec_titulo}:&nbsp;&nbsp;&nbsp;&nbsp;${subtotal_seccion:,.2f}</b>"
         sub_p = Paragraph(txt_subtotal, ParagraphStyle('Sub', parent=style_normal, alignment=2, fontSize=9.5))
         sub_tabla = Table([[sub_p]], colWidths=[540])
@@ -217,7 +208,6 @@ def generar_pdf_presupuesto_nativo():
     story.append(Spacer(1, 4))
     story.append(Paragraph(clausulas_html, ParagraphStyle('CB', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#1a202c'), leading=12)))
     
-    # Compilar PDF en memoria
     doc.build(story)
     buffer.seek(0)
     return buffer.getvalue()
