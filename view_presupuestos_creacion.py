@@ -5,6 +5,40 @@ import time
 import base64
 from print_pdf_utility import generar_pdf_presupuesto_nativo
 
+def calcular_totales_df(df_input):
+    """
+    Calcula dinámicamente la columna auditada 'total_partida' (Juegos/Kits * Cantidad * PU)
+    para visualización inmediata estilo Excel en el editor.
+    """
+    df = df_input.copy()
+    for col in ["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"]:
+        if col not in df.columns:
+            df[col] = None
+            
+    totales = []
+    for _, row in df.iterrows():
+        try:
+            jk_val = float(row.get('juegos/kits')) if pd.notna(row.get('juegos/kits')) and row.get('juegos/kits') != '' else 0.0
+        except Exception:
+            jk_val = 0.0
+            
+        try:
+            cant_val = float(row.get('cantidad')) if pd.notna(row.get('cantidad')) and row.get('cantidad') != '' else 0.0
+        except Exception:
+            cant_val = 0.0
+            
+        try:
+            pu_val = float(row.get('precio_unitario')) if pd.notna(row.get('precio_unitario')) and row.get('precio_unitario') != '' else 0.0
+        except Exception:
+            pu_val = 0.0
+
+        total_fila = (jk_val * cant_val * pu_val) if jk_val > 0 else (cant_val * pu_val)
+        totales.append(round(total_fila, 2))
+        
+    df["total_partida"] = totales
+    return df
+
+
 def render_creacion_presupuestos(rol_simulado):
     # --- 🎨 CONTROL DE INYECCIÓN CSS PARA AISLAMIENTO DE IMPRESIÓN ---
     st.markdown("""
@@ -55,13 +89,14 @@ def render_creacion_presupuestos(rol_simulado):
             .meta-contenedor {
                 display: flex;
                 justify-content: space-between;
+                align-items: flex-start;
                 font-size: 13px;
                 line-height: 1.5;
-                margin-top: 8px;
-                margin-bottom: 5px;
+                margin-top: 10px;
+                margin-bottom: 12px;
             }
-            .meta-izquierda { font-weight: normal; }
-            .meta-derecha { text-align: right; font-weight: bold; }
+            .meta-izquierda { flex: 1; font-weight: normal; }
+            .meta-derecha { text-align: right; font-weight: bold; white-space: nowrap; padding-left: 15px; }
 
             .banner-verde-principal {
                 background-color: #b8d7a3 !important;
@@ -176,7 +211,13 @@ def render_creacion_presupuestos(rol_simulado):
         "ZONA DE CENTRO DE MESA",
         "ZONA DE DULCES / TORTA",
         "MONTAJE Y LOGÍSTICA",
-        "OTROS SERVICIOS"
+        "OTROS SERVICIOS",
+        "ÁREA DE BIENVENIDA / ENTRADA",
+        "ILUMINACIÓN Y EFECTOS",
+        "ESTRUCTURA Y TOLDOS",
+        "MOBILIARIO COMPLEMENTARIO",
+        "PERSONAL Y PROTOCOLO",
+        "SERVICIOS ADICIONALES"
     ]
 
     # ===================================================
@@ -226,7 +267,8 @@ def render_creacion_presupuestos(rol_simulado):
 
         st.markdown("#### 📦 Bloques de Catálogo")
         
-        if st.button("➕ Añadir Nueva Sección Física", disabled=len(st.session_state.lista_secciones) >= 5):
+        # Permitir hasta 11 secciones (1 inicial + 10 adicionales)
+        if st.button("➕ Añadir Nueva Sección Física", disabled=len(st.session_state.lista_secciones) >= 11):
             for s in st.session_state.lista_secciones:
                 k = f"df_{s['id']}"
                 if f"final_{k}" in st.session_state:
@@ -247,7 +289,8 @@ def render_creacion_presupuestos(rol_simulado):
             sec_id = sec["id"]
             df_key = f"df_{sec_id}"
             
-            max_filas = 15 if idx == 0 else (7 if idx == 1 else 5)
+            # Sección 1 tiene tope de 24 líneas, las secciones 2 a 11 tienen tope de 15 líneas
+            max_filas = 24 if idx == 0 else 15
             sug_placeholder = sugerencias_titulos[idx] if idx < len(sugerencias_titulos) else f"Ej: ZONA {idx+1}"
                 
             with st.container(border=True):
@@ -272,8 +315,12 @@ def render_creacion_presupuestos(rol_simulado):
                         st.session_state.pop(f"final_{df_key}", None)
                         st.rerun()
 
+                # Precalculamos DataFrame con la columna de auditoría
+                df_actual = st.session_state.get(df_key, pd.DataFrame())
+                df_con_totales = calcular_totales_df(df_actual)
+
                 df_vivo = st.data_editor(
-                    st.session_state[df_key],
+                    df_con_totales,
                     key=f"editor_widget_{sec_id}",
                     num_rows="dynamic",
                     use_container_width=True,
@@ -283,15 +330,20 @@ def render_creacion_presupuestos(rol_simulado):
                         "medidas": st.column_config.TextColumn("Medidas (40 ch)"),
                         "juegos/kits": st.column_config.NumberColumn("Juegos/Kits (11 ch)", min_value=1),
                         "cantidad": st.column_config.NumberColumn("Cantidad (8 ch)", min_value=1, default=1),
-                        "precio_unitario": st.column_config.NumberColumn("Precio (12 ch)", min_value=0.0, format="$%.2f")
+                        "precio_unitario": st.column_config.NumberColumn("Precio ($)", min_value=0.0, format="$%.2f"),
+                        "total_partida": st.column_config.NumberColumn("Total Partida ($)", format="$%.2f", disabled=True)
                     }
                 )
 
                 if len(df_vivo) > max_filas:
-                    st.error(f"⚠️ Sección limitada a {max_filas} líneas.")
-                    st.session_state[f"final_{df_key}"] = df_vivo.head(max_filas)
+                    st.error(f"⚠️ Sección {idx+1} limitada a {max_filas} líneas máximas.")
+                    df_guardar = df_vivo.head(max_filas)
                 else:
-                    st.session_state[f"final_{df_key}"] = df_vivo
+                    df_guardar = df_vivo
+
+                # Limpiamos la columna calculada antes de guardar en el estado puro del usuario
+                cols_base = [c for c in ["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"] if c in df_guardar.columns]
+                st.session_state[f"final_{df_key}"] = df_guardar[cols_base]
 
         with st.container(border=True):
             st.markdown("#### 📜 Términos y Cláusulas")
@@ -352,105 +404,6 @@ def render_creacion_presupuestos(rol_simulado):
         
         st.markdown("---")
 
-        st.markdown("""
-            <style>
-                .documento-hoja {
-                    font-family: 'Arial', sans-serif;
-                    color: #000000;
-                    background-color: #ffffff;
-                    width: 100%;
-                    max-width: 8.5in;
-                    min-height: 11in;
-                    box-sizing: border-box;
-                    padding: 0.5in;
-                    margin: 10px auto;
-                    border: 1px solid #cbd5e1;
-                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-                }
-
-                .meta-contenedor {
-                    display: flex;
-                    justify-content: space-between;
-                    font-size: 12px;
-                    line-height: 1.4;
-                    margin-top: 10px;
-                    margin-bottom: 5px;
-                }
-                .meta-izquierda { font-weight: normal; }
-                .meta-derecha { text-align: right; font-weight: bold; }
-
-                .banner-verde-principal {
-                    background-color: #b8d7a3 !important;
-                    color: #ffffff !important;
-                    text-align: center;
-                    font-weight: bold;
-                    padding: 6px 0px;
-                    font-size: 13px;
-                    letter-spacing: 0.5px;
-                    text-transform: uppercase;
-                    margin-bottom: 12px;
-                }
-
-                .tabla-remastered {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-bottom: 0px;
-                    table-layout: fixed;
-                }
-                .tabla-remastered th {
-                    background-color: #fffdeb !important;
-                    border-bottom: 1px solid #cbd5e1;
-                    color: #000000;
-                    font-weight: bold;
-                    font-size: 11px;
-                    padding: 6px 8px;
-                }
-                .tabla-remastered td {
-                    padding: 6px 8px;
-                    font-size: 11px;
-                    border-bottom: 1px solid #e2e8f0;
-                    vertical-align: top;
-                    word-wrap: break-word;
-                }
-
-                .contenedor-subtotal {
-                    background-color: #ffffff;
-                    font-weight: bold;
-                    font-size: 12px;
-                    text-align: right;
-                    padding: 6px 8px;
-                    margin-bottom: 15px;
-                    border-bottom: 1px solid #cbd5e1;
-                }
-
-                .banner-total-general {
-                    background-color: #b8d7a3 !important;
-                    color: #000000 !important;
-                    font-weight: bold;
-                    font-size: 20px;
-                    padding: 8px 15px;
-                    margin-top: 15px;
-                    margin-bottom: 20px;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                }
-
-                .clausulas-container {
-                    font-size: 11px;
-                    margin-top: 20px;
-                    color: #1a202c;
-                    line-height: 1.4;
-                }
-                .clausulas-header {
-                    color: #d53f8c;
-                    font-weight: bold;
-                    font-size: 12px;
-                    margin-bottom: 5px;
-                }
-            </style>
-        """, unsafe_allow_html=True)
-
         ancho_logo_deseado = "80%"
         logo_nombre = "encabezado_paleta.png"
         ruta_script = os.path.join(os.path.dirname(__file__), logo_nombre)
@@ -498,7 +451,7 @@ def render_creacion_presupuestos(rol_simulado):
                     CLIENTE: {p_cliente} | LUGAR: {p_lugar}
                 </div>
                 <div class="meta-derecha">
-                    <br><br>EMISIÓN: {p_emision}
+                    EMISIÓN: {p_emision}
                 </div>
             </div>
             <div class="banner-verde-principal">PRESUPUESTO DETALLADO</div>
@@ -513,19 +466,19 @@ def render_creacion_presupuestos(rol_simulado):
             
             if incluir_precios_pdf:
                 th_cols = f"""
-                    <th style="width: 7%; text-align: center; white-space: nowrap;">ITEM</th>
-                    <th style="width: 43%; text-align: left;">{sec_titulo}</th>
+                    <th style="width: 8%; text-align: center; white-space: nowrap;">ITEM</th>
+                    <th style="width: 44%; text-align: left;">{sec_titulo}</th>
                     <th style="width: 20%; text-align: left;">MEDIDAS</th>
-                    <th style="width: 11%; text-align: center;">JUEGOS/KITS</th>
+                    <th style="width: 9%; text-align: center;">JUEGOS/KITS</th>
                     <th style="width: 8%; text-align: center; white-space: nowrap;">CANT.</th>
                     <th style="width: 11%; text-align: right; white-space: nowrap;">PRECIO</th>
                 """
             else:
                 th_cols = f"""
-                    <th style="width: 7%; text-align: center; white-space: nowrap;">ITEM</th>
+                    <th style="width: 8%; text-align: center; white-space: nowrap;">ITEM</th>
                     <th style="width: 52%; text-align: left;">{sec_titulo}</th>
                     <th style="width: 23%; text-align: left;">MEDIDAS</th>
-                    <th style="width: 10%; text-align: center;">JUEGOS/KITS</th>
+                    <th style="width: 9%; text-align: center;">JUEGOS/KITS</th>
                     <th style="width: 8%; text-align: center; white-space: nowrap;">CANT.</th>
                 """
 
