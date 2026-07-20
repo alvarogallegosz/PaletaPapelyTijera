@@ -402,7 +402,11 @@ def render_creacion_presupuestos(rol_simulado):
             </style>
         """, unsafe_allow_html=True)
 
-        # 5. Carga local del Logo en minúsculas
+# ==========================================================
+        # 5. Carga local del Logo (CONFIGURABLE Y AJUSTABLE)
+        # ==========================================================
+        ancho_logo_deseado = "80%"  # 👈 ¡Cambia este valor aquí! (Ej: "75%", "85%", "90%")
+        
         logo_nombre = "encabezado_paleta.png"
         ruta_script = os.path.join(os.path.dirname(__file__), logo_nombre)
         ruta_raiz = os.path.join(os.getcwd(), logo_nombre)
@@ -412,34 +416,28 @@ def render_creacion_presupuestos(rol_simulado):
             import base64
             with open(ruta_final, "rb") as f:
                 data_img = base64.b64encode(f.read()).decode("utf-8")
-            html_logo = f'<img src="data:image/png;base64,{data_img}" style="width:100%; height:auto; display:block; margin-bottom:10px;">'
+            
+            # 🌟 CORRECCIÓN: Se aplica el ancho dinámico y "margin: 0 auto" para mantenerlo centrado
+            html_logo = f"""
+            <img src="data:image/png;base64,{data_img}" 
+                 style="width: {ancho_logo_deseado}; 
+                        height: auto; 
+                        display: block; 
+                        margin: 0 auto 15px auto;">
+            """
         else:
-            html_logo = f'<div style="background-color:#f2f2f2; border:2px dashed #cbd5e1; padding:20px; text-align:center; font-weight:bold; color:#64748b; margin-bottom:10px;">[ LOGO: {logo_nombre} NO DETECTADO ]</div>'
-
-        # Textos sanitizados de cabecera
-        p_nombre = str(meta.get('nombre', '') or '').upper() or 'PRESUPUESTO'
-        p_fecha_evt = str(meta.get('fecha_evento', '') or '').upper() or 'N/A'
-        p_cliente = str(meta.get('cliente', '') or '').upper() or 'N/A'
-        p_lugar = str(meta.get('lugar', '') or '').upper() or 'N/A'
-        p_emision = str(meta.get('fecha_larga', '') or '').upper() or 'N/A'
-        clausulas_html = str(clausulas_txt or '').replace("\n", "<br>")
-
-        # Construcción del esqueleto HTML
-        html_cuerpo = f"""
-        <div class="documento-hoja">
-            {html_logo}
-            <div class="meta-contenedor">
-                <div class="meta-izquierda">
-                    <b>{p_nombre}</b><br>
-                    FECHA DEL EVENTO: {p_fecha_evt}<br>
-                    CLIENTE: {p_cliente} | LUGAR: {p_lugar}
-                </div>
-                <div class="meta-derecha">
-                    EMISIÓN: {p_emision}
-                </div>
+            html_logo = f"""
+            <div style="background-color: #f2f2f2; 
+                        border: 2px dashed #cbd5e1; 
+                        padding: 20px; 
+                        text-align: center; 
+                        font-weight: bold; 
+                        color: #64748b; 
+                        margin: 0 auto 15px auto; 
+                        width: {ancho_logo_deseado};">
+                [ LOGO: {logo_nombre} NO DETECTADO ]
             </div>
-            <div class="banner-verde-principal">PRESUPUESTO DETALLADO</div>
-        """
+            """
         
         total_general = 0.0
         
