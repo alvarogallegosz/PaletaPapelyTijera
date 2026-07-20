@@ -1,9 +1,10 @@
 # view_caja_historico.py
 import streamlit as st
 import pandas as pd
+
 from core_finance_engine import procesar_mes_aislado
-from db_connection import guardar_cambios_en_disco
 from view_caja_visor import preparar_columnas_monto
+from db_connection import actualizar_consolidado_mes_db, obtener_movimientos_locales
 
 def render_historico(df_todos, rol_actual):
     st.markdown("### 📚 Reporte e Histórico de Cierres de Mes")
@@ -93,7 +94,9 @@ def render_historico(df_todos, rol_actual):
                 
                 st.session_state["df_movimientos"].loc[indices, "consolidado"] = True
                 st.session_state["df_movimientos"].loc[indices, "modificado_por"] = rol_actual
-                guardar_cambios_en_disco()
+                ids_a_modificar = df_maestro[(df_maestro["fecha_dt"].dt.year == anho_rep) & (df_maestro["fecha_dt"].dt.month == mes_rep_num)]["id"].tolist()
+                actualizar_consolidado_mes_db(ids_a_modificar, True, rol_actual) # True para consolidar, False para reabrir
+                obtener_movimientos_locales()
                 st.success(f"🎉 El período {mes_rep_nom} {anho_rep} ha sido cerrado de forma definitiva.")
                 st.rerun()
         else:
