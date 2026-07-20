@@ -1,10 +1,8 @@
 # view_caja_edicion.py
 import streamlit as st
 import pandas as pd
-
-from db_connection import guardar_cambios_en_disco
 from db_connection import actualizar_movimiento_db, obtener_movimientos_locales
-        
+
 def render_edicion(df_mes, rol_actual, es_consolidado):
     st.markdown("### 🛠️ Modificaciones Generales de Auditoría")
     
@@ -19,7 +17,6 @@ def render_edicion(df_mes, rol_actual, es_consolidado):
 
     st.caption("💡 Haz doble clic sobre cualquier celda para modificar en línea (Estilo Excel). Al finalizar, presiona el botón inferior.")
 
-    # Dataframe interactivo con control estricto de anchos, scrollbar horizontal y ~20 filas visibles
     df_editado = st.data_editor(
         df_mes,
         column_order=["fecha", "categoria", "detalle", "tipo", "monto", "tasa", "comentarios"],
@@ -34,8 +31,8 @@ def render_edicion(df_mes, rol_actual, es_consolidado):
         },
         disabled=es_consolidado_puro,
         hide_index=True,
-        use_container_width=False, # Habilita el desplazamiento horizontal si la pantalla se reduce
-        height=600, # Ajustado para exponer ~20 filas continuas
+        use_container_width=False,
+        height=600,
         key="editor_excel_caja"
     )
 
@@ -54,7 +51,7 @@ def render_edicion(df_mes, rol_actual, es_consolidado):
                     "modificado_por": rol_actual
                 }
                 actualizar_movimiento_db(id_reg, cambios)
-        
+            
             obtener_movimientos_locales()
-            st.success("🎉 ¡Todos los cambios han sido consolidados en Supabase!")
+            st.success("🎉 ¡Todos los cambios han sido actualizados en Supabase!")
             st.rerun()
