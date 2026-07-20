@@ -10,6 +10,9 @@ def calcular_totales_df(df_input):
     Calcula dinámicamente la columna auditada 'total_partida' (Juegos/Kits * Cantidad * PU)
     para visualización inmediata estilo Excel en el editor.
     """
+    if df_input is None or df_input.empty:
+        return pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario", "total_partida"])
+
     df = df_input.copy()
     for col in ["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"]:
         if col not in df.columns:
@@ -17,18 +20,24 @@ def calcular_totales_df(df_input):
             
     totales = []
     for _, row in df.iterrows():
+        # Juegos / Kits
+        jk_raw = row.get('juegos/kits')
         try:
-            jk_val = float(row.get('juegos/kits')) if pd.notna(row.get('juegos/kits')) and row.get('juegos/kits') != '' else 0.0
+            jk_val = float(jk_raw) if pd.notna(jk_raw) and str(jk_raw).strip() != '' else 0.0
         except Exception:
             jk_val = 0.0
             
+        # Cantidad
+        cant_raw = row.get('cantidad')
         try:
-            cant_val = float(row.get('cantidad')) if pd.notna(row.get('cantidad')) and row.get('cantidad') != '' else 0.0
+            cant_val = float(cant_raw) if pd.notna(cant_raw) and str(cant_raw).strip() != '' else 0.0
         except Exception:
             cant_val = 0.0
             
+        # Precio Unitario
+        pu_raw = row.get('precio_unitario')
         try:
-            pu_val = float(row.get('precio_unitario')) if pd.notna(row.get('precio_unitario')) and row.get('precio_unitario') != '' else 0.0
+            pu_val = float(pu_raw) if pd.notna(pu_raw) and str(pu_raw).strip() != '' else 0.0
         except Exception:
             pu_val = 0.0
 
@@ -267,7 +276,6 @@ def render_creacion_presupuestos(rol_simulado):
 
         st.markdown("#### 📦 Bloques de Catálogo")
         
-        # Permitir hasta 11 secciones (1 inicial + 10 adicionales)
         if st.button("➕ Añadir Nueva Sección Física", disabled=len(st.session_state.lista_secciones) >= 11):
             for s in st.session_state.lista_secciones:
                 k = f"df_{s['id']}"
@@ -291,7 +299,6 @@ def render_creacion_presupuestos(rol_simulado):
             sec_id = sec["id"]
             df_key = f"df_{sec_id}"
             
-            # Sección 1 tiene tope de 24 líneas, las secciones 2 a 11 tienen tope de 15 líneas
             max_filas = 24 if idx == 0 else 15
             sug_placeholder = sugerencias_titulos[idx] if idx < len(sugerencias_titulos) else f"Ej: ZONA {idx+1}"
                 
@@ -317,7 +324,7 @@ def render_creacion_presupuestos(rol_simulado):
                         st.session_state.pop(f"final_{df_key}", None)
                         st.rerun()
 
-                # Precalculamos DataFrame con la columna de auditoría
+                # Obtener el DataFrame actual y precalcular columna auditada
                 df_actual = st.session_state.get(df_key, pd.DataFrame())
                 df_con_totales = calcular_totales_df(df_actual)
 
@@ -337,14 +344,20 @@ def render_creacion_presupuestos(rol_simulado):
                     }
                 )
 
-                if len(df_vivo) > max_filas:
-                    st.error(f"⚠️ Sección {idx+1} limitada a {max_filas} líneas máximas.")
-                    df_guardar = df_vivo.head(max_filas)
-                else:
-                    df_guardar = df_vivo
+                # 🚀 RECALCULAR SOBRE df_vivo PARA CAPTURAR LOS VALORES RECIÉN EDITADOS EN PANTALLA
+                df_procesado = calcular_totales_df(df_vivo)
 
-                # Cálculo y despliegue del Subtotal de la Sección en Pantalla de Carga
-                subtotal_seccion = float(df_guardar["total_partida"].sum()) if "total_partida" in df_guardar.columns else 0.0
+                if len(df_procesado) > max_filas:
+                    st.error(f"⚠️ Sección {idx+1} limitada a {max_filas} líneas máximas.")
+                    df_guardar = df_procesado.head(max_filas)
+                else:
+                    df_guardar = df_procesado
+
+                # Actualizar el estado del DataFrame principal con la columna de totales calculada
+                st.session_state[df_key] = df_guardar
+
+                # Subtotal dinámico garantizado
+                subtotal_seccion = float(df_guardar["total_partida"].sum())
                 total_acumulado_presupuesto += subtotal_seccion
 
                 col_sub_l, col_sub_r = st.columns([2, 2])
@@ -358,7 +371,7 @@ def render_creacion_presupuestos(rol_simulado):
                         unsafe_allow_html=True
                     )
 
-                # Limpiamos la columna calculada antes de guardar en el estado puro del usuario
+                # Guardar solo las columnas base por si se requieren en exportaciones
                 cols_base = [c for c in ["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"] if c in df_guardar.columns]
                 st.session_state[f"final_{df_key}"] = df_guardar[cols_base]
 
