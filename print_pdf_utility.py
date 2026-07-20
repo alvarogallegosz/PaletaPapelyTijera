@@ -139,12 +139,20 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
                 desc = str(row.get('descripción', '') or '').strip().replace("\n", " ").replace("\r", "")
                 med = str(row.get('medidas', '') or '').strip().replace("\n", " ").replace("\r", "")
                 
-                try: jk_val = float(row.get('juegos/kits')) if pd.notna(row.get('juegos/kits')) and row.get('juegos/kits') != '' else 0.0
-                except: jk_val = 0.0
-                try: cant_val = float(row.get('cantidad')) if pd.notna(row.get('cantidad')) and row.get('cantidad') != '' else 0.0
-                except: cant_val = 0.0
-                try: pu_val = float(row.get('precio_unitario')) if pd.notna(row.get('precio_unitario')) and row.get('precio_unitario') != '' else 0.0
-                except: pu_val = 0.0
+                try:
+                    jk_val = float(row.get('juegos/kits')) if pd.notna(row.get('juegos/kits')) and row.get('juegos/kits') != '' else 0.0
+                except Exception:
+                    jk_val = 0.0
+                    
+                try:
+                    cant_val = float(row.get('cantidad')) if pd.notna(row.get('cantidad')) and row.get('cantidad') != '' else 0.0
+                except Exception:
+                    cant_val = 0.0
+                    
+                try:
+                    pu_val = float(row.get('precio_unitario')) if pd.notna(row.get('precio_unitario')) and row.get('precio_unitario') != '' else 0.0
+                except Exception:
+                    pu_val = 0.0
 
                 if desc or med or jk_val or cant_val or pu_val:
                     total_fila = (jk_val * cant_val * pu_val) if jk_val > 0 else (cant_val * pu_val)
