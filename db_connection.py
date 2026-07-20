@@ -3,14 +3,24 @@ import pandas as pd
 import streamlit as st
 from supabase import create_client
 
-# Conexión utilizando los Secrets de Streamlit
-SUPABASE_URL = st.secrets["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+# Carga segura de Secrets con captura de errores
+try:
+  SUPABASE_URL = st.secrets["SUPABASE_URL"]
+  SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+  supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+except Exception:
+  st.error(
+      "⚠️ **Error de Credenciales:** No se encontraron `SUPABASE_URL` o"
+      " `SUPABASE_KEY` en los Secrets de Streamlit."
+  )
+  supabase = None
 
 
 def obtener_movimientos_locales():
   """Consulta los movimientos directamente desde Supabase en lugar del archivo CSV."""
+  if not supabase:
+    return pd.DataFrame()
+
   try:
     response = (
         supabase.table("movimientos")
@@ -22,8 +32,6 @@ def obtener_movimientos_locales():
 
     if response.data:
       df = pd.DataFrame(response.data)
-
-      # Asegurar tipos de datos correctos
       df["id"] = df["id"].astype(int)
       df["fecha"] = pd.to_datetime(df["fecha"]).dt.date
       df["monto"] = df["monto"].astype(float)
@@ -50,12 +58,35 @@ def obtener_movimientos_locales():
     return df
 
   except Exception as e:
-    st.error(f"❌ Error al conectar con Supabase: {e}")
+    st.error(f"❌ Error al consultar la base de datos en Supabase: {e}")
     return pd.DataFrame()
+
+
+def guardar_movimiento_local(nuevo_registro):
+  """Guarda un nuevo registro en la tabla 'movimientos' de Supabase."""
+  if not supabase:
+    st.error("❌ No hay conexión con la base de datos Supabase.")
+    return False
+
+  try:
+    # Si 'id' viene en el diccionario y Supabase lo genera automáticamente (Identity/Serial), lo removemos
+    if "id" in nuevo_registro and (
+        nuevo_registro["id"] is None or nuevo_registro["id"] == ""
+    ):
+      nuevo_registro.pop("id")
+
+    supabase.table("movimientos").insert(nuevo_registro).execute()
+    return True
+  except Exception as e:
+    st.error(f"❌ Error al guardar el movimiento en Supabase: {e}")
+    return False
 
 
 def actualizar_movimiento_db(id_reg, cambios_dict):
   """Actualiza un registro existente directamente en la tabla de Supabase."""
+  if not supabase:
+    return
+
   try:
     supabase.table("movimientos").update(cambios_dict).eq(
         "id", id_reg
@@ -66,8 +97,9 @@ def actualizar_movimiento_db(id_reg, cambios_dict):
 
 def actualizar_consolidado_mes_db(lista_ids, estado_consolidado, usuario):
   """Actualiza el estado de consolidación para una lista de registros en Supabase."""
-  if not lista_ids:
+  if not supabase or not lista_ids:
     return
+
   try:
     supabase.table("movimientos").update({
         "consolidado": estado_consolidado,
