@@ -7,7 +7,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
-def generar_pdf_presupuesto_nativo():
+def generar_pdf_presupuesto_nativo(incluir_precios=False):
     buffer = io.BytesIO()
     
     # Configuración de página Carta física (612 x 792 puntos) con márgenes de 0.5 pulgadas (36 pt)
@@ -53,23 +53,18 @@ def generar_pdf_presupuesto_nativo():
 
     story = []
     
-# --- 🖼️ CARGA E INCRUSTACIÓN DEL LOGO (SINCRONIZADO AL 80%) ---
+    # --- 🖼️ CARGA E INCRUSTACIÓN DEL LOGO (SINCRONIZADO AL 80%) ---
     logo_nombre = "encabezado_paleta.png"
     ruta_script = os.path.join(os.path.dirname(__file__), logo_nombre)
     ruta_raiz = os.path.join(os.getcwd(), logo_nombre)
     ruta_final = ruta_script if os.path.exists(ruta_script) else (ruta_raiz if os.path.exists(ruta_raiz) else None)
     
     if ruta_final:
-        # El área máxima imprimible es 540 puntos.
-        # Si en pantalla es 80%, calculamos el 80% de 540 = 432 puntos.
-        ancho_pdf = 432  
-        
-        # Reducimos proporcionalmente la altura original (95 * 0.80 = 76) para evitar deformaciones
+        ancho_pdf = 432  # 80% de 540 puntos imprimibles
         altura_pdf = 76  
-        
-        # 🌟 Usamos hAlign='CENTER' para que ReportLab lo coloque perfectamente alineado al medio
         story.append(Image(ruta_final, width=ancho_pdf, height=altura_pdf, hAlign='CENTER'))
         story.append(Spacer(1, 10))        
+
     # --- 📄 BLOQUE METADATA ---
     meta = st.session_state.get("meta_presupuesto", {})
     p_nombre = str(meta.get('nombre', '') or '').upper() or 'PRESUPUESTO'
@@ -104,11 +99,10 @@ def generar_pdf_presupuesto_nativo():
     story.append(banner_tabla)
     story.append(Spacer(1, 10))
     
-# --- 📊 CONSTRUCCIÓN DE TABLAS DINÁMICAS ---
+    # --- 📊 CONSTRUCCIÓN DE TABLAS DINÁMICAS ---
     secciones_activas = st.session_state.get("lista_secciones", [])
     total_general = 0.0
     
-    # 🔥 Definimos anchos según la modalidad elegida
     if incluir_precios:
         anchos_columnas = [35, 225, 120, 65, 40, 55]  # 6 columnas
     else:
@@ -119,7 +113,6 @@ def generar_pdf_presupuesto_nativo():
         sec_titulo = sec.get('titulo', f'SECCIÓN {idx_sec+1}').upper()
         df_sec = st.session_state.get(f"df_{sec_id}", pd.DataFrame())
         
-        # Encabezados dinámicos
         if incluir_precios:
             tabla_datos = [[
                 Paragraph("<b>ITEM</b>", style_header_center),
@@ -160,7 +153,6 @@ def generar_pdf_presupuesto_nativo():
                     jk_str = f"{int(jk_val) if jk_val.is_integer() else jk_val}" if jk_val > 0 else ""
                     cant_str = f"{int(cant_val) if cant_val.is_integer() else cant_val}" if cant_val > 0 else ""
                     
-                    # Construcción de fila según opción elegida
                     if incluir_precios:
                         precio_str = f"{total_fila:,.2f}"
                         tabla_datos.append([
@@ -201,7 +193,6 @@ def generar_pdf_presupuesto_nativo():
         t.setStyle(TableStyle(t_style))
         story.append(t)
         
-        # Subtotal de la sección (Lleva $)
         txt_subtotal = f"<b>SUB TOTAL {sec_titulo}:&nbsp;&nbsp;&nbsp;&nbsp;${subtotal_seccion:,.2f}</b>"
         sub_p = Paragraph(txt_subtotal, ParagraphStyle('Sub', parent=style_normal, alignment=2, fontSize=9.5))
         sub_tabla = Table([[sub_p]], colWidths=[540])
@@ -238,7 +229,6 @@ def generar_pdf_presupuesto_nativo():
     story.append(Spacer(1, 4))
     story.append(Paragraph(clausulas_html, ParagraphStyle('CB', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#1a202c'), leading=12)))
     
-    # Compilar PDF en memoria
     doc.build(story)
     buffer.seek(0)
     return buffer.getvalue()
