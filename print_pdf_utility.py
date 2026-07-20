@@ -104,36 +104,48 @@ def generar_pdf_presupuesto_nativo():
     story.append(banner_tabla)
     story.append(Spacer(1, 10))
     
-    # --- 📊 CONSTRUCCIÓN DE TABLAS ---
+# --- 📊 CONSTRUCCIÓN DE TABLAS DINÁMICAS ---
     secciones_activas = st.session_state.get("lista_secciones", [])
     total_general = 0.0
     
-    # Distribución fija milimétrica de anchos (Suma exactamente 540 puntos del área imprimible)
-    anchos_columnas = [35, 225, 120, 65, 40, 55] 
+    # 🔥 Definimos anchos según la modalidad elegida
+    if incluir_precios:
+        anchos_columnas = [35, 225, 120, 65, 40, 55]  # 6 columnas
+    else:
+        anchos_columnas = [35, 260, 140, 65, 40]      # 5 columnas
     
     for idx_sec, sec in enumerate(secciones_activas):
         sec_id = sec.get('id', '')
         sec_titulo = sec.get('titulo', f'SECCIÓN {idx_sec+1}').upper()
         df_sec = st.session_state.get(f"df_{sec_id}", pd.DataFrame())
         
-        # Estructura de cabecera de la sección
-        tabla_datos = [[
-            Paragraph("<b>ITEM</b>", style_header_center),
-            Paragraph(f"<b>{sec_titulo}</b>", style_header_left),
-            Paragraph("<b>MEDIDAS</b>", style_header_left),
-            Paragraph("<b>JUEGOS<br/>/KITS</b>", style_header_center),
-            Paragraph("<b>CANT.</b>", style_header_center),
-            Paragraph("<b>PRECIO</b>", style_header_center)
-        ]]
+        # Encabezados dinámicos
+        if incluir_precios:
+            tabla_datos = [[
+                Paragraph("<b>ITEM</b>", style_header_center),
+                Paragraph(f"<b>{sec_titulo}</b>", style_header_left),
+                Paragraph("<b>MEDIDAS</b>", style_header_left),
+                Paragraph("<b>JUEGOS<br/>/KITS</b>", style_header_center),
+                Paragraph("<b>CANT.</b>", style_header_center),
+                Paragraph("<b>PRECIO</b>", style_header_center)
+            ]]
+        else:
+            tabla_datos = [[
+                Paragraph("<b>ITEM</b>", style_header_center),
+                Paragraph(f"<b>{sec_titulo}</b>", style_header_left),
+                Paragraph("<b>MEDIDAS</b>", style_header_left),
+                Paragraph("<b>JUEGOS<br/>/KITS</b>", style_header_center),
+                Paragraph("<b>CANT.</b>", style_header_center)
+            ]]
         
         subtotal_seccion = 0.0
         item_numeral = 1
         
         if not df_sec.empty:
             for row in df_sec.to_dict('records'):
-                # Cambiado de .replace("\n", "<br>") a un espacio limpio " "
                 desc = str(row.get('descripción', '') or '').strip().replace("\n", " ").replace("\r", "")
-                med = str(row.get('medidas', '') or '').strip().replace("\n", " ").replace("\r", "")                
+                med = str(row.get('medidas', '') or '').strip().replace("\n", " ").replace("\r", "")
+                
                 try: jk_val = float(row.get('juegos/kits')) if pd.notna(row.get('juegos/kits')) and row.get('juegos/kits') != '' else 0.0
                 except: jk_val = 0.0
                 try: cant_val = float(row.get('cantidad')) if pd.notna(row.get('cantidad')) and row.get('cantidad') != '' else 0.0
@@ -145,25 +157,34 @@ def generar_pdf_presupuesto_nativo():
                     total_fila = (jk_val * cant_val * pu_val) if jk_val > 0 else (cant_val * pu_val)
                     subtotal_seccion += total_fila
                     
-                    # 🌟 CAMBIO SOLICITADO: Filas sin $, solo el valor numérico formateado
-                    precio_str = f"{total_fila:,.2f}"
                     jk_str = f"{int(jk_val) if jk_val.is_integer() else jk_val}" if jk_val > 0 else ""
                     cant_str = f"{int(cant_val) if cant_val.is_integer() else cant_val}" if cant_val > 0 else ""
                     
-                    tabla_datos.append([
-                        Paragraph(str(item_numeral), style_header_center),
-                        Paragraph(desc, style_normal),
-                        Paragraph(med, style_normal),
-                        Paragraph(jk_str, style_header_center),
-                        Paragraph(cant_str, style_header_center),
-                        Paragraph(precio_str, ParagraphStyle('P', parent=style_normal, alignment=2))
-                    ])
+                    # Construcción de fila según opción elegida
+                    if incluir_precios:
+                        precio_str = f"{total_fila:,.2f}"
+                        tabla_datos.append([
+                            Paragraph(str(item_numeral), style_header_center),
+                            Paragraph(desc, style_normal),
+                            Paragraph(med, style_normal),
+                            Paragraph(jk_str, style_header_center),
+                            Paragraph(cant_str, style_header_center),
+                            Paragraph(precio_str, ParagraphStyle('P', parent=style_normal, alignment=2))
+                        ])
+                    else:
+                        tabla_datos.append([
+                            Paragraph(str(item_numeral), style_header_center),
+                            Paragraph(desc, style_normal),
+                            Paragraph(med, style_normal),
+                            Paragraph(jk_str, style_header_center),
+                            Paragraph(cant_str, style_header_center)
+                        ])
                     item_numeral += 1
         
         if item_numeral == 1:
-            tabla_datos.append([Paragraph("Sección sin registros activos", style_header_center), "", "", "", "", ""])
+            colspan_val = 6 if incluir_precios else 5
+            tabla_datos.append([Paragraph("Sección sin registros activos", style_header_center)] + [""] * (colspan_val - 1))
             
-        # Instanciar tabla con anchos físicos estrictos
         t = Table(tabla_datos, colWidths=anchos_columnas, repeatRows=1)
         t_style = [
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#fffdeb')),
@@ -174,7 +195,8 @@ def generar_pdf_presupuesto_nativo():
             ('LINEBELOW', (0,0), (-1,0), 1, colors.HexColor('#cbd5e1')),
         ]
         if item_numeral == 1:
-            t_style.append(('SPAN', (0,1), (5,1)))
+            span_limit = 5 if incluir_precios else 4
+            t_style.append(('SPAN', (0,1), (span_limit, 1)))
             
         t.setStyle(TableStyle(t_style))
         story.append(t)
