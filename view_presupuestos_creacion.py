@@ -6,23 +6,30 @@ import base64
 from print_pdf_utility import generar_pdf_presupuesto_nativo
 
 def calcular_subtotal_df(df_input):
+    """
+    Calcula el subtotal dinámico (Juegos/Kits * Cantidad * PU) para los
+    indicadores de pantalla sin alterar la estructura del data_editor.
+    """
     if df_input is None or df_input.empty:
         return 0.0
 
     subtotal = 0.0
     for _, row in df_input.iterrows():
+        # Juegos / Kits
         jk_raw = row.get('juegos/kits')
         try:
             jk_val = float(jk_raw) if pd.notna(jk_raw) and str(jk_raw).strip() != '' else 0.0
         except Exception:
             jk_val = 0.0
             
+        # Cantidad
         cant_raw = row.get('cantidad')
         try:
             cant_val = float(cant_raw) if pd.notna(cant_raw) and str(cant_raw).strip() != '' else 0.0
         except Exception:
             cant_val = 0.0
             
+        # Precio Unitario
         pu_raw = row.get('precio_unitario')
         try:
             pu_val = float(pu_raw) if pd.notna(pu_raw) and str(pu_raw).strip() != '' else 0.0
@@ -271,7 +278,7 @@ def render_creacion_presupuestos(rol_simulado):
                 "id": nuevo_id,
                 "titulo": sug_titulo
             })
-            # Inicializar la tabla en blanco solo una vez al crearse la sección
+            # DataFrame semilla estático
             st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])
             st.rerun()
 
@@ -279,9 +286,10 @@ def render_creacion_presupuestos(rol_simulado):
 
         for idx, sec in enumerate(st.session_state.lista_secciones):
             sec_id = sec["id"]
-            df_key = f"df_{sec_id}"
+            df_key = f"df_{sec_id}"       # Estructura estática base
+            res_key = f"res_{sec_id}"     # Captura de datos activos en vivo
             
-            # Inicializar únicamente si no existe previamente
+            # Inicialización única de la estructura semilla
             if df_key not in st.session_state:
                 st.session_state[df_key] = pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])
             
@@ -303,20 +311,19 @@ def render_creacion_presupuestos(rol_simulado):
                     if st.button("🗑️", key=f"del_{sec_id}", use_container_width=True) and len(st.session_state.lista_secciones) > 1:
                         st.session_state.lista_secciones.pop(idx)
                         st.session_state.pop(df_key, None)
+                        st.session_state.pop(res_key, None)
                         st.rerun()
 
-                # CLAVE DEL FIX:
-                # 1. Pasamos el DataFrame guardado a data_editor.
-                # 2. Asignamos un `key` único para la instancia del widget.
-                # 3. Inmediatamente sincronizamos `st.session_state[df_key]` con la salida.
-                df_editor_input = st.session_state[df_key]
-
+                # SOLUCIÓN DEFINITIVA:
+                # hide_index=True oculta la columna de índice de la izquierda.
+                # Se pasa la estructura base st.session_state[df_key] sin reescribirla cada ciclo, 
+                # permitiendo que st.data_editor mantenga sus datos 100% estables.
                 df_vivo = st.data_editor(
-                    df_editor_input,
+                    st.session_state[df_key],
                     key=f"editor_widget_{sec_id}",
                     num_rows="dynamic",
                     use_container_width=True,
-                    hide_index=True,
+                    hide_index=True,  # Oculta el índice de la izquierda
                     column_config={
                         "descripción": st.column_config.TextColumn("Descripción (80 ch)"),
                         "medidas": st.column_config.TextColumn("Medidas (40 ch)"),
@@ -326,17 +333,17 @@ def render_creacion_presupuestos(rol_simulado):
                     }
                 )
 
-                # Limitar filas si se pasa del máximo
+                # Limitar a máximo de filas configurado
                 if len(df_vivo) > max_filas:
                     st.error(f"⚠️ Sección {idx+1} limitada a {max_filas} líneas máximas.")
                     df_guardar = df_vivo.head(max_filas)
                 else:
                     df_guardar = df_vivo
 
-                # Actualizar el estado persistente con lo que el usuario editó
-                st.session_state[df_key] = df_guardar
+                # Almacenar en res_key para no alterar el input base y prevenir el reset del widget
+                st.session_state[res_key] = df_guardar
 
-                # Cálculo en tiempo real
+                # Cálculo del Subtotal para la pantalla de carga
                 subtotal_seccion = calcular_subtotal_df(df_guardar)
                 total_acumulado_presupuesto += subtotal_seccion
 
@@ -475,7 +482,8 @@ def render_creacion_presupuestos(rol_simulado):
         for idx_sec, sec in enumerate(secciones_activas):
             sec_id = sec.get('id', '')
             sec_titulo = sec.get('titulo', f'SECCIÓN {idx_sec+1}').upper()
-            df_sec = st.session_state.get(f"df_{sec_id}", pd.DataFrame())
+            # Lee de res_key (datos en vivo) o recae sobre df_key si estuviera vacío
+            df_sec = st.session_state.get(f"res_{sec_id}", st.session_state.get(f"df_{sec_id}", pd.DataFrame()))
             
             if incluir_precios_pdf:
                 th_cols = f"""
