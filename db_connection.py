@@ -25,6 +25,7 @@ def obtener_movimientos_locales():
     response = (
         supabase.table("movimientos")
         .select("*")
+        .limit(10000)
         .order("fecha", desc=False)
         .order("id", desc=False)
         .execute()
