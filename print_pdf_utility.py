@@ -77,7 +77,7 @@ def crear_numbered_canvas(meta, ruta_logo):
 # ==============================================================================
 # 📑 FUNCIÓN PRINCIPAL DE GENERACIÓN DE PDF
 # ==============================================================================
-def generar_pdf_presupuesto_nativo(incluir_precios=False):
+def generar_pdf_presupuesto(incluir_precios=False):
     buffer = io.BytesIO()
     
     # topMargin=150 reserva el espacio exacto para la cabecera fija
