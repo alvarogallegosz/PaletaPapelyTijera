@@ -40,7 +40,7 @@ def calcular_totales_df(df_input):
 
 
 def render_creacion_presupuestos(rol_simulado):
-    # --- 🎨 CONTROL DE INYECCIÓN CSS PARA AISLAMIENTO DE IMPRESIÓN ---
+    # --- 🎨 CONTROL DE INYECCIÓN CSS PARA AISLAMIENTO DE IMPRESIÓN Y VISTA PREVIA ---
     st.markdown("""
         <style>
             @page {
@@ -221,7 +221,7 @@ def render_creacion_presupuestos(rol_simulado):
     ]
 
     # ===================================================
-    # 📝 MODO EDICIÓN
+    # 📝 MODO EDICIÓN (PANTALLA DE CARGA)
     # ===================================================
     if st.session_state.modo_vista == "edicion":
         st.markdown("## 📝 Maquetación de Presupuesto")
@@ -285,6 +285,8 @@ def render_creacion_presupuestos(rol_simulado):
             st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])
             st.rerun()
 
+        total_acumulado_presupuesto = 0.0
+
         for idx, sec in enumerate(st.session_state.lista_secciones):
             sec_id = sec["id"]
             df_key = f"df_{sec_id}"
@@ -341,9 +343,35 @@ def render_creacion_presupuestos(rol_simulado):
                 else:
                     df_guardar = df_vivo
 
+                # Cálculo y despliegue del Subtotal de la Sección en Pantalla de Carga
+                subtotal_seccion = float(df_guardar["total_partida"].sum()) if "total_partida" in df_guardar.columns else 0.0
+                total_acumulado_presupuesto += subtotal_seccion
+
+                col_sub_l, col_sub_r = st.columns([2, 2])
+                with col_sub_r:
+                    st.markdown(
+                        f"""
+                        <div style="text-align: right; font-size: 14px; font-weight: bold; background-color: #f8fafc; padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-top: 4px;">
+                            SUB TOTAL {st.session_state.lista_secciones[idx]['titulo']}: <span style="color: #059669;">${subtotal_seccion:,.2f}</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
                 # Limpiamos la columna calculada antes de guardar en el estado puro del usuario
                 cols_base = [c for c in ["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"] if c in df_guardar.columns]
                 st.session_state[f"final_{df_key}"] = df_guardar[cols_base]
+
+        # --- 🟢 DISPLAY DEL TOTAL GENERAL EN LA PANTALLA DE CARGA ---
+        st.markdown(
+            f"""
+            <div style="background-color: #b8d7a3; padding: 10px 18px; border-radius: 6px; margin-top: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #86efac;">
+                <span style="font-size: 16px; font-weight: bold; color: #000000;">TOTAL GENERAL ESTIMADO</span>
+                <span style="font-size: 22px; font-weight: bold; color: #000000;">${total_acumulado_presupuesto:,.2f}</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
         with st.container(border=True):
             st.markdown("#### 📜 Términos y Cláusulas")
