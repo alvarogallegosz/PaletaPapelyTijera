@@ -3,6 +3,14 @@ import streamlit as st
 from datetime import datetime
 from db_connection import guardar_movimiento_local
 
+opciones_cuentas = [
+    "IN-Bs", "EG-Bs", 
+    "IN-$Ze", "EG-$Ze", 
+    "IN-$Ch", "EG-$Ch",
+    "IN-$AhZe", "EG-$AhZe",
+    "IN-$AhCh", "EG-$AhCh"
+]
+
 def render_carga(rol_actual, es_consolidado):
     if rol_actual not in ["administrador", "gerente", "contador"]:
         st.error("⛔ Tu rol actual no posee permisos de ESCRITURA en esta pestaña.")
