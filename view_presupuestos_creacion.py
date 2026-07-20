@@ -443,21 +443,22 @@ def render_creacion_presupuestos(rol_simulado):
         
         total_general = 0.0
         
-        for idx_sec, sec in enumerate(secciones_activas):
+for idx_sec, sec in enumerate(secciones_activas):
             sec_id = sec.get('id', '')
             sec_titulo = sec.get('titulo', f'SECCIÓN {idx_sec+1}').upper()
             df_sec = st.session_state.get(f"df_{sec_id}", pd.DataFrame())
             
+            # 🔥 Porcentajes calibrados para que ningún encabezado se rompa verticalmente
             html_cuerpo += f"""
             <table class="tabla-remastered">
                 <thead>
                     <tr>
-                        <th style="width: 5%; text-align: center;">ITEM</th>
-                        <th style="width: 48%; text-align: left;">{sec_titulo}</th>
-                        <th style="width: 25%; text-align: left;">MEDIDAS</th>
+                        <th style="width: 7%; text-align: center; white-space: nowrap;">ITEM</th>
+                        <th style="width: 44%; text-align: left;">{sec_titulo}</th>
+                        <th style="width: 20%; text-align: left;">MEDIDAS</th>
                         <th style="width: 8%; text-align: center;">JUEGOS/KITS</th>
-                        <th style="width: 6%; text-align: center;">CANT.</th>
-                        <th style="width: 8%; text-align: right;">PRECIO</th>
+                        <th style="width: 8%; text-align: center; white-space: nowrap;">CANT.</th>
+                        <th style="width: 10%; text-align: right; white-space: nowrap;">PRECIO</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -465,6 +466,40 @@ def render_creacion_presupuestos(rol_simulado):
             
             subtotal_seccion = 0.0
             item_numeral = 1
+            
+            if not df_sec.empty:
+                for row in df_sec.to_dict('records'):
+                    # 🔥 CAMBIO CLAVE: Reemplazamos los saltos de línea físicos por un espacio común 
+                    # para permitir que el texto use todo el ancho real de la celda de forma natural.
+                    desc = str(row.get('descripción', '') or '').strip().replace("\n", " ").replace("\r", "").replace("  ", " ")
+                    med = str(row.get('medidas', '') or '').strip().replace("\n", " ").replace("\r", "").replace("  ", " ")
+                    
+                    try: jk_val = float(row.get('juegos/kits')) if pd.notna(row.get('juegos/kits')) and row.get('juegos/kits') != '' else 0.0
+                    except: jk_val = 0.0
+                    try: cant_val = float(row.get('cantidad')) if pd.notna(row.get('cantidad')) and row.get('cantidad') != '' else 0.0
+                    except: cant_val = 0.0
+                    try: pu_val = float(row.get('precio_unitario')) if pd.notna(row.get('precio_unitario')) and row.get('precio_unitario') != '' else 0.0
+                    except: pu_val = 0.0
+
+                    if desc or med or jk_val or cant_val or pu_val:
+                        total_fila = (jk_val * cant_val * pu_val) if jk_val > 0 else (cant_val * pu_val)
+                        subtotal_seccion += total_fila
+                        
+                        precio_str = f"{total_fila:,.2f}"
+                        jk_str = f"{int(jk_val) if jk_val.is_integer() else jk_val}" if jk_val > 0 else ""
+                        cant_str = f"{int(cant_val) if cant_val.is_integer() else cant_val}" if cant_val > 0 else ""
+                        
+                        html_cuerpo += f"""
+                        <tr>
+                            <td style="text-align: center;">{item_numeral}</td>
+                            <td style="text-align: left;">{desc}</td>
+                            <td style="text-align: left;">{med}</td>
+                            <td style="text-align: center;">{jk_str}</td>
+                            <td style="text-align: center;">{cant_str}</td>
+                            <td style="text-align: right;">{precio_str}</td>
+                        </tr>
+                        """
+                        item_numeral += 1
             
             if not df_sec.empty:
                 for row in df_sec.to_dict('records'):
