@@ -199,7 +199,7 @@ def generar_pdf_presupuesto_nativo():
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ]))
     story.append(Spacer(1, 5))
-    story.append(total_table)
+    story.append(total_tabla)
     story.append(Spacer(1, 14))
     
     # --- 📝 CLÁUSULAS ---
