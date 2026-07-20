@@ -103,7 +103,7 @@ def generar_pdf_presupuesto_nativo():
     total_general = 0.0
     
     # Distribución fija milimétrica de anchos (Suma exactamente 540 puntos del área imprimible)
-    anchos_columnas = [25, 245, 140, 45, 35, 50] 
+    anchos_columnas = [35, 225, 120, 65, 40, 55] 
     
     for idx_sec, sec in enumerate(secciones_activas):
         sec_id = sec.get('id', '')
@@ -125,9 +125,9 @@ def generar_pdf_presupuesto_nativo():
         
         if not df_sec.empty:
             for row in df_sec.to_dict('records'):
-                desc = str(row.get('descripción', '') or '').strip().replace("\n", "<br/>")
-                med = str(row.get('medidas', '') or '').strip().replace("\n", "<br/>")
-                
+                # Cambiado de .replace("\n", "<br>") a un espacio limpio " "
+                desc = str(row.get('descripción', '') or '').strip().replace("\n", " ").replace("\r", "")
+                med = str(row.get('medidas', '') or '').strip().replace("\n", " ").replace("\r", "")                
                 try: jk_val = float(row.get('juegos/kits')) if pd.notna(row.get('juegos/kits')) and row.get('juegos/kits') != '' else 0.0
                 except: jk_val = 0.0
                 try: cant_val = float(row.get('cantidad')) if pd.notna(row.get('cantidad')) and row.get('cantidad') != '' else 0.0
