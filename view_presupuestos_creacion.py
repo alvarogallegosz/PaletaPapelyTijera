@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import os
 import time
+from nombre_de_tu_archivo_utilities import generar_pdf_presupuesto_nativo
 
 def render_creacion_presupuestos(rol_simulado):
     # --- 🎨 CONTROL DE INYECCIÓN CSS PARA AISLAMIENTO DE IMPRESIÓN ---
