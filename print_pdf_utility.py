@@ -6,18 +6,60 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
+from reportlab.pdfgen import canvas
+
+class NumberedCanvas(canvas.Canvas):
+    """
+    Canvas dinámico de 2 pasadas para calcular el número total de páginas
+    y dibujar el pie de página institucional ('Página X de Y').
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._saved_page_states = []
+
+    def showPage(self):
+        self._saved_page_states.append(dict(self.__dict__))
+        self._startPage()
+
+    def save(self):
+        num_pages = len(self._saved_page_states)
+        for state in self._saved_page_states:
+            self.__dict__.update(state)
+            self.draw_page_decorations(num_pages)
+            super().showPage()
+        super().save()
+
+    def draw_page_decorations(self, page_count):
+        self.saveState()
+        self.setFont("Helvetica", 8)
+        self.setFillColor(colors.HexColor('#64748b'))
+        
+        # Pie de página: 'Página X de Y' alineado a la derecha
+        texto_pagina = f"Página {self._pageNumber} de {page_count}"
+        self.drawRightString(612 - 36, 20, texto_pagina)
+        
+        # Identificador institucional a la izquierda
+        self.drawString(36, 20, "Paletapapelytijera • Presupuesto Detallado")
+        
+        # Línea separadora decorativa de pie
+        self.setStrokeColor(colors.HexColor('#e2e8f0'))
+        self.setLineWidth(0.5)
+        self.line(36, 30, 612 - 36, 30)
+        
+        self.restoreState()
+
 
 def generar_pdf_presupuesto_nativo(incluir_precios=False):
     buffer = io.BytesIO()
     
-    # Configuración de página Carta física (612 x 792 puntos) con márgenes de 0.5 pulgadas (36 pt)
+    # Configuración de página Carta física (612 x 792 pt) con márgenes de 0.5 in (36 pt)
     doc = SimpleDocTemplate(
         buffer,
         pagesize=letter,
         leftMargin=36,
         rightMargin=36,
         topMargin=36,
-        bottomMargin=36
+        bottomMargin=45
     )
     
     styles = getSampleStyleSheet()
@@ -53,14 +95,14 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
 
     story = []
     
-    # --- 🖼️ CARGA E INCRUSTACIÓN DEL LOGO (SINCRONIZADO AL 80%) ---
+    # --- 🖼️ ENCABEZADO Y LOGO ---
     logo_nombre = "encabezado_paleta.png"
     ruta_script = os.path.join(os.path.dirname(__file__), logo_nombre)
     ruta_raiz = os.path.join(os.getcwd(), logo_nombre)
     ruta_final = ruta_script if os.path.exists(ruta_script) else (ruta_raiz if os.path.exists(ruta_raiz) else None)
     
     if ruta_final:
-        ancho_pdf = 432  # 80% de 540 puntos imprimibles
+        ancho_pdf = 432  # 80% de 540 pt
         altura_pdf = 76  
         story.append(Image(ruta_final, width=ancho_pdf, height=altura_pdf, hAlign='CENTER'))
         story.append(Spacer(1, 10))        
@@ -74,11 +116,11 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
     p_emision = str(meta.get('fecha_larga', '') or '').upper() or 'N/A'
     
     meta_izq = f"<b>{p_nombre}</b><br/>FECHA DEL EVENTO: {p_fecha_evt}<br/>CLIENTE: {p_cliente} | LUGAR: {p_lugar}"
-    meta_der = f"<br/><br/>EMISIÓN: {p_emision}"
+    meta_der = f"<b>EMISIÓN: {p_emision}</b>"
     
     meta_tabla = Table(
         [[Paragraph(meta_izq, style_normal), Paragraph(meta_der, ParagraphStyle('R', parent=style_normal, alignment=2))]], 
-        colWidths=[390, 150]
+        colWidths=[380, 160]
     )
     meta_tabla.setStyle(TableStyle([
         ('VALIGN', (0,0), (-1,-1), 'TOP'),
@@ -99,7 +141,7 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
     story.append(banner_tabla)
     story.append(Spacer(1, 10))
     
-    # --- 📊 CONSTRUCCIÓN DE TABLAS DINÁMICAS ---
+    # --- 📊 TABLAS DINÁMICAS SECCIONADAS ---
     secciones_activas = st.session_state.get("lista_secciones", [])
     total_general = 0.0
     
@@ -185,6 +227,7 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
             colspan_val = 6 if incluir_precios else 5
             tabla_datos.append([Paragraph("Sección sin registros activos", style_header_center)] + [""] * (colspan_val - 1))
             
+        # repeatRows=1 permite repetir automáticamente el encabezado si la tabla se corta entre páginas
         t = Table(tabla_datos, colWidths=anchos_columnas, repeatRows=1)
         t_style = [
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#fffdeb')),
@@ -237,6 +280,7 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
     story.append(Spacer(1, 4))
     story.append(Paragraph(clausulas_html, ParagraphStyle('CB', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#1a202c'), leading=12)))
     
-    doc.build(story)
+    # Construcción con canvasmaker personalizado para contador 'Página X de Y'
+    doc.build(story, canvasmaker=NumberedCanvas)
     buffer.seek(0)
     return buffer.getvalue()
