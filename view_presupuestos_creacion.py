@@ -274,13 +274,20 @@ def render_creacion_presupuestos(rol_simulado):
         
         st.markdown("### 👁️ Vista Previa del Documento")
         
-        # 2. Generación silenciosa del binario PDF en el backend
-        # (Asegúrate de tener la función generar_pdf_presupuesto_nativo declarada arriba)
-        pdf_bytes = generar_pdf_presupuesto_nativo()
+        # 🎛️ Selector de Modalidad para el PDF
+        incluir_precios_pdf = st.toggle(
+            "📊 Incluir columna de Precios Unitarios en el PDF", 
+            value=False,
+            help="Activa para mostrar el precio individual de cada ítem, o desactiva para mostrar solo los subtotales."
+        )
+        
+        # Le pasamos el parámetro al motor PDF
+        pdf_bytes = generar_pdf_presupuesto_nativo(incluir_precios=incluir_precios_pdf)
         nombre_cliente = str(meta.get("cliente", "cliente")).strip().replace(" ", "_").lower()
         
-        # 3. Fila de Control de Acciones (3 Columnas Equilibradas)
+        # Fila de botones de control
         col_pv1, col_pv2, col_pv3 = st.columns(3)
+                
         with col_pv1:
             if st.button("✏️ Regresar a Edición", type="secondary", use_container_width=True):
                 st.session_state.modo_vista = "edicion"
@@ -441,7 +448,7 @@ def render_creacion_presupuestos(rol_simulado):
         
         total_general = 0.0
         
-for idx_sec, sec in enumerate(secciones_activas):
+        for idx_sec, sec in enumerate(secciones_activas):
             sec_id = sec.get('id', '')
             sec_titulo = sec.get('titulo', f'SECCIÓN {idx_sec+1}').upper()
             df_sec = st.session_state.get(f"df_{sec_id}", pd.DataFrame())
@@ -451,12 +458,12 @@ for idx_sec, sec in enumerate(secciones_activas):
             <table class="tabla-remastered">
                 <thead>
                     <tr>
-                        <th style="width: 7%; text-align: center; white-space: nowrap;">ITEM</th>
+                        <th style="width: 8%; text-align: center; white-space: nowrap;">ITEM</th>
                         <th style="width: 44%; text-align: left;">{sec_titulo}</th>
                         <th style="width: 20%; text-align: left;">MEDIDAS</th>
-                        <th style="width: 8%; text-align: center;">JUEGOS/KITS</th>
+                        <th style="width: 9%; text-align: center;">JUEGOS/KITS</th>
                         <th style="width: 8%; text-align: center; white-space: nowrap;">CANT.</th>
-                        <th style="width: 10%; text-align: right; white-space: nowrap;">PRECIO</th>
+                        <th style="width: 11%; text-align: right; white-space: nowrap;">PRECIO</th>
                     </tr>
                 </thead>
                 <tbody>
