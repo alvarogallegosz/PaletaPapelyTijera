@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import datetime
 
-def render_creacion_presupuestos():
+def render_creacion_presupuestos(rol_simulado=None):
     st.title("📝 Creación de Presupuesto")
     st.caption("Diligencie los campos y agregue los ítems requeridos para generar la propuesta.")
     
