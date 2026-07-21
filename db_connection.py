@@ -1,4 +1,5 @@
 # db_connection.py
+import calendar
 import pandas as pd
 import streamlit as st
 from supabase import create_client
@@ -10,6 +11,11 @@ try:
   supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 except Exception as e:
   supabase = None
+
+
+# ==========================================
+# 1. LECTURA Y MANEJO DE MOVIMIENTOS
+# ==========================================
 
 
 def obtener_movimientos_locales():
@@ -110,3 +116,67 @@ def eliminar_movimiento_db(id_registro: int) -> tuple[bool, str]:
     return False, f"No se pudo eliminar el asiento ID {id_registro}."
   except Exception as e:
     return False, f"Error al eliminar asiento ID {id_registro}: {str(e)}"
+
+
+# ==========================================
+# 2. CONSOLIDACIÓN DE MESES E HISTÓRICO
+# ==========================================
+
+
+def actualizar_consolidado_mes_db(anho, mes, estado=True, **kwargs):
+  """Actualiza el estado de consolidación (bloqueo) de todos los movimientos de un mes/año."""
+  if not supabase:
+    return False, "No hay conexión activa con Supabase."
+
+  try:
+    num_dias = calendar.monthrange(int(anho), int(mes))[1]
+    fecha_inicio = f"{int(anho):04d}-{int(mes):02d}-01"
+    fecha_fin = f"{int(anho):04d}-{int(mes):02d}-{num_dias:02d}"
+
+    respuesta = (
+        supabase.table("movimientos")
+        .update({"consolidado": bool(estado)})
+        .gte("fecha", fecha_inicio)
+        .lte("fecha", fecha_fin)
+        .execute()
+    )
+
+    return (
+        True,
+        f"Consolidación actualizada correctamente para el periodo"
+        f" {mes}/{anho}.",
+    )
+  except Exception as e:
+    return False, f"Error al actualizar consolidación: {str(e)}"
+
+
+def obtener_historico_cierres():
+  """Consulta el histórico de cierres mensuales."""
+  if not supabase:
+    return pd.DataFrame()
+
+  try:
+    for tabla in ["cierres", "historico_cierres"]:
+      try:
+        response = supabase.table(tabla).select("*").execute()
+        if response.data:
+          return pd.DataFrame(response.data)
+      except Exception:
+        continue
+    return pd.DataFrame()
+  except Exception as e:
+    return pd.DataFrame()
+
+
+def guardar_cierre_db(datos_cierre: dict) -> tuple[bool, str]:
+  """Guarda un cierre mensual consolidado."""
+  if not supabase:
+    return False, "No hay conexión activa con Supabase."
+
+  try:
+    respuesta = supabase.table("cierres").insert(datos_cierre).execute()
+    if respuesta.data:
+      return True, "¡Cierre mensual guardado con éxito!"
+    return False, "No se pudo registrar el cierre mensual."
+  except Exception as e:
+    return False, f"Error al guardar el cierre: {str(e)}"
