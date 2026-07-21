@@ -35,7 +35,7 @@ st.markdown(
         
         /* 3. Control de tipografías y márgenes para cabecera responsiva */
         h1 { 
-            font-size: 14px !important; 
+            font-size: 18px !important; 
             font-weight: 700 !important; 
             margin-top: 2px !important;     
             margin-bottom: 4px !important;    
