@@ -24,6 +24,61 @@ def _es_mes_anterior_al_inicio(df_datos, ym_evaluar) -> bool:
     return ym_evaluar < ym_minimo
 
 
+def _calcular_saldos_globales(df):
+    """Calcula la disponibilidad neta global de las 5 cuentas en todo el histórico."""
+    saldos = {'Bs': 0.0, 'Ze': 0.0, 'Ch': 0.0, 'AhZe': 0.0, 'AhCh': 0.0}
+    if df is None or df.empty:
+        return saldos
+    for _, row in df.iterrows():
+        try:
+            monto = float(row["monto"]) if pd.notnull(row["monto"]) else 0.0
+        except (ValueError, TypeError):
+            monto = 0.0
+        tipo = str(row.get("tipo", "")).strip()
+        
+        if tipo == "IN-Bs":
+            saldos['Bs'] += monto
+        elif tipo == "EG-Bs":
+            saldos['Bs'] -= monto
+        elif tipo == "IN-$Ze":
+            saldos['Ze'] += monto
+        elif tipo == "EG-$Ze":
+            saldos['Ze'] -= monto
+        elif tipo == "IN-$Ch":
+            saldos['Ch'] += monto
+        elif tipo == "EG-$Ch":
+            saldos['Ch'] -= monto
+        elif tipo == "IN-$AhZe":
+            saldos['AhZe'] += monto
+        elif tipo == "EG-$AhZe":
+            saldos['AhZe'] -= monto
+        elif tipo == "IN-$AhCh":
+            saldos['AhCh'] += monto
+        elif tipo == "EG-$AhCh":
+            saldos['AhCh'] -= monto
+    return saldos
+
+
+def render_banner_saldos(saldos_dict):
+    """Renderiza el bloque HTML superior con la disponibilidad de las 5 cuentas con idéntica estética."""
+    val_bs = float(saldos_dict.get('Bs', 0.0))
+    val_ze = float(saldos_dict.get('Ze', 0.0))
+    val_ch = float(saldos_dict.get('Ch', 0.0))
+    val_ah_ze = float(saldos_dict.get('AhZe', 0.0))
+    val_ah_ch = float(saldos_dict.get('AhCh', 0.0))
+    
+    st.markdown(f"""
+        <div style="font-size: 14px; background-color: #f8f9fa; padding: 10px 14px; border-radius: 6px; border-left: 4px solid #3b82f6; margin-top: 5px; margin-bottom: 12px; line-height: 1.8;">
+            <strong>Disponibilidad Neta en Cajas:</strong> <br>
+            <span style="color: #111827;">🟢 <b>Bs:</b> {val_bs:,.2f}</span> &nbsp;|&nbsp;
+            <span style="color: #111827;">🔵 <b>Zelle Op:</b> ${val_ze:,.2f}</span> &nbsp;|&nbsp;
+            <span style="color: #111827;">💵 <b>Cash Op:</b> ${val_ch:,.2f}</span> &nbsp;|&nbsp;
+            <span style="color: #0d9488;">🏦 <b>Ahorro Zelle:</b> ${val_ah_ze:,.2f}</span> &nbsp;|&nbsp;
+            <span style="color: #0d9488;">🐷 <b>Ahorro Cash:</b> ${val_ah_ch:,.2f}</span>
+        </div>
+    """, unsafe_allow_html=True)
+
+
 def render_carga(rol_actual, es_consolidado=False):
   # --- SISTEMA DE NOTIFICACIONES POST-RECARGA ---
   if "msg_carga" in st.session_state:
@@ -33,6 +88,14 @@ def render_carga(rol_actual, es_consolidado=False):
       elif tipo == "error":
           st.error(texto)
       del st.session_state["msg_carga"] # Limpiamos para que no salga siempre
+
+  # --- OBTENCIÓN Y RENDERIZADO DEL BANNER DE SALDOS EN EL TOPE ---
+  df_actual = st.session_state.get("df_movimientos", pd.DataFrame())
+  if df_actual.empty:
+      df_actual = obtener_movimientos_locales()
+      
+  saldos_globales = _calcular_saldos_globales(df_actual)
+  render_banner_saldos(saldos_globales)
 
   st.markdown("### 📝 Carga de Nuevos Movimientos de Caja")
 
@@ -79,7 +142,6 @@ def render_carga(rol_actual, es_consolidado=False):
   st.divider()
 
   # --- VALIDACIÓN VISUAL PREVIA ---
-  df_actual = st.session_state.get("df_movimientos", pd.DataFrame())
   meses_cerrados = _obtener_meses_cerrados(df_actual)
   ym_input = pd.to_datetime(fecha_input).strftime("%Y-%m")
   
