@@ -38,7 +38,7 @@ def render_banner_saldos(saldos_dict):
     
     st.markdown(f"""
         <div style="font-size: 14px; background-color: #f8f9fa; padding: 10px 14px; border-radius: 6px; border-left: 4px solid #3b82f6; margin-top: 5px; margin-bottom: 8px; line-height: 1.8;">
-            <strong>Disponibilidad Neta en Cajas:</strong> <br>
+            <strong>Saldos netos en caja:</strong> <br>
             <span style="color: #111827;">🟢 <b>Bs:</b> {val_bs:,.2f}</span> &nbsp;|&nbsp;
             <span style="color: #111827;">🔵 <b>Zelle Op:</b> ${val_ze:,.2f}</span> &nbsp;|&nbsp;
             <span style="color: #111827;">💵 <b>Cash Op:</b> ${val_ch:,.2f}</span> &nbsp;|&nbsp;
@@ -91,7 +91,7 @@ def render_banner_acumulados(df_filtrado):
     ac = calcular_acumulados_filtrados(df_filtrado)
     st.markdown(f"""
         <div style="font-size: 13px; background-color: #f0fdf4; padding: 8px 14px; border-radius: 6px; border-left: 4px solid #16a34a; margin-bottom: 12px; line-height: 1.8;">
-            <strong>Flujo Neto del Periodo (Acumulado según Filtros):</strong> <br>
+            <strong>Montos acumulados del período (Aplicar Filtros):</strong> <br>
             <span style="color: #14532d;">🟢 <b>Bs:</b> {ac['Bs']:,.2f}</span> &nbsp;|&nbsp;
             <span style="color: #14532d;">🔵 <b>Zelle Op:</b> ${ac['Ze']:,.2f}</span> &nbsp;|&nbsp;
             <span style="color: #14532d;">💵 <b>Cash Op:</b> ${ac['Ch']:,.2f}</span> &nbsp;|&nbsp;
