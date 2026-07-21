@@ -19,6 +19,7 @@ except Exception as e:
 
 
 def obtener_movimientos_locales():
+  """Consulta todos los movimientos desde Supabase paginando de 1000 en 1000."""
   if not supabase:
     return pd.DataFrame()
 
@@ -47,7 +48,13 @@ def obtener_movimientos_locales():
 
       inicio += tamanio_bloque
 
-    return pd.DataFrame(todos_los_datos)
+    df = pd.DataFrame(todos_los_datos)
+
+    # Conversión explícita de 'fecha' a tipo date para evitar el TypeError
+    if not df.empty and "fecha" in df.columns:
+      df["fecha"] = pd.to_datetime(df["fecha"]).dt.date
+
+    return df
 
   except Exception as e:
     st.error(f"Error al consultar Supabase: {e}")
@@ -55,6 +62,7 @@ def obtener_movimientos_locales():
 
 
 def insertar_movimiento_db(nuevo_registro: dict) -> tuple[bool, str]:
+  """Inserta un nuevo registro en Supabase y retorna (Éxito, Mensaje)."""
   if not supabase:
     return False, "No hay conexión activa con Supabase."
 
@@ -75,6 +83,7 @@ def insertar_movimiento_db(nuevo_registro: dict) -> tuple[bool, str]:
 def actualizar_movimiento_db(
     id_registro: int, cambios: dict
 ) -> tuple[bool, str]:
+  """Actualiza un registro existente en Supabase."""
   if not supabase:
     return False, "No hay conexión activa con Supabase."
 
@@ -97,6 +106,7 @@ def actualizar_movimiento_db(
 
 
 def eliminar_movimiento_db(id_registro: int) -> tuple[bool, str]:
+  """Elimina un registro en Supabase por ID."""
   if not supabase:
     return False, "No hay conexión activa con Supabase."
 
@@ -120,6 +130,7 @@ def eliminar_movimiento_db(id_registro: int) -> tuple[bool, str]:
 
 
 def actualizar_consolidado_mes_db(anho, mes, estado=True, **kwargs):
+  """Actualiza el estado de consolidación (bloqueo) de todos los movimientos de un mes/año."""
   if not supabase:
     return False, "No hay conexión activa con Supabase."
 
@@ -146,6 +157,7 @@ def actualizar_consolidado_mes_db(anho, mes, estado=True, **kwargs):
 
 
 def obtener_historico_cierres():
+  """Consulta el histórico de cierres mensuales."""
   if not supabase:
     return pd.DataFrame()
 
@@ -163,6 +175,7 @@ def obtener_historico_cierres():
 
 
 def guardar_cierre_db(datos_cierre: dict) -> tuple[bool, str]:
+  """Guarda un cierre mensual consolidado."""
   if not supabase:
     return False, "No hay conexión activa con Supabase."
 
