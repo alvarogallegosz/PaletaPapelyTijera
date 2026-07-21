@@ -9,17 +9,31 @@ def _obtener_meses_cerrados(df_datos) -> set:
     """Devuelve un set de strings 'YYYY-MM' que están bloqueados."""
     if df_datos is None or df_datos.empty or "consolidado" not in df_datos.columns:
         return set()
-    
-    # Creamos una columna temporal YYYY-MM
     df_temp = df_datos.copy()
     df_temp["ym"] = pd.to_datetime(df_temp["fecha"], errors="coerce").dt.strftime("%Y-%m")
-    
-    # Si AL MENOS UN registro en ese mes es True, el mes entero entra a la lista negra
     meses_bloqueados = df_temp[df_temp["consolidado"] == True]["ym"].unique()
     return set(meses_bloqueados)
 
 
+def _es_mes_anterior_al_inicio(df_datos, ym_evaluar) -> bool:
+    """Verifica si el mes evaluado es estrictamente anterior al primer mes registrado en la BD."""
+    if df_datos is None or df_datos.empty:
+        return False
+    fecha_minima = pd.to_datetime(df_datos["fecha"]).min()
+    ym_minimo = fecha_minima.strftime("%Y-%m")
+    return ym_evaluar < ym_minimo
+
+
 def render_carga(rol_actual, es_consolidado=False):
+  # --- SISTEMA DE NOTIFICACIONES POST-RECARGA ---
+  if "msg_carga" in st.session_state:
+      tipo, texto = st.session_state["msg_carga"]
+      if tipo == "success":
+          st.success(texto)
+      elif tipo == "error":
+          st.error(texto)
+      del st.session_state["msg_carga"] # Limpiamos para que no salga siempre
+
   st.markdown("### 📝 Carga de Nuevos Movimientos de Caja")
 
   col1, col2 = st.columns(2)
@@ -46,33 +60,16 @@ def render_carga(rol_actual, es_consolidado=False):
     tipo_input = st.selectbox(
         "Tipo de Cuenta (*):",
         options=[
-            "IN-Bs",
-            "EG-Bs",
-            "IN-$Ze",
-            "EG-$Ze",
-            "IN-$Ch",
-            "EG-$Ch",
-            "IN-$AhZe",
-            "EG-$AhZe",
-            "IN-$AhCh",
-            "EG-$AhCh",
+            "IN-Bs", "EG-Bs", "IN-$Ze", "EG-$Ze", "IN-$Ch",
+            "EG-$Ch", "IN-$AhZe", "EG-$AhZe", "IN-$AhCh", "EG-$AhCh",
         ],
         key="carga_tipo",
     )
     monto_input = st.number_input(
-        "Monto (*):",
-        min_value=0.0,
-        step=0.01,
-        format="%.2f",
-        key="carga_monto",
+        "Monto (*):", min_value=0.0, step=0.01, format="%.2f", key="carga_monto",
     )
     tasa_input = st.number_input(
-        "Tasa de Cambio Monitor:",
-        min_value=0.0,
-        value=1.0,
-        step=0.01,
-        format="%.2f",
-        key="carga_tasa",
+        "Tasa de Cambio Monitor:", min_value=0.0, value=1.0, step=0.01, format="%.2f", key="carga_tasa",
     )
 
   comentarios_input = st.text_area(
@@ -85,11 +82,18 @@ def render_carga(rol_actual, es_consolidado=False):
   df_actual = st.session_state.get("df_movimientos", pd.DataFrame())
   meses_cerrados = _obtener_meses_cerrados(df_actual)
   ym_input = pd.to_datetime(fecha_input).strftime("%Y-%m")
+  
+  es_anterior = _es_mes_anterior_al_inicio(df_actual, ym_input)
 
   if ym_input in meses_cerrados:
     st.error(
         f"🔒 **CARGA SUSPENDIDA:** El mes ({ym_input}) se encuentra "
         "**CONSOLIDADO y BLOQUEADO**. No se admiten nuevos asientos."
+    )
+  elif es_anterior:
+    st.error(
+        f"🔒 **CARGA SUSPENDIDA:** El mes ({ym_input}) es anterior al inicio de "
+        "operaciones registrado. Se encuentra cerrado predeterminadamente."
     )
   else:
     btn_registrar = st.button(
@@ -105,7 +109,10 @@ def render_carga(rol_actual, es_consolidado=False):
         meses_cerrados_real = _obtener_meses_cerrados(df_fresco)
         
         if ym_input in meses_cerrados_real:
-          st.error("❌ **BLOQUEO:** El mes seleccionado acaba de ser bloqueado por otro administrador. Operación abortada.")
+          st.error("❌ **BLOQUEO:** El mes seleccionado acaba de ser bloqueado por otro administrador.")
+          return
+        if _es_mes_anterior_al_inicio(df_fresco, ym_input):
+          st.error("❌ **BLOQUEO:** El mes seleccionado es anterior al inicio histórico de operaciones.")
           return
 
       # Validaciones de formulario
@@ -137,13 +144,13 @@ def render_carga(rol_actual, es_consolidado=False):
           "creado_por": str(rol_actual),
       }
 
-      with st.spinner("Guardando en Supabase..."):
-        exito, mensaje = insertar_movimiento_db(nuevo_asiento)
+      exito, mensaje = insertar_movimiento_db(nuevo_asiento)
 
       if exito:
-        st.success(f"🎉 {mensaje}")
-        # ACTUALIZACIÓN DE MEMORIA CACHÉ OBLIGATORIA
         st.session_state["df_movimientos"] = obtener_movimientos_locales()
+        # Guardamos el mensaje en memoria para que sobreviva al rerun
+        st.session_state["msg_carga"] = ("success", f"🎉 {mensaje}")
         st.rerun()
       else:
-        st.error(f"❌ FALLO EN BASE DE DATOS: {mensaje}")
+        st.session_state["msg_carga"] = ("error", f"❌ FALLO EN BASE DE DATOS: {mensaje}")
+        st.rerun()

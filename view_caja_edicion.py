@@ -16,6 +16,15 @@ def _obtener_meses_cerrados(df_datos) -> set:
 
 
 def render_edicion(df_completo, rol_actual, es_consolidado=False):
+  # --- SISTEMA DE NOTIFICACIONES POST-RECARGA ---
+  if "msg_edicion" in st.session_state:
+      tipo, texto = st.session_state["msg_edicion"]
+      if tipo == "success":
+          st.success(texto)
+      elif tipo == "error":
+          st.error(texto)
+      del st.session_state["msg_edicion"]
+
   st.markdown("### 🛠️ Modificaciones Generales de Auditoría")
 
   if df_completo.empty:
@@ -24,6 +33,7 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
 
   df = df_completo.copy()
   df["fecha_dt"] = pd.to_datetime(df["fecha"])
+  ym_minimo_global = df["fecha_dt"].min().strftime("%Y-%m")
 
   col_anio, col_mes, col_buscar = st.columns([1, 1, 2])
 
@@ -62,7 +72,7 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
     st.warning("No se encontraron registros con los filtros seleccionados.")
     return
 
-  # --- BLOQUEO VISUAL MASIVO (Solo si elige un mes específico y está cerrado) ---
+  # --- BLOQUEO VISUAL MASIVO ---
   meses_cerrados_locales = _obtener_meses_cerrados(df)
   bloqueo_total_vista = False
 
@@ -70,9 +80,11 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
       ym_seleccionado = f"{anio_sel}-{num_mes_sel:02d}"
       if ym_seleccionado in meses_cerrados_locales:
           bloqueo_total_vista = True
+      elif ym_seleccionado < ym_minimo_global:
+          bloqueo_total_vista = True
 
   if bloqueo_total_vista:
-    st.warning(f"🔒 **EDICIÓN SUSPENDIDA:** El mes de {mes_sel} {anio_sel} se encuentra CONSOLIDADO.")
+    st.warning(f"🔒 **EDICIÓN SUSPENDIDA:** El mes de {mes_sel} {anio_sel} se encuentra cerrado / consolidado.")
     st.dataframe(
         df_filtrado[["id", "fecha", "categoria", "detalle", "tipo", "monto", "tasa", "comentarios"]],
         use_container_width=False, hide_index=True, height=500,
@@ -104,11 +116,9 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
 
   if st.button("💾 Aplicar Cambios Consolidados en Base de Datos"):
     with st.spinner("Comparando cambios y validando bloqueos..."):
-        # 1. Consulta fresca a la BD
         df_fresco = obtener_movimientos_locales()
         meses_cerrados_real = _obtener_meses_cerrados(df_fresco)
 
-        # 2. Búsqueda diferencial (Encuentra SOLO las filas que modificaste)
         df_fil_comp = df_filtrado.set_index("id")
         df_edi_comp = df_editado.set_index("id")
         
@@ -119,7 +129,6 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
             row_f = df_fil_comp.loc[id_reg]
             row_e = df_edi_comp.loc[id_reg]
             
-            # Comparamos columna por columna para detectar si el usuario alteró esta fila
             cambio = False
             if pd.to_datetime(row_f["fecha"]) != pd.to_datetime(row_e["fecha"]): cambio = True
             if str(row_f["categoria"]).strip().upper() != str(row_e["categoria"]).strip().upper(): cambio = True
@@ -135,7 +144,6 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
             com_e = str(row_e["comentarios"]).strip() if pd.notnull(row_e["comentarios"]) and str(row_e["comentarios"]).lower() not in ['nan', 'none'] else ""
             if com_f != com_e: cambio = True
             
-            # Si hubo cambio, evaluamos si viola un mes cerrado
             if cambio:
                 ym_original = pd.to_datetime(row_f["fecha"]).strftime("%Y-%m")
                 ym_nuevo = pd.to_datetime(row_e["fecha"]).strftime("%Y-%m")
@@ -144,10 +152,11 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
                     errores_bloqueo.append(f"El ID {id_reg} pertenece a un mes cerrado ({ym_original}).")
                 elif ym_nuevo in meses_cerrados_real:
                     errores_bloqueo.append(f"No puedes mover el ID {id_reg} a un mes cerrado ({ym_nuevo}).")
+                elif ym_nuevo < ym_minimo_global:
+                    errores_bloqueo.append(f"No puedes asignar el ID {id_reg} a un mes anterior al inicio histórico ({ym_nuevo}).")
                 else:
                     ids_modificados.append(id_reg)
 
-        # 3. Reportar bloqueos y abortar si hay infracciones
         if errores_bloqueo:
             for err in list(set(errores_bloqueo)):
                 st.error(f"❌ {err}")
@@ -158,7 +167,6 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
             st.info("No se detectaron cambios en los datos que requieran guardarse.")
             return
 
-        # 4. Guardar SOLO los registros modificados lícitamente
         for id_reg in ids_modificados:
             row_e = df_edi_comp.loc[id_reg]
             fecha_str = row_e["fecha"].strftime("%Y-%m-%d") if hasattr(row_e["fecha"], "strftime") else str(row_e["fecha"])
@@ -174,7 +182,6 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
             }
             actualizar_movimiento_db(int(id_reg), cambios)
 
-        # 5. ACTUALIZACIÓN DE LA MEMORIA CACHÉ
         st.session_state["df_movimientos"] = obtener_movimientos_locales()
-        st.success(f"🎉 ¡{len(ids_modificados)} registro(s) actualizado(s) correctamente!")
+        st.session_state["msg_edicion"] = ("success", f"🎉 ¡{len(ids_modificados)} registro(s) actualizado(s) correctamente!")
         st.rerun()
