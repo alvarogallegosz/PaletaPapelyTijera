@@ -35,11 +35,25 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
   df["fecha_dt"] = pd.to_datetime(df["fecha"])
   ym_minimo_global = df["fecha_dt"].min().strftime("%Y-%m")
   
-  # Garantizar que la columna 'activo' exista en el DataFrame local
   if "activo" not in df.columns:
       df["activo"] = True
 
-  col_anio, col_mes, col_buscar = st.columns([1, 1, 2])
+  # --- FILTRADO DE SEGURIDAD: Ocultar inactivos por defecto para usuarios normales ---
+  # Si el rol o vista no es soporte técnico, filtramos estrictamente los activos.
+  es_soporte = str(rol_actual).lower() in ["soporte técnico", "soporte", "admin", "administrador"] # Ajusta según tus perfiles
+  
+  col_anio, col_mes, col_buscar, col_ver_inactivos = st.columns([1, 1, 2, 1.2])
+
+  with col_ver_inactivos:
+      st.markdown("<br>", unsafe_allow_html=True) # Espaciador visual
+      ver_inactivos = st.checkbox("🔍 Ver inactivos (Soporte)", value=False, help="Muestra los registros anulados para revisión técnica.")
+
+  if not ver_inactivos:
+      df = df[df["activo"] == True]
+
+  if df.empty:
+    st.warning("No hay registros activos disponibles para editar.")
+    return
 
   anios = sorted(df["fecha_dt"].dt.year.unique(), reverse=True)
   with col_anio:
@@ -96,7 +110,7 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
     return
 
   st.caption(
-      f"💡 Editando {len(df_filtrado)} registros. Desmarca la casilla 'Activo' para eliminar lógicamente un asiento."
+      f"💡 Editando {len(df_filtrado)} registros. Desmarca 'Activo' para dar de baja un asiento (desaparecerá de las vistas operativas)."
   )
 
   df_editado = st.data_editor(
@@ -104,7 +118,7 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
       column_order=["id", "activo", "fecha", "categoria", "detalle", "tipo", "monto", "tasa", "comentarios"],
       column_config={
           "id": st.column_config.NumberColumn("ID", width=60, disabled=True),
-          "activo": st.column_config.CheckboxColumn("Activo", width=60, help="Desmarca para anular/eliminar este registro"),
+          "activo": st.column_config.CheckboxColumn("Activo", width=60, help="Desmarca para anular lógicamente el registro"),
           "fecha": st.column_config.DateColumn("Fecha", width=100, format="DD/MM/YYYY"),
           "categoria": st.column_config.TextColumn("Categoría", width=160),
           "detalle": st.column_config.TextColumn("Descripción", width=340),
@@ -136,7 +150,6 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
             
             cambio = False
             
-            # Detección de eliminación lógica (cambio en activo)
             activo_f = bool(row_f["activo"]) if pd.notnull(row_f["activo"]) else True
             activo_e = bool(row_e["activo"]) if pd.notnull(row_e["activo"]) else True
             if activo_f != activo_e: cambio = True
