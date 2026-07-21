@@ -4,14 +4,12 @@ import streamlit as st
 
 
 def preparar_columnas_monto(df: pd.DataFrame) -> pd.DataFrame:
-  """Normaliza las columnas numéricas/monto en el DataFrame para evitar errores de tipo."""
+  """Normaliza las columnas numéricas/monto en el DataFrame."""
   if df.empty:
     return df
-
   df_out = df.copy()
   if "monto" in df_out.columns:
     df_out["monto"] = pd.to_numeric(df_out["monto"], errors="coerce").fillna(0.0)
-
   return df_out
 
 
@@ -22,226 +20,106 @@ def render_visor(
     saldos_fin: dict = None,
     **kwargs,
 ):
-  """Renderiza la vista analítica del Visor con filtros avanzados y acumulados/sumatorias dinámicas en tiempo real."""
-  st.header("📊 Visor Analítico y Acumulados")
+  st.subheader("📊 Visor de Acumulados por Cuenta")
 
   if df_movimientos is None or df_movimientos.empty:
     st.info("No hay movimientos registrados para mostrar.")
     return
 
   df_temp = preparar_columnas_monto(df_movimientos)
-  df_temp["fecha_dt"] = pd.to_datetime(df_temp["fecha"], errors="coerce")
 
-  # --- 1. SELECCIÓN/MUESTRA DE PERÍODO ---
-  # Si run_app ya le pasó el mes y el año pre-filtrados
-  if mes_sel_nombre and anho_sel:
-    st.subheader(f"🗓️ Período Evaluado: {mes_sel_nombre} {anho_sel}")
-    df_mes = df_temp.copy()
-  else:
-    st.subheader("🗓️ Selección de Período")
-    col_anho, col_mes = st.columns(2)
+  # --- LISTA OFICIAL DE LAS 5 CUENTAS ---
+  CUENTAS_OFICIALES = ["ING-$", "ING-Bs", "EG-$Ch", "EG-$Ob", "EG-Bs"]
 
-    anhos_disponibles = sorted(
-        df_temp["fecha_dt"].dt.year.dropna().unique().astype(int), reverse=True
-    )
-    if not anhos_disponibles:
-      st.warning("No se encontraron fechas válidas en los registros.")
-      return
-
-    with col_anho:
-      anho_sel = st.selectbox(
-          "Seleccione el Año", anhos_disponibles, key="visor_anho"
-      )
-
-    meses_nombres = [
-        "Enero",
-        "Febrero",
-        "Marzo",
-        "Abril",
-        "Mayo",
-        "Junio",
-        "Julio",
-        "Agosto",
-        "Septiembre",
-        "Octubre",
-        "Noviembre",
-        "Diciembre",
-    ]
-
-    with col_mes:
-      mes_num = st.selectbox(
-          "Seleccione el Mes",
-          range(1, 13),
-          format_func=lambda x: meses_nombres[x - 1],
-          key="visor_mes",
-      )
-
-    mascara_periodo = (df_temp["fecha_dt"].dt.year == int(anho_sel)) & (
-        df_temp["fecha_dt"].dt.month == int(mes_num)
-    )
-    df_mes = df_temp[mascara_periodo].copy()
-
-  if df_mes.empty:
-    st.info("No existen movimientos en el período seleccionado.")
-    return
-
-  # --- 2. FILTROS DINÁMICOS POR TIPO Y CATEGORÍA ---
-  st.markdown("---")
-  st.subheader("🔍 Filtros de Segmentación")
-  col_f1, col_f2 = st.columns(2)
-
-  tipos_unicos = (
-      sorted(
-          [
-              str(x)
-              for x in df_mes["tipo"].dropna().unique()
-              if str(x).strip() != ""
-          ]
-      )
-      if "tipo" in df_mes.columns
-      else []
+  # Si en el DataFrame la columna se llama 'tipo' o 'cuenta', normalizamos
+  col_cuenta = (
+      "tipo"
+      if "tipo" in df_temp.columns
+      else ("cuenta" if "cuenta" in df_temp.columns else None)
   )
-  opciones_tipo = ["Todos los Tipos"] + tipos_unicos
-
-  with col_f1:
-    tipo_sel = st.selectbox(
-        "Filtrar por Tipo de Cuenta", opciones_tipo, key="visor_tipo"
-    )
-
-  cat_col = (
+  col_cat = (
       "categoria"
-      if "categoria" in df_mes.columns
-      else ("concepto" if "concepto" in df_mes.columns else None)
+      if "categoria" in df_temp.columns
+      else ("concepto" if "concepto" in df_temp.columns else None)
   )
+
+  # --- FILTROS DISCRETOS ---
+  c1, c2 = st.columns(2)
+
+  opciones_cuenta = ["Todas las Cuentas"] + CUENTAS_OFICIALES
+  with c1:
+    cuenta_sel = st.selectbox(
+        "Filtrar por Cuenta", opciones_cuenta, key="visor_filtro_cuenta"
+    )
+
   cats_unicas = (
       sorted(
           [
               str(x)
-              for x in df_mes[cat_col].dropna().unique()
+              for x in df_temp[col_cat].dropna().unique()
               if str(x).strip() != ""
           ]
       )
-      if cat_col
+      if col_cat
       else []
   )
   opciones_cat = ["Todas las Categorías"] + cats_unicas
-
-  with col_f2:
+  with c2:
     cat_sel = st.selectbox(
-        "Filtrar por Categoría / Concepto", opciones_cat, key="visor_cat"
+        "Filtrar por Categoría", opciones_cat, key="visor_filtro_cat"
     )
 
-  # Aplicar filtros
-  df_filtrado = df_mes.copy()
-  if tipo_sel != "Todos los Tipos" and "tipo" in df_filtrado.columns:
-    df_filtrado = df_filtrado[df_filtrado["tipo"] == tipo_sel]
+  # --- APLICACIÓN DE FILTROS ---
+  df_filtrado = df_temp.copy()
 
-  if cat_sel != "Todas las Categorías" and cat_col:
-    df_filtrado = df_filtrado[df_filtrado[cat_col] == cat_sel]
+  if cuenta_sel != "Todas las Cuentas" and col_cuenta:
+    df_filtrado = df_filtrado[df_filtrado[col_cuenta] == cuenta_sel]
 
-  # --- 3. ACUMULADOS PARCIALES Y MÉTRICAS CLAVE ---
-  st.markdown("---")
-  st.subheader("💰 Acumulados Parciales")
+  if cat_sel != "Todas las Categorías" and col_cat:
+    df_filtrado = df_filtrado[df_filtrado[col_cat] == cat_sel]
 
-  if df_filtrado.empty:
-    st.warning("No hay registros que coincidan con la combinación de filtros.")
-    return
+  # --- CÁLCULO ALGEBRAICO DE LAS 5 CUENTAS ---
+  # Garantizamos que las 5 cuentas siempre existan en el resultado
+  totales_por_cuenta = {cta: 0.0 for cta in CUENTAS_OFICIALES}
 
-  total_monto = (
-      float(df_filtrado["monto"].sum()) if "monto" in df_filtrado.columns else 0.0
+  if not df_filtrado.empty and col_cuenta:
+    # Agrupamos y sumamos algebraicamente los montos
+    sumas = df_filtrado.groupby(col_cuenta)["monto"].sum().to_dict()
+    for cta, monto in sumas.items():
+      if cta in totales_por_cuenta:
+        totales_por_cuenta[cta] = float(monto)
+
+  # Convertimos a DataFrame horizontal/tabla financiera discreta
+  df_resumen = pd.DataFrame([totales_por_cuenta])
+
+  st.markdown("##### 💵 Acumulado Mensual del Período por Cuenta")
+
+  # Formato de moneda por columna
+  formatos = {cta: "${:,.2f}" for cta in CUENTAS_OFICIALES}
+
+  st.dataframe(
+      df_resumen.style.format(formatos),
+      use_container_width=True,
+      hide_index=True,
   )
-  cant_registros = len(df_filtrado)
-  promedio_monto = (
-      (total_monto / cant_registros) if cant_registros > 0 else 0.0
-  )
 
-  m1, m2, m3 = st.columns(3)
-  m1.metric("Sumatoria Total (Filtro)", f"${total_monto:,.2f}")
-  m2.metric("Nº de Registros", f"{cant_registros}")
-  m3.metric("Promedio por Asiento", f"${promedio_monto:,.2f}")
-
-  # --- 4. DESGLOSE ANALÍTICO (TABLAS DE ACUMULADOS) ---
-  st.markdown("#### 📊 Resumen por Agrupación")
-  tab_tipo, tab_cat = st.tabs(
-      ["Acumulado por Tipo", "Acumulado por Categoría"]
-  )
-
-  with tab_tipo:
-    if "tipo" in df_filtrado.columns and "monto" in df_filtrado.columns:
-      resumen_tipo = (
-          df_filtrado.groupby("tipo")["monto"]
-          .agg(["sum", "count", "mean"])
-          .reset_index()
-      )
-      resumen_tipo.columns = [
-          "Tipo de Cuenta",
-          "Monto Total ($)",
-          "Cantidad",
-          "Promedio ($)",
-      ]
-      resumen_tipo["% del Total"] = (
-          (resumen_tipo["Monto Total ($)"] / total_monto * 100)
-          if total_monto != 0
-          else 0.0
-      )
-
-      st.dataframe(
-          resumen_tipo.style.format({
-              "Monto Total ($)": "${:,.2f}",
-              "Promedio ($)": "${:,.2f}",
-              "% del Total": "{:.1f}%",
-          }),
-          use_container_width=True,
-          hide_index=True,
-      )
-    else:
-      st.info("Columna 'tipo' no disponible para desglose.")
-
-  with tab_cat:
-    if cat_col and "monto" in df_filtrado.columns:
-      resumen_cat = (
-          df_filtrado.groupby(cat_col)["monto"]
-          .agg(["sum", "count", "mean"])
-          .reset_index()
-      )
-      resumen_cat.columns = [
-          "Categoría / Concepto",
-          "Monto Total ($)",
-          "Cantidad",
-          "Promedio ($)",
-      ]
-      resumen_cat["% del Total"] = (
-          (resumen_cat["Monto Total ($)"] / total_monto * 100)
-          if total_monto != 0
-          else 0.0
-      )
-
-      st.dataframe(
-          resumen_cat.style.format({
-              "Monto Total ($)": "${:,.2f}",
-              "Promedio ($)": "${:,.2f}",
-              "% del Total": "{:.1f}%",
-          }),
-          use_container_width=True,
-          hide_index=True,
-      )
-    else:
-      st.info("Columna de categoría/concepto no disponible para desglose.")
-
-  # --- 5. DETALLE DE MOVIMIENTOS FILTRADOS ---
-  with st.expander("📋 Ver Listado Completo de Registros Filtrados"):
-    columnas_mostrar = [
+  # --- LISTADO DETALLADO BAJO LA TABLA ---
+  with st.expander("📋 Ver detalle de movimientos filtrados", expanded=False):
+    cols_mostrar = [
         c
-        for c in ["id", "fecha", "concepto", "categoria", "tipo", "monto"]
-        if c in df_filtrado.columns
+        for c in ["id", "fecha", col_cuenta, col_cat, "monto"]
+        if c and c in df_filtrado.columns
     ]
-    st.dataframe(
-        df_filtrado[columnas_mostrar]
-        .sort_values(by=["fecha", "id"])
-        .style.format({"monto": "${:,.2f}"}),
-        use_container_width=True,
-        hide_index=True,
-    )
+    if not df_filtrado.empty:
+      st.dataframe(
+          df_filtrado[cols_mostrar]
+          .sort_values(by=["fecha"])
+          .style.format({"monto": "${:,.2f}"}),
+          use_container_width=True,
+          hide_index=True,
+      )
+    else:
+      st.write("No hay registros para este filtro.")
 
 
 # Aliases de compatibilidad
