@@ -153,7 +153,7 @@ if modulo_activo == "📦 Registro Movimientos de Caja":
   with tab2:
     render_visor(df_mes, mes_sel_nombre, anho_sel, saldos_fin)
   with tab3:
-    render_edicion(df_mes, rol_simulado, es_consolidado)
+    render_edicion(df_completo, rol_simulado, es_consolidado)
   with tab4:
     render_historico(df_completo, rol_simulado)
 
