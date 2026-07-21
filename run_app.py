@@ -8,6 +8,7 @@ from view_caja_edicion import render_edicion
 from view_caja_historico import render_historico
 from view_caja_visor import render_visor
 from view_presupuestos_creacion import render_creacion_presupuestos
+from view_auth import render_modulo_autenticacion
 
 st.set_page_config(
     page_title="Estructura Administrativa PaletaPapelyTijera", layout="wide"
@@ -19,34 +20,37 @@ st.markdown(
     <style>
         /* 1. Ajuste del lienzo superior */
         .block-container {
-            padding-top: 2.4rem !important; 
+            padding-top: 1.2rem !important; 
             padding-bottom: 1rem !important;
             max-width: 98% !important;     
         }
         
         /* 2. Compactar espacio muerto */
         div[data-testid="stVerticalBlock"] {
-            gap: 0.5rem !important; 
+            gap: 0.4rem !important; 
         }
         .element-container {
-            margin-bottom: 5px !important;
+            margin-bottom: 4px !important;
         }
         
-        /* 3. Control de tipografías y márgenes */
+        /* 3. Control de tipografías y márgenes para cabecera responsiva */
         h1 { 
-            font-size: 22px !important; 
+            font-size: 14px !important; 
             font-weight: 700 !important; 
-            margin-top: 4px !important;     
-            margin-bottom: 6px !important;    
+            margin-top: 2px !important;     
+            margin-bottom: 4px !important;    
             padding-bottom: 0px !important; 
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        h2 { font-size: 18px !important; font-weight: 700 !important; margin-top: 2px !important; }
-        h3 { font-size: 15px !important; font-weight: 600 !important; margin-bottom: 2px !important; }
+        h2 { font-size: 16px !important; font-weight: 700 !important; margin-top: 2px !important; }
+        h3 { font-size: 14px !important; font-weight: 600 !important; margin-bottom: 2px !important; }
         
         /* SegmentedControl */
         div[data-testid="stSegmentedControl"] {
-            margin-top: 4px !important;    
-            margin-bottom: 6px !important;
+            margin-top: 2px !important;    
+            margin-bottom: 4px !important;
         }
 
         /* 4. Subpestañas */
@@ -58,11 +62,11 @@ st.markdown(
             border-bottom: 1px solid #e5e7eb;
         }
         .stTabs [data-baseweb="tab"] {
-            height: 34px !important;
+            height: 32px !important;
             background-color: transparent;
             border-radius: 6px 6px 0px 0px;
-            padding: 4px 14px !important;
-            font-size: 13px !important;
+            padding: 2px 10px !important;
+            font-size: 12px !important;
             font-weight: 500 !important;
             color: #6b7280 !important;
             border: none !important;
@@ -78,37 +82,51 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# --- SIDEBAR DE CONFIGURACIÓN GLOBAL ---
-st.sidebar.markdown("### 🛠️ Entorno de Desarrollo")
-rol_simulado = st.sidebar.selectbox(
-    "Rol Activo:", ["administrador", "gerente", "contador", "operador"]
+# ===================================================
+# 🔒 CONTROL DE SESIÓN Y AUTENTICACIÓN
+# ===================================================
+if "usuario_logueado" not in st.session_state:
+    render_modulo_autenticacion()
+    st.stop()
+
+rol_actual = st.session_state.get("usuario_rol", "operador")
+usuario_activo = st.session_state.get("usuario_logueado", "Usuario")
+
+# --- SIDEBAR: Solo usuario, botón de salir y futuros usos ---
+st.sidebar.markdown(f"### 👤 **{usuario_activo.upper()}**")
+st.sidebar.caption(f"Rol: {rol_actual.upper()}")
+
+if st.sidebar.button("🚪 Cerrar Sesión", use_container_width=True, type="secondary"):
+    del st.session_state["usuario_logueado"]
+    if "usuario_rol" in st.session_state:
+        del st.session_state["usuario_rol"]
+    st.rerun()
+
+st.sidebar.markdown("---")
+st.sidebar.markdown(
+    "<p style='font-size: 11px; color: gray;'>[Espacio reservado para futuros usos]</p>",
+    unsafe_allow_html=True,
 )
 
-# Carga directa de la base de datos y sincronización inmediata con el Session State
+# --- CARGA DE DATOS ---
 df_completo = obtener_movimientos_locales()
 st.session_state["df_movimientos"] = df_completo
 
-st.sidebar.markdown("---")
-st.sidebar.subheader("📅 Filtro Global Temporal")
-meses_nombres = {
-    1: "Enero",
-    2: "Febrero",
-    3: "Marzo",
-    4: "Abril",
-    5: "Mayo",
-    6: "Junio",
-    7: "Julio",
-    8: "Agosto",
-    9: "Septiembre",
-    10: "Octubre",
-    11: "Noviembre",
-    12: "Diciembre",
-}
-anho_sel = st.sidebar.selectbox("Año", [2026, 2025])
-mes_sel_nombre = st.sidebar.selectbox(
-    "Mes", list(meses_nombres.values()), index=datetime.datetime.now().month - 1
+# --- CUERPO PRINCIPAL ---
+st.markdown(
+    f"<h1>📊 Estructura Administrativa — {usuario_activo.upper()} ({rol_actual.upper()})</h1>",
+    unsafe_allow_html=True,
 )
-mes_sel_num = [k for k, v in meses_nombres.items() if v == mes_sel_nombre][0]
+
+# Valores por defecto automáticos para el motor financiero (mes y año en curso)
+meses_nombres = {
+    1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
+    5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto",
+    9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
+}
+anho_sel = datetime.datetime.now().year
+mes_sel_num = datetime.datetime.now().month
+mes_sel_nombre = meses_nombres[mes_sel_num]
 
 # Procesamiento financiero aislado por mes (5 Cuentas)
 df_mes, saldos_ini, saldos_fin = procesar_mes_aislado(
@@ -117,12 +135,6 @@ df_mes, saldos_ini, saldos_fin = procesar_mes_aislado(
 
 # Detección de consolidación
 es_consolidado = df_mes["consolidado"].all() if not df_mes.empty else False
-
-# --- CUERPO PRINCIPAL ---
-st.markdown(
-    f"<h1>📊 Estructura Administrativa — {rol_simulado.upper()}</h1>",
-    unsafe_allow_html=True,
-)
 
 modulos_sistema = [
     "📦 Registro Movimientos de Caja",
@@ -149,13 +161,13 @@ if modulo_activo == "📦 Registro Movimientos de Caja":
   ])
 
   with tab1:
-    render_carga(rol_simulado, es_consolidado)
+    render_carga(rol_actual, es_consolidado)
   with tab2:
     render_visor(df_mes, mes_sel_nombre, anho_sel, saldos_fin)
   with tab3:
-    render_edicion(df_completo, rol_simulado, es_consolidado)
+    render_edicion(df_completo, rol_actual, es_consolidado)
   with tab4:
-    render_historico(df_completo, rol_simulado)
+    render_historico(df_completo, rol_actual)
 
 elif modulo_activo == "📊 Presupuestos (Servicios al Cliente)":
   st.markdown("### 📊 Panel General de Presupuestos")
@@ -163,7 +175,7 @@ elif modulo_activo == "📊 Presupuestos (Servicios al Cliente)":
       ["📝 Creación y Carga", "🔄 Gestión y Aprobación", "📚 Plantillas e Histórico"]
   )
   with tab1:
-    render_creacion_presupuestos(rol_simulado)
+    render_creacion_presupuestos(rol_actual)
 
 elif modulo_activo == "📊 Facturación":
   st.markdown("### 📊 Panel General de Facturación")
