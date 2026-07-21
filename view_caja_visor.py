@@ -37,13 +37,66 @@ def render_banner_saldos(saldos_dict):
     val_ah_ch = float(saldos_dict.get('AhCh', 0.0))
     
     st.markdown(f"""
-        <div style="font-size: 14px; background-color: #f8f9fa; padding: 10px 14px; border-radius: 6px; border-left: 4px solid #3b82f6; margin-top: 5px; margin-bottom: 12px; line-height: 1.8;">
+        <div style="font-size: 14px; background-color: #f8f9fa; padding: 10px 14px; border-radius: 6px; border-left: 4px solid #3b82f6; margin-top: 5px; margin-bottom: 8px; line-height: 1.8;">
             <strong>Disponibilidad Neta en Cajas:</strong> <br>
             <span style="color: #111827;">🟢 <b>Bs:</b> {val_bs:,.2f}</span> &nbsp;|&nbsp;
             <span style="color: #111827;">🔵 <b>Zelle Op:</b> ${val_ze:,.2f}</span> &nbsp;|&nbsp;
             <span style="color: #111827;">💵 <b>Cash Op:</b> ${val_ch:,.2f}</span> &nbsp;|&nbsp;
             <span style="color: #0d9488;">🏦 <b>Ahorro Zelle:</b> ${val_ah_ze:,.2f}</span> &nbsp;|&nbsp;
             <span style="color: #0d9488;">🐷 <b>Ahorro Cash:</b> ${val_ah_ch:,.2f}</span>
+        </div>
+    """, unsafe_allow_html=True)
+
+
+def calcular_acumulados_filtrados(df):
+    """Calcula el flujo neto (Ingresos - Egresos) de las 5 cuentas sobre el conjunto filtrado."""
+    acumulados = {'Bs': 0.0, 'Ze': 0.0, 'Ch': 0.0, 'AhZe': 0.0, 'AhCh': 0.0}
+    if df.empty:
+        return acumulados
+
+    for _, row in df.iterrows():
+        try:
+            monto_val = float(row["monto"]) if pd.notnull(row["monto"]) else 0.0
+        except (ValueError, TypeError):
+            monto_val = 0.0
+            
+        tipo_str = str(row.get("tipo", "")).strip()
+        
+        if tipo_str == "IN-Bs":
+            acumulados['Bs'] += monto_val
+        elif tipo_str == "EG-Bs":
+            acumulados['Bs'] -= monto_val
+        elif tipo_str == "IN-$Ze":
+            acumulados['Ze'] += monto_val
+        elif tipo_str == "EG-$Ze":
+            acumulados['Ze'] -= monto_val
+        elif tipo_str == "IN-$Ch":
+            acumulados['Ch'] += monto_val
+        elif tipo_str == "EG-$Ch":
+            acumulados['Ch'] -= monto_val
+        elif tipo_str == "IN-$AhZe":
+            acumulados['AhZe'] += monto_val
+        elif tipo_str == "EG-$AhZe":
+            acumulados['AhZe'] -= monto_val
+        elif tipo_str == "IN-$AhCh":
+            acumulados['AhCh'] += monto_val
+        elif tipo_str == "EG-$AhCh":
+            acumulados['AhCh'] -= monto_val
+            
+    return acumulados
+
+
+def render_banner_acumulados(df_filtrado):
+    """Renderiza el bloque secundario con los flujos netos condicionados por los filtros actuales."""
+    ac = calcular_acumulados_filtrados(df_filtrado)
+    st.markdown(f"""
+        <div style="font-size: 13px; background-color: #f0fdf4; padding: 8px 14px; border-radius: 6px; border-left: 4px solid #16a34a; margin-bottom: 12px; line-height: 1.8;">
+            <strong>Flujo Neto del Periodo (Acumulado según Filtros):</strong> <br>
+            <span style="color: #14532d;">🟢 <b>Bs:</b> {ac['Bs']:,.2f}</span> &nbsp;|&nbsp;
+            <span style="color: #14532d;">🔵 <b>Zelle Op:</b> ${ac['Ze']:,.2f}</span> &nbsp;|&nbsp;
+            <span style="color: #14532d;">💵 <b>Cash Op:</b> ${ac['Ch']:,.2f}</span> &nbsp;|&nbsp;
+            <span style="color: #166534;">🏦 <b>Ahorro Zelle:</b> ${ac['AhZe']:,.2f}</span> &nbsp;|&nbsp;
+            <span style="color: #166534;">🐷 <b>Ahorro Cash:</b> ${ac['AhCh']:,.2f}</span>
         </div>
     """, unsafe_allow_html=True)
 
@@ -83,8 +136,11 @@ def render_visor(df_mes, mes_nombre, anho, saldos_fin):
     if tipos_sel:
         df_filtrado = df_filtrado[df_filtrado["tipo"].isin(tipos_sel)]
 
-    # BANNER DE SALDOS CON LAS 5 CUENTAS
+    # BANNER DE SALDOS DINÁMICOS GLOBALES
     render_banner_saldos(saldos_fin)
+    
+    # BANNER DE ACUMULADOS NETOS (SUSCEPTIBLES A FILTROS, SIN SALDO INICIAL)
+    render_banner_acumulados(df_filtrado)
 
     if df_filtrado.empty:
         st.info("Ningún registro operativo coincide con la parametrización seleccionada.")
