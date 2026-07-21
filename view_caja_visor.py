@@ -4,7 +4,7 @@ import streamlit as st
 
 
 def preparar_columnas_monto(df: pd.DataFrame) -> pd.DataFrame:
-  """Normaliza las columnas numéricas/monto en el DataFrame para evitar discrepancias de tipo."""
+  """Normaliza las columnas numéricas/monto en el DataFrame para evitar errores de tipo."""
   if df.empty:
     return df
 
@@ -17,69 +17,72 @@ def preparar_columnas_monto(df: pd.DataFrame) -> pd.DataFrame:
 
 def render_visor(
     df_movimientos: pd.DataFrame,
-    rol_usuario: str = "operador",
-    es_consolidado: bool = False,
+    mes_sel_nombre: str = "",
+    anho_sel: int = None,
+    saldos_fin: dict = None,
+    **kwargs,
 ):
   """Renderiza la vista analítica del Visor con filtros avanzados y acumulados/sumatorias dinámicas en tiempo real."""
   st.header("📊 Visor Analítico y Acumulados")
 
-  if df_movimientos.empty:
-    st.info("No hay movimientos registrados en la base de datos.")
+  if df_movimientos is None or df_movimientos.empty:
+    st.info("No hay movimientos registrados para mostrar.")
     return
 
   df_temp = preparar_columnas_monto(df_movimientos)
   df_temp["fecha_dt"] = pd.to_datetime(df_temp["fecha"], errors="coerce")
 
-  # --- 1. SELECCIÓN DE PERÍODO (AÑO Y MES) ---
-  st.subheader("🗓️ Selección de Período")
-  col_anho, col_mes = st.columns(2)
+  # --- 1. SELECCIÓN/MUESTRA DE PERÍODO ---
+  # Si run_app ya le pasó el mes y el año pre-filtrados
+  if mes_sel_nombre and anho_sel:
+    st.subheader(f"🗓️ Período Evaluado: {mes_sel_nombre} {anho_sel}")
+    df_mes = df_temp.copy()
+  else:
+    st.subheader("🗓️ Selección de Período")
+    col_anho, col_mes = st.columns(2)
 
-  anhos_disponibles = sorted(
-      df_temp["fecha_dt"].dt.year.dropna().unique().astype(int), reverse=True
-  )
-  if not anhos_disponibles:
-    st.warning("No se encontraron fechas válidas en los registros.")
-    return
-
-  with col_anho:
-    anho_sel = st.selectbox(
-        "Seleccione el Año", anhos_disponibles, key="visor_anho"
+    anhos_disponibles = sorted(
+        df_temp["fecha_dt"].dt.year.dropna().unique().astype(int), reverse=True
     )
+    if not anhos_disponibles:
+      st.warning("No se encontraron fechas válidas en los registros.")
+      return
 
-  meses_nombres = [
-      "Enero",
-      "Febrero",
-      "Marzo",
-      "Abril",
-      "Mayo",
-      "Junio",
-      "Julio",
-      "Agosto",
-      "Septiembre",
-      "Octubre",
-      "Noviembre",
-      "Diciembre",
-  ]
+    with col_anho:
+      anho_sel = st.selectbox(
+          "Seleccione el Año", anhos_disponibles, key="visor_anho"
+      )
 
-  with col_mes:
-    mes_sel = st.selectbox(
-        "Seleccione el Mes",
-        range(1, 13),
-        format_func=lambda x: meses_nombres[x - 1],
-        key="visor_mes",
+    meses_nombres = [
+        "Enero",
+        "Febrero",
+        "Marzo",
+        "Abril",
+        "Mayo",
+        "Junio",
+        "Julio",
+        "Agosto",
+        "Septiembre",
+        "Octubre",
+        "Noviembre",
+        "Diciembre",
+    ]
+
+    with col_mes:
+      mes_num = st.selectbox(
+          "Seleccione el Mes",
+          range(1, 13),
+          format_func=lambda x: meses_nombres[x - 1],
+          key="visor_mes",
+      )
+
+    mascara_periodo = (df_temp["fecha_dt"].dt.year == int(anho_sel)) & (
+        df_temp["fecha_dt"].dt.month == int(mes_num)
     )
-
-  # Filtrar por mes y año seleccionado
-  mascara_periodo = (df_temp["fecha_dt"].dt.year == int(anho_sel)) & (
-      df_temp["fecha_dt"].dt.month == int(mes_sel)
-  )
-  df_mes = df_temp[mascara_periodo].copy()
+    df_mes = df_temp[mascara_periodo].copy()
 
   if df_mes.empty:
-    st.info(
-        f"No existen movimientos en **{meses_nombres[mes_sel-1]} de"
-        f" {anho_sel}**."
-    )
+    st.info("No existen movimientos en el período seleccionado.")
     return
 
   # --- 2. FILTROS DINÁMICOS POR TIPO Y CATEGORÍA ---
@@ -87,7 +90,6 @@ def render_visor(
   st.subheader("🔍 Filtros de Segmentación")
   col_f1, col_f2 = st.columns(2)
 
-  # Obtener opciones dinámicas de Tipo
   tipos_unicos = (
       sorted(
           [
@@ -106,7 +108,6 @@ def render_visor(
         "Filtrar por Tipo de Cuenta", opciones_tipo, key="visor_tipo"
     )
 
-  # Determinar la columna de categoría/concepto
   cat_col = (
       "categoria"
       if "categoria" in df_mes.columns
@@ -130,7 +131,7 @@ def render_visor(
         "Filtrar por Categoría / Concepto", opciones_cat, key="visor_cat"
     )
 
-  # Aplicar los filtros sobre el conjunto del mes
+  # Aplicar filtros
   df_filtrado = df_mes.copy()
   if tipo_sel != "Todos los Tipos" and "tipo" in df_filtrado.columns:
     df_filtrado = df_filtrado[df_filtrado["tipo"] == tipo_sel]
@@ -154,7 +155,6 @@ def render_visor(
       (total_monto / cant_registros) if cant_registros > 0 else 0.0
   )
 
-  # Tarjetas Principales
   m1, m2, m3 = st.columns(3)
   m1.metric("Sumatoria Total (Filtro)", f"${total_monto:,.2f}")
   m2.metric("Nº de Registros", f"{cant_registros}")
@@ -244,6 +244,6 @@ def render_visor(
     )
 
 
-# Aliases de compatibilidad para exportación cruzada de funciones
+# Aliases de compatibilidad
 render_view_caja_visor = render_visor
 render_caja_visor = render_visor
