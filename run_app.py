@@ -1,14 +1,16 @@
 # run_app.py
 import datetime
+import pandas as pd
+import streamlit as st
+
 from core_finance_engine import procesar_mes_aislado
 from db_connection import obtener_movimientos_locales
-import streamlit as st
+from view_auth import render_modulo_autenticacion
 from view_caja_carga import render_carga
 from view_caja_edicion import render_edicion
 from view_caja_historico import render_historico
 from view_caja_visor import render_visor
 from view_presupuestos_creacion import render_creacion_presupuestos
-from view_auth import render_modulo_autenticacion
 
 st.set_page_config(
     page_title="Estructura Administrativa PaletaPapelyTijera", layout="wide"
@@ -92,14 +94,14 @@ if "usuario_logueado" not in st.session_state:
 rol_actual = st.session_state.get("usuario_rol", "operador").strip().lower()
 usuario_activo = st.session_state.get("usuario_logueado", "Usuario")
 
-# --- SIDEBAR: Solo usuario, botón de salir y futuros usos ---
+# --- SIDEBAR: Usuario, rol y control de salida ---
 st.sidebar.markdown(f"### 👤 **{usuario_activo.upper()}**")
 st.sidebar.caption(f"Rol: {rol_actual.upper()}")
 
 if st.sidebar.button("🚪 Cerrar Sesión", use_container_width=True, type="secondary"):
-    del st.session_state["usuario_logueado"]
-    if "usuario_rol" in st.session_state:
-        del st.session_state["usuario_rol"]
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.toast("Sesión cerrada correctamente", icon="👋")
     st.rerun()
 
 st.sidebar.markdown("---")
@@ -108,7 +110,7 @@ st.sidebar.markdown(
     unsafe_allow_html=True,
 )
 
-# --- CARGA DE DATOS ---
+# --- CARGA DE DATOS CENTRALIZADA ---
 df_completo = obtener_movimientos_locales()
 st.session_state["df_movimientos"] = df_completo
 
@@ -129,12 +131,15 @@ mes_sel_num = datetime.datetime.now().month
 mes_sel_nombre = meses_nombres[mes_sel_num]
 
 # Procesamiento financiero aislado por mes (5 Cuentas)
-df_mes, saldos_ini, saldos_fin = procesar_mes_aislado(
-    df_completo, anho_sel, mes_sel_num
-)
-
-# Detección de consolidación
-es_consolidado = df_mes["consolidado"].all() if not df_mes.empty else False
+if not df_completo.empty:
+    df_mes, saldos_ini, saldos_fin = procesar_mes_aislado(
+        df_completo, anho_sel, mes_sel_num
+    )
+    es_consolidado = df_mes["consolidado"].all() if not df_mes.empty and "consolidado" in df_mes.columns else False
+else:
+    df_mes = pd.DataFrame()
+    saldos_ini, saldos_fin = {}, {}
+    es_consolidado = False
 
 # ===================================================
 # 🧭 NAVEGACIÓN Y PERMISOS SEGÚN MATRIZ DE ROLES
@@ -174,6 +179,7 @@ modulo_activo = st.segmented_control(
     options=modulos_sistema,
     default=modulos_sistema[0],
     label_visibility="collapsed",
+    key="nav_modulo_principal",
 )
 
 # --- ENRUTADOR DE MÓDULOS ---
@@ -197,7 +203,6 @@ if modulo_activo == "📦 Registro Movimientos de Caja":
             render_historico(df_completo, rol_actual)
 
     elif rol_actual in ["gerente", "soporte"]:
-        # Gerente y Soporte solo ven Visor e Histórico (sin carga ni edición)
         tab1, tab2 = st.tabs([
             "🔍 Libro Diario",
             "📚 Histórico de Cierres Mensuales",
@@ -208,7 +213,6 @@ if modulo_activo == "📦 Registro Movimientos de Caja":
             render_historico(df_completo, rol_actual)
 
     elif rol_actual == "contador":
-        # Contador solo ve históricos en Caja
         tab1 = st.tabs(["📚 Histórico de Cierres Mensuales"])[0]
         with tab1:
             render_historico(df_completo, rol_actual)
@@ -218,7 +222,6 @@ elif modulo_activo == "📊 Presupuestos (Servicios al Cliente)":
     st.markdown("### 📊 Panel General de Presupuestos")
     
     if rol_actual == "operador":
-        # Operador solo ve la consulta e impresión
         tab1 = st.tabs(["📚 Plantillas e Histórico (Impresión)"])[0]
         with tab1:
             st.info("🔍 Módulo de búsqueda y descarga/impresión de presupuestos (Modo Solo Lectura).")
