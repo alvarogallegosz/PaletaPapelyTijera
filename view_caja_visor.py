@@ -1,116 +1,237 @@
 # view_caja_visor.py
-import streamlit as st
 import pandas as pd
-
-def preparar_columnas_monto(df):
-    """Desglosa la columna genérica 'monto' en 5 columnas visuales según el tipo de movimiento."""
-    if df.empty:
-        for col in ["Monto Bs", "Monto $ Zelle", "Monto $ Cash", "Monto $ Ah-Ze", "Monto $ Ah-Ch"]:
-            df[col] = ""
-        return df
-
-    def evaluar_monto(row, prefijo_tipo):
-        monto_val = float(row["monto"]) if pd.notnull(row["monto"]) else 0.0
-        tipo_str = str(row.get("tipo", "")).strip()
-        
-        if tipo_str == f"IN-{prefijo_tipo}":
-            return f"+{monto_val:,.2f}"
-        elif tipo_str == f"EG-{prefijo_tipo}":
-            return f"-{monto_val:,.2f}"
-        return ""
-
-    df["Monto Bs"] = df.apply(lambda r: evaluar_monto(r, "Bs"), axis=1)
-    df["Monto $ Zelle"] = df.apply(lambda r: evaluar_monto(r, "$Ze"), axis=1)
-    df["Monto $ Cash"] = df.apply(lambda r: evaluar_monto(r, "$Ch"), axis=1)
-    df["Monto $ Ah-Ze"] = df.apply(lambda r: evaluar_monto(r, "$AhZe"), axis=1)
-    df["Monto $ Ah-Ch"] = df.apply(lambda r: evaluar_monto(r, "$AhCh"), axis=1)
-    
-    return df
+import streamlit as st
 
 
-def render_banner_saldos(saldos_dict):
-    """Renderiza el bloque HTML superior con la disponibilidad de las 5 cuentas."""
-    val_bs = float(saldos_dict.get('Bs', 0.0))
-    val_ze = float(saldos_dict.get('Ze', 0.0))
-    val_ch = float(saldos_dict.get('Ch', 0.0))
-    val_ah_ze = float(saldos_dict.get('AhZe', 0.0))
-    val_ah_ch = float(saldos_dict.get('AhCh', 0.0))
-    
-    st.markdown(f"""
-        <div style="font-size: 14px; background-color: #f8f9fa; padding: 10px 14px; border-radius: 6px; border-left: 4px solid #3b82f6; margin-top: 5px; margin-bottom: 12px; line-height: 1.8;">
-            <strong>Disponibilidad Neta en Cajas:</strong> <br>
-            <span style="color: #111827;">🟢 <b>Bs:</b> {val_bs:,.2f}</span> &nbsp;|&nbsp;
-            <span style="color: #111827;">🔵 <b>Zelle Op:</b> ${val_ze:,.2f}</span> &nbsp;|&nbsp;
-            <span style="color: #111827;">💵 <b>Cash Op:</b> ${val_ch:,.2f}</span> &nbsp;|&nbsp;
-            <span style="color: #0d9488;">🏦 <b>Ahorro Zelle:</b> ${val_ah_ze:,.2f}</span> &nbsp;|&nbsp;
-            <span style="color: #0d9488;">🐷 <b>Ahorro Cash:</b> ${val_ah_ch:,.2f}</span>
-        </div>
-    """, unsafe_allow_html=True)
+def render_visor(
+    df_movimientos: pd.DataFrame,
+    rol_usuario: str = "operador",
+    es_consolidado: bool = False,
+):
+  """Renderiza la vista analítica del Visor con filtros avanzados y acumulados/sumatorias dinámicas en tiempo real."""
+  st.header("📊 Visor Analítico y Acumulados")
 
+  if df_movimientos.empty:
+    st.info("No hay movimientos registrados en la base de datos.")
+    return
 
-def render_visor(df_mes, mes_nombre, anho, saldos_fin):
-    """Punto de entrada principal invocado por run_app.py."""
-    df_filtrado = df_mes.copy()
-    
-    # --- FILA SUPERIOR PARALELA: SUBTÍTULO + FILTROS ---
-    col_title, col_f1, col_f2, col_f3 = st.columns([1.6, 1.3, 1.4, 1.4])
-    
-    with col_title:
-        st.markdown(f"### 🔍 Libro Diario\n*{mes_nombre} {anho}*")
-        
-    with col_f1:
-        df_filtrado["fecha_date"] = pd.to_datetime(df_filtrado["fecha"]).dt.date
-        min_f = df_filtrado["fecha_date"].min() if not df_filtrado.empty else pd.Timestamp.now().date()
-        max_f = df_filtrado["fecha_date"].max() if not df_filtrado.empty else pd.Timestamp.now().date()
-        rango_fecha = st.date_input("Rango Fechas", value=(min_f, max_f), min_value=min_f, max_value=max_f, key="v_date")
-        
-    with col_f2:
-        cats_opts = sorted(df_filtrado["categoria"].unique()) if not df_filtrado.empty else []
-        cats_sel = st.multiselect("Filtrar Categoría", options=cats_opts, key="v_cat")
-        
-    with col_f3:
-        tipos_opts = sorted(df_filtrado["tipo"].unique()) if not df_filtrado.empty else []
-        tipos_sel = st.multiselect("Filtrar Tipo", options=tipos_opts, key="v_tipo")
+  df_temp = df_movimientos.copy()
+  df_temp["fecha_dt"] = pd.to_datetime(df_temp["fecha"], errors="coerce")
 
-    # Aplicación defensiva de filtros
-    if isinstance(rango_fecha, tuple) and len(rango_fecha) == 2:
-        df_filtrado = df_filtrado[(df_filtrado["fecha_date"] >= rango_fecha[0]) & (df_filtrado["fecha_date"] <= rango_fecha[1])]
-    elif isinstance(rango_fecha, tuple) and len(rango_fecha) == 1:
-        df_filtrado = df_filtrado[df_filtrado["fecha_date"] == rango_fecha[0]]
-        
-    if cats_sel:
-        df_filtrado = df_filtrado[df_filtrado["categoria"].isin(cats_sel)]
-    if tipos_sel:
-        df_filtrado = df_filtrado[df_filtrado["tipo"].isin(tipos_sel)]
+  # --- 1. SELECCIÓN DE PERÍODO (AÑO Y MES) ---
+  st.subheader("🗓️ Selección de Período")
+  col_anho, col_mes = st.columns(2)
 
-    # BANNER DE SALDOS CON LAS 5 CUENTAS
-    render_banner_saldos(saldos_fin)
+  anhos_disponibles = sorted(
+      df_temp["fecha_dt"].dt.year.dropna().unique().astype(int), reverse=True
+  )
+  if not anhos_disponibles:
+    st.warning("No se encontraron fechas válidas en los registros.")
+    return
 
-    if df_filtrado.empty:
-        st.info("Ningún registro operativo coincide con la parametrización seleccionada.")
-        return
-
-    # Renderizado de la tabla contable
-    df_visual = df_filtrado.copy()
-    df_visual = preparar_columnas_monto(df_visual)
-    df_visual["Fecha Ext"] = pd.to_datetime(df_visual["fecha"]).dt.strftime("%d/%m/%Y")
-    df_visual = df_visual.rename(columns={"detalle": "Descripción", "categoria": "Categoría", "tipo": "Tipo", "comentarios": "Comentario"})
-    
-    st.dataframe(
-        df_visual[["Fecha Ext", "Descripción", "Categoría", "Tipo", "Monto Bs", "Monto $ Zelle", "Monto $ Cash", "Monto $ Ah-Ze", "Monto $ Ah-Ch", "Comentario"]],
-        column_config={
-            "Fecha Ext": st.column_config.TextColumn("Fecha", width=100),
-            "Descripción": st.column_config.TextColumn("Descripción", width=300),
-            "Categoría": st.column_config.TextColumn("Categoría", width=140),
-            "Tipo": st.column_config.TextColumn("Tipo", width=90),
-            "Monto Bs": st.column_config.TextColumn("Monto Bs", width=110),
-            "Monto $ Zelle": st.column_config.TextColumn("Monto $ Zelle", width=110),
-            "Monto $ Cash": st.column_config.TextColumn("Monto $ Cash", width=110),
-            "Monto $ Ah-Ze": st.column_config.TextColumn("Monto $ Ah-Ze", width=110),
-            "Monto $ Ah-Ch": st.column_config.TextColumn("Monto $ Ah-Ch", width=110),
-            "Comentario": st.column_config.TextColumn("Comentario", width=300),
-        },
-        use_container_width=False,
-        hide_index=True,
-        height=600
+  with col_anho:
+    anho_sel = st.selectbox(
+        "Seleccione el Año", anhos_disponibles, key="visor_anho"
     )
+
+  meses_nombres = [
+      "Enero",
+      "Febrero",
+      "Marzo",
+      "Abril",
+      "Mayo",
+      "Junio",
+      "Julio",
+      "Agosto",
+      "Septiembre",
+      "Octubre",
+      "Noviembre",
+      "Diciembre",
+  ]
+
+  with col_mes:
+    mes_sel = st.selectbox(
+        "Seleccione el Mes",
+        range(1, 13),
+        format_func=lambda x: meses_nombres[x - 1],
+        key="visor_mes",
+    )
+
+  # Filtrar por mes y año seleccionado
+  mascara_periodo = (df_temp["fecha_dt"].dt.year == int(anho_sel)) & (
+      df_temp["fecha_dt"].dt.month == int(mes_sel)
+  )
+  df_mes = df_temp[mascara_periodo].copy()
+
+  if df_mes.empty:
+    st.info(
+        f"No existen movimientos en **{meses_nombres[mes_sel-1]} de"
+        f" {anho_sel}**."
+    )
+    return
+
+  # --- 2. FILTROS DINÁMICOS POR TIPO Y CATEGORÍA ---
+  st.markdown("---")
+  st.subheader("🔍 Filtros de Segmentación")
+  col_f1, col_f2 = st.columns(2)
+
+  # Obtener opciones dinámicas de Tipo
+  tipos_unicos = (
+      sorted(
+          [
+              str(x)
+              for x in df_mes["tipo"].dropna().unique()
+              if str(x).strip() != ""
+          ]
+      )
+      if "tipo" in df_mes.columns
+      else []
+  )
+  opciones_tipo = ["Todos los Tipos"] + tipos_unicos
+
+  with col_f1:
+    tipo_sel = st.selectbox(
+        "Filtrar por Tipo de Cuenta", opciones_tipo, key="visor_tipo"
+    )
+
+  # Determinar la columna de categoría/concepto
+  cat_col = (
+      "categoria"
+      if "categoria" in df_mes.columns
+      else ("concepto" if "concepto" in df_mes.columns else None)
+  )
+  cats_unicas = (
+      sorted(
+          [
+              str(x)
+              for x in df_mes[cat_col].dropna().unique()
+              if str(x).strip() != ""
+          ]
+      )
+      if cat_col
+      else []
+  )
+  opciones_cat = ["Todas las Categorías"] + cats_unicas
+
+  with col_f2:
+    cat_sel = st.selectbox(
+        "Filtrar por Categoría / Concepto", opciones_cat, key="visor_cat"
+    )
+
+  # Aplicar los filtros sobre el conjunto del mes
+  df_filtrado = df_mes.copy()
+  if tipo_sel != "Todos los Tipos" and "tipo" in df_filtrado.columns:
+    df_filtrado = df_filtrado[df_filtrado["tipo"] == tipo_sel]
+
+  if cat_sel != "Todas las Categorías" and cat_col:
+    df_filtrado = df_filtrado[df_filtrado[cat_col] == cat_sel]
+
+  # --- 3. ACUMULADOS PARCIALES Y MÉTRICAS CLAVE ---
+  st.markdown("---")
+  st.subheader("💰 Acumulados Parciales")
+
+  if df_filtrado.empty:
+    st.warning("No hay registros que coincidan con la combinación de filtros.")
+    return
+
+  total_monto = (
+      float(df_filtrado["monto"].sum()) if "monto" in df_filtrado.columns else 0.0
+  )
+  cant_registros = len(df_filtrado)
+  promedio_monto = (
+      (total_monto / cant_registros) if cant_registros > 0 else 0.0
+  )
+
+  # Tarjetas Principales
+  m1, m2, m3 = st.columns(3)
+  m1.metric("Sumatoria Total (Filtro)", f"${total_monto:,.2f}")
+  m2.metric("Nº de Registros", f"{cant_registros}")
+  m3.metric("Promedio por Asiento", f"${promedio_monto:,.2f}")
+
+  # --- 4. DESGLOSE ANALÍTICO (TABLAS DE ACUMULADOS) ---
+  st.markdown("#### 📊 Resumen por Agrupación")
+  tab_tipo, tab_cat = st.tabs(
+      ["Acumulado por Tipo", "Acumulado por Categoría"]
+  )
+
+  with tab_tipo:
+    if "tipo" in df_filtrado.columns and "monto" in df_filtrado.columns:
+      resumen_tipo = (
+          df_filtrado.groupby("tipo")["monto"]
+          .agg(["sum", "count", "mean"])
+          .reset_index()
+      )
+      resumen_tipo.columns = [
+          "Tipo de Cuenta",
+          "Monto Total ($)",
+          "Cantidad",
+          "Promedio ($)",
+      ]
+      resumen_tipo["% del Total"] = (
+          (resumen_tipo["Monto Total ($)"] / total_monto * 100)
+          if total_monto != 0
+          else 0.0
+      )
+
+      st.dataframe(
+          resumen_tipo.style.format({
+              "Monto Total ($)": "${:,.2f}",
+              "Promedio ($)": "${:,.2f}",
+              "% del Total": "{:.1f}%",
+          }),
+          use_container_width=True,
+          hide_index=True,
+      )
+    else:
+      st.info("Columna 'tipo' no disponible para desglose.")
+
+  with tab_cat:
+    if cat_col and "monto" in df_filtrado.columns:
+      resumen_cat = (
+          df_filtrado.groupby(cat_col)["monto"]
+          .agg(["sum", "count", "mean"])
+          .reset_index()
+      )
+      resumen_cat.columns = [
+          "Categoría / Concepto",
+          "Monto Total ($)",
+          "Cantidad",
+          "Promedio ($)",
+      ]
+      resumen_cat["% del Total"] = (
+          (resumen_cat["Monto Total ($)"] / total_monto * 100)
+          if total_monto != 0
+          else 0.0
+      )
+
+      st.dataframe(
+          resumen_cat.style.format({
+              "Monto Total ($)": "${:,.2f}",
+              "Promedio ($)": "${:,.2f}",
+              "% del Total": "{:.1f}%",
+          }),
+          use_container_width=True,
+          hide_index=True,
+      )
+    else:
+      st.info("Columna de categoría/concepto no disponible para desglose.")
+
+  # --- 5. DETALLE DE MOVIMIENTOS FILTRADOS ---
+  with st.expander("📋 Ver Listado Completo de Registros Filtrados"):
+    columnas_mostrar = [
+        c
+        for c in ["id", "fecha", "concepto", "categoria", "tipo", "monto"]
+        if c in df_filtrado.columns
+    ]
+    st.dataframe(
+        df_filtrado[columnas_mostrar]
+        .sort_values(by=["fecha", "id"])
+        .style.format({"monto": "${:,.2f}"}),
+        use_container_width=True,
+        hide_index=True,
+    )
+
+
+# Aliases de compatibilidad para evitar errores de importación
+render_view_caja_visor = render_visor
+render_caja_visor = render_visor
