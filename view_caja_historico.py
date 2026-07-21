@@ -112,7 +112,7 @@ def render_historico(df_todos, rol_actual):
   st.markdown(
       f"""
         <div style="font-size: 14px; background-color: #f8f9fa; padding: 10px 14px; border-radius: 6px; border-left: 4px solid #10b981; margin-top: 5px; margin-bottom: 12px; line-height: 1.8;">
-            <strong>Cierre de Saldos Disponibles:</strong> <br>
+            <strong>Saldos Disponibles al cierre del mes seleccionado:</strong> <br>
             <span style="color: #111827;">🟢 <b>Bs:</b> {val_bs:,.2f}</span> &nbsp;|&nbsp;
             <span style="color: #111827;">🔵 <b>Zelle Op:</b> ${val_ze:,.2f}</span> &nbsp;|&nbsp;
             <span style="color: #111827;">💵 <b>Cash Op:</b> ${val_ch:,.2f}</span> &nbsp;|&nbsp;
