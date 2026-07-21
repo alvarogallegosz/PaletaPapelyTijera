@@ -5,6 +5,20 @@ import streamlit as st
 from db_connection import insertar_movimiento_db, obtener_movimientos_locales
 
 
+def _obtener_meses_cerrados(df_datos) -> set:
+    """Devuelve un set de strings 'YYYY-MM' que están bloqueados."""
+    if df_datos is None or df_datos.empty or "consolidado" not in df_datos.columns:
+        return set()
+    
+    # Creamos una columna temporal YYYY-MM
+    df_temp = df_datos.copy()
+    df_temp["ym"] = pd.to_datetime(df_temp["fecha"], errors="coerce").dt.strftime("%Y-%m")
+    
+    # Si AL MENOS UN registro en ese mes es True, el mes entero entra a la lista negra
+    meses_bloqueados = df_temp[df_temp["consolidado"] == True]["ym"].unique()
+    return set(meses_bloqueados)
+
+
 def render_carga(rol_actual, es_consolidado=False):
   st.markdown("### 📝 Carga de Nuevos Movimientos de Caja")
 
@@ -67,60 +81,69 @@ def render_carga(rol_actual, es_consolidado=False):
 
   st.divider()
 
-  btn_registrar = st.button(
-      "💾 Registrar Transacción en Base de Datos",
-      type="primary",
-      use_container_width=True,
-  )
+  # --- VALIDACIÓN VISUAL PREVIA ---
+  df_actual = st.session_state.get("df_movimientos", pd.DataFrame())
+  meses_cerrados = _obtener_meses_cerrados(df_actual)
+  ym_input = pd.to_datetime(fecha_input).strftime("%Y-%m")
 
-  if btn_registrar:
-    # 1. VALIDACIONES
-    errores_validacion = []
+  if ym_input in meses_cerrados:
+    st.error(
+        f"🔒 **CARGA SUSPENDIDA:** El mes ({ym_input}) se encuentra "
+        "**CONSOLIDADO y BLOQUEADO**. No se admiten nuevos asientos."
+    )
+  else:
+    btn_registrar = st.button(
+        "💾 Registrar Transacción en Base de Datos",
+        type="primary",
+        use_container_width=True,
+    )
 
-    if not categoria_input.strip():
-      errores_validacion.append("La **Categoría** es obligatoria.")
+    if btn_registrar:
+      # --- CANDADO ESTRICTO CONTRA LA BASE DE DATOS EN TIEMPO REAL ---
+      with st.spinner("Validando auditoría en tiempo real..."):
+        df_fresco = obtener_movimientos_locales()
+        meses_cerrados_real = _obtener_meses_cerrados(df_fresco)
+        
+        if ym_input in meses_cerrados_real:
+          st.error("❌ **BLOQUEO:** El mes seleccionado acaba de ser bloqueado por otro administrador. Operación abortada.")
+          return
 
-    if not detalle_input.strip():
-      errores_validacion.append("La **Descripción / Detalle** es obligatoria.")
+      # Validaciones de formulario
+      errores_validacion = []
+      if not categoria_input.strip():
+        errores_validacion.append("La **Categoría** es obligatoria.")
+      if not detalle_input.strip():
+        errores_validacion.append("La **Descripción / Detalle** es obligatoria.")
+      if monto_input <= 0:
+        errores_validacion.append("El **Monto** debe ser mayor a 0,00.")
+      if "Bs" in tipo_input and tasa_input <= 0:
+        errores_validacion.append("La **Tasa Monitor** debe ser mayor a 0.")
 
-    if monto_input <= 0:
-      errores_validacion.append("El **Monto** debe ser mayor a 0,00.")
+      if errores_validacion:
+        for err in errores_validacion:
+          st.warning(f"⚠️ {err}")
+        return
 
-    if "Bs" in tipo_input and tasa_input <= 0:
-      errores_validacion.append(
-          "La **Tasa Monitor** debe ser mayor a 0 para cuentas en Bolívares."
-      )
+      nuevo_asiento = {
+          "fecha": fecha_input.strftime("%Y-%m-%d"),
+          "categoria": categoria_input.strip().upper(),
+          "detalle": detalle_input.strip(),
+          "tipo": tipo_input,
+          "monto": float(monto_input),
+          "tasa": float(tasa_input) if tasa_input > 0 else 1.0,
+          "comentarios": comentarios_input.strip(),
+          "activo": True,
+          "consolidado": False,
+          "creado_por": str(rol_actual),
+      }
 
-    if errores_validacion:
-      for err in errores_validacion:
-        st.warning(f"⚠️ {err}")
-      st.error(
-          "❌ La transacción NO fue enviada a la base de datos debido a datos"
-          " faltantes o erróneos."
-      )
-      return
+      with st.spinner("Guardando en Supabase..."):
+        exito, mensaje = insertar_movimiento_db(nuevo_asiento)
 
-    # 2. DICCIONARIO
-    nuevo_asiento = {
-        "fecha": fecha_input.strftime("%Y-%m-%d"),
-        "categoria": categoria_input.strip().upper(),
-        "detalle": detalle_input.strip(),
-        "tipo": tipo_input,
-        "monto": float(monto_input),
-        "tasa": float(tasa_input) if tasa_input > 0 else 1.0,
-        "comentarios": comentarios_input.strip(),
-        "activo": True,
-        "consolidado": False,
-        "creado_por": str(rol_actual),
-    }
-
-    # 3. ENVÍO A BASE DE DATOS
-    with st.spinner("Guardando en Supabase..."):
-      exito, mensaje = insertar_movimiento_db(nuevo_asiento)
-
-    if exito:
-      st.balloons()
-      st.success(f"🎉 {mensaje}")
-      obtener_movimientos_locales()
-    else:
-      st.error(f"❌ FALLO EN BASE DE DATOS: {mensaje}")
+      if exito:
+        st.success(f"🎉 {mensaje}")
+        # ACTUALIZACIÓN DE MEMORIA CACHÉ OBLIGATORIA
+        st.session_state["df_movimientos"] = obtener_movimientos_locales()
+        st.rerun()
+      else:
+        st.error(f"❌ FALLO EN BASE DE DATOS: {mensaje}")
