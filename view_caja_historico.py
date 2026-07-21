@@ -1,10 +1,6 @@
 # view_caja_historico.py
 import pandas as pd
 import streamlit as st
-from db_connection import (
-    actualizar_estado_mes_db,
-    obtener_cierres_db,
-)  # O funciones equivalentes de BD
 
 
 def render_historico(df_movimientos: pd.DataFrame, rol_usuario: str = "operador"):
@@ -93,7 +89,6 @@ def render_historico(df_movimientos: pd.DataFrame, rol_usuario: str = "operador"
         if st.button(
             f"🔒 Cerrar / Consolidar {mes_nombre}", key="btn_cerrar_mes"
         ):
-          # Lógica para marcar como consolidado en BD si aplica
           st.info(
               "Función de cierre activada. (Actualice o verifique su conexión"
               " a base de datos)"
@@ -113,8 +108,7 @@ def render_historico(df_movimientos: pd.DataFrame, rol_usuario: str = "operador"
   st.markdown("---")
   st.markdown("#### 📋 Resumen de Movimientos del Período")
 
-  # Seleccionar dinámicamente solo las columnas que SÍ existan para evitar KeyErrors
-췄  columnas_disponibles = [
+  columnas_disponibles = [
       c
       for c in [
           "id",
