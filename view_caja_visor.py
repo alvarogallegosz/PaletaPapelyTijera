@@ -37,7 +37,7 @@ def render_banner_saldos(saldos_dict):
     val_ah_ch = float(saldos_dict.get('AhCh', 0.0))
     
     st.markdown(f"""
-        <div style="font-size: 14px; background-color: #f8f9fa; padding: 10px 14px; border-radius: 6px; border-left: 4px solid #3b82f6; margin-top: 5px; margin-bottom: 8px; line-height: 1.8;">
+        <div style="font-size: 12px; background-color: #f8f9fa; padding: 10px 14px; border-radius: 6px; border-left: 4px solid #3b82f6; margin-top: 5px; margin-bottom: 8px; line-height: 1.8;">
             <strong>Saldos netos actuales en caja:</strong> <br>
             <span style="color: #111827;">🟢 <b>Bs:</b> {val_bs:,.2f}</span> &nbsp;|&nbsp;
             <span style="color: #111827;">🔵 <b>Zelle Operativo:</b> ${val_ze:,.2f}</span> &nbsp;|&nbsp;
