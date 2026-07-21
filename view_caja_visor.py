@@ -1,122 +1,116 @@
 # view_caja_visor.py
-import pandas as pd
 import streamlit as st
+import pandas as pd
 
-CUENTAS = ["Bs", "$Ch", "$Ze", "$AhCh", "$AhZe"]
+def preparar_columnas_monto(df):
+    """Desglosa la columna genérica 'monto' en 5 columnas visuales según el tipo de movimiento."""
+    if df.empty:
+        for col in ["Monto Bs", "Monto $ Zelle", "Monto $ Cash", "Monto $ Ah-Ze", "Monto $ Ah-Ch"]:
+            df[col] = ""
+        return df
+
+    def evaluar_monto(row, prefijo_tipo):
+        monto_val = float(row["monto"]) if pd.notnull(row["monto"]) else 0.0
+        tipo_str = str(row.get("tipo", "")).strip()
+        
+        if tipo_str == f"IN-{prefijo_tipo}":
+            return f"+{monto_val:,.2f}"
+        elif tipo_str == f"EG-{prefijo_tipo}":
+            return f"-{monto_val:,.2f}"
+        return ""
+
+    df["Monto Bs"] = df.apply(lambda r: evaluar_monto(r, "Bs"), axis=1)
+    df["Monto $ Zelle"] = df.apply(lambda r: evaluar_monto(r, "$Ze"), axis=1)
+    df["Monto $ Cash"] = df.apply(lambda r: evaluar_monto(r, "$Ch"), axis=1)
+    df["Monto $ Ah-Ze"] = df.apply(lambda r: evaluar_monto(r, "$AhZe"), axis=1)
+    df["Monto $ Ah-Ch"] = df.apply(lambda r: evaluar_monto(r, "$AhCh"), axis=1)
+    
+    return df
 
 
-def calcular_saldos_dinamicos(df: pd.DataFrame) -> dict:
-  """Calcula los saldos dinámicos acumulados por cuenta sumando IN- y restando EG-."""
-  saldos = {c: 0.0 for c in CUENTAS}
-  if (
-      df is None
-      or df.empty
-      or "tipo" not in df.columns
-      or "monto" not in df.columns
-  ):
-    return saldos
-
-  df_calc = df.copy()
-  df_calc["monto"] = pd.to_numeric(df_calc["monto"], errors="coerce").fillna(
-      0.0
-  )
-
-  for c in CUENTAS:
-    ing = df_calc[df_calc["tipo"] == f"IN-{c}"]["monto"].sum()
-    eg = df_calc[df_calc["tipo"] == f"EG-{c}"]["monto"].sum()
-    saldos[c] = ing - eg
-
-  return saldos
+def render_banner_saldos(saldos_dict):
+    """Renderiza el bloque HTML superior con la disponibilidad de las 5 cuentas."""
+    val_bs = float(saldos_dict.get('Bs', 0.0))
+    val_ze = float(saldos_dict.get('Ze', 0.0))
+    val_ch = float(saldos_dict.get('Ch', 0.0))
+    val_ah_ze = float(saldos_dict.get('AhZe', 0.0))
+    val_ah_ch = float(saldos_dict.get('AhCh', 0.0))
+    
+    st.markdown(f"""
+        <div style="font-size: 14px; background-color: #f8f9fa; padding: 10px 14px; border-radius: 6px; border-left: 4px solid #3b82f6; margin-top: 5px; margin-bottom: 12px; line-height: 1.8;">
+            <strong>Disponibilidad Neta en Cajas:</strong> <br>
+            <span style="color: #111827;">🟢 <b>Bs:</b> {val_bs:,.2f}</span> &nbsp;|&nbsp;
+            <span style="color: #111827;">🔵 <b>Zelle Op:</b> ${val_ze:,.2f}</span> &nbsp;|&nbsp;
+            <span style="color: #111827;">💵 <b>Cash Op:</b> ${val_ch:,.2f}</span> &nbsp;|&nbsp;
+            <span style="color: #0d9488;">🏦 <b>Ahorro Zelle:</b> ${val_ah_ze:,.2f}</span> &nbsp;|&nbsp;
+            <span style="color: #0d9488;">🐷 <b>Ahorro Cash:</b> ${val_ah_ch:,.2f}</span>
+        </div>
+    """, unsafe_allow_html=True)
 
 
-def render_visor(
-    df_mes: pd.DataFrame = None,
-    mes_sel_nombre: str = "",
-    anho_sel=None,
-    saldos_fin=None,
-    **kwargs,
-):
-  """Visor de caja ajustado exactamente a la llamada de run_app.py:
+def render_visor(df_mes, mes_nombre, anho, saldos_fin):
+    """Punto de entrada principal invocado por run_app.py."""
+    df_filtrado = df_mes.copy()
+    
+    # --- FILA SUPERIOR PARALELA: SUBTÍTULO + FILTROS ---
+    col_title, col_f1, col_f2, col_f3 = st.columns([1.6, 1.3, 1.4, 1.4])
+    
+    with col_title:
+        st.markdown(f"### 🔍 Libro Diario\n*{mes_nombre} {anho}*")
+        
+    with col_f1:
+        df_filtrado["fecha_date"] = pd.to_datetime(df_filtrado["fecha"]).dt.date
+        min_f = df_filtrado["fecha_date"].min() if not df_filtrado.empty else pd.Timestamp.now().date()
+        max_f = df_filtrado["fecha_date"].max() if not df_filtrado.empty else pd.Timestamp.now().date()
+        rango_fecha = st.date_input("Rango Fechas", value=(min_f, max_f), min_value=min_f, max_value=max_f, key="v_date")
+        
+    with col_f2:
+        cats_opts = sorted(df_filtrado["categoria"].unique()) if not df_filtrado.empty else []
+        cats_sel = st.multiselect("Filtrar Categoría", options=cats_opts, key="v_cat")
+        
+    with col_f3:
+        tipos_opts = sorted(df_filtrado["tipo"].unique()) if not df_filtrado.empty else []
+        tipos_sel = st.multiselect("Filtrar Tipo", options=tipos_opts, key="v_tipo")
 
-  render_visor(df_mes, mes_sel_nombre, anho_sel, saldos_fin)
-  """
-  titulo_periodo = (
-      f" – {mes_sel_nombre} {anho_sel}" if mes_sel_nombre and anho_sel else ""
-  )
-  st.subheader(f"👁️ Visor General de Caja{titulo_periodo}")
+    # Aplicación defensiva de filtros
+    if isinstance(rango_fecha, tuple) and len(rango_fecha) == 2:
+        df_filtrado = df_filtrado[(df_filtrado["fecha_date"] >= rango_fecha[0]) & (df_filtrado["fecha_date"] <= rango_fecha[1])]
+    elif isinstance(rango_fecha, tuple) and len(rango_fecha) == 1:
+        df_filtrado = df_filtrado[df_filtrado["fecha_date"] == rango_fecha[0]]
+        
+    if cats_sel:
+        df_filtrado = df_filtrado[df_filtrado["categoria"].isin(cats_sel)]
+    if tipos_sel:
+        df_filtrado = df_filtrado[df_filtrado["tipo"].isin(tipos_sel)]
 
-  if df_mes is None:
-    df_mes = st.session_state.get("df_movimientos", pd.DataFrame())
+    # BANNER DE SALDOS CON LAS 5 CUENTAS
+    render_banner_saldos(saldos_fin)
 
-  # --- 1. DESPLIEGUE DE SALDOS DINÁMICOS ---
-  # Si run_app.py ya le pasa los saldos calculados (saldos_fin), los usa directamente
-  if saldos_fin is not None and len(saldos_fin) > 0:
-    if isinstance(saldos_fin, pd.Series):
-      saldos_dict = saldos_fin.to_dict()
-    elif isinstance(saldos_fin, dict):
-      saldos_dict = saldos_fin
-    else:
-      saldos_dict = calcular_saldos_dinamicos(df_mes)
-  else:
-    saldos_dict = calcular_saldos_dinamicos(df_mes)
+    if df_filtrado.empty:
+        st.info("Ningún registro operativo coincide con la parametrización seleccionada.")
+        return
 
-  st.markdown("### 💳 Saldos Dinámicos Acumulados")
-  cols = st.columns(5)
-  for idx, cuenta in enumerate(CUENTAS):
-    simbolo = "Bs" if cuenta == "Bs" else "$"
-    val = saldos_dict.get(cuenta, 0.0)
-    cols[idx].metric(label=f"Saldo {cuenta}", value=f"{simbolo} {val:,.2f}")
-
-  st.markdown("---")
-
-  if df_mes is None or df_mes.empty:
-    st.info("No hay movimientos registrados para el período seleccionado.")
-    return
-
-  # --- 2. FILTROS LOCALES Y TABLA ---
-  col_f1, col_f2 = st.columns(2)
-  with col_f1:
-    cuenta_sel = st.selectbox(
-        "Filtrar por Cuenta", ["Todas"] + CUENTAS, key="visor_cuenta_sel"
+    # Renderizado de la tabla contable
+    df_visual = df_filtrado.copy()
+    df_visual = preparar_columnas_monto(df_visual)
+    df_visual["Fecha Ext"] = pd.to_datetime(df_visual["fecha"]).dt.strftime("%d/%m/%Y")
+    df_visual = df_visual.rename(columns={"detalle": "Descripción", "categoria": "Categoría", "tipo": "Tipo", "comentarios": "Comentario"})
+    
+    st.dataframe(
+        df_visual[["Fecha Ext", "Descripción", "Categoría", "Tipo", "Monto Bs", "Monto $ Zelle", "Monto $ Cash", "Monto $ Ah-Ze", "Monto $ Ah-Ch", "Comentario"]],
+        column_config={
+            "Fecha Ext": st.column_config.TextColumn("Fecha", width=100),
+            "Descripción": st.column_config.TextColumn("Descripción", width=300),
+            "Categoría": st.column_config.TextColumn("Categoría", width=140),
+            "Tipo": st.column_config.TextColumn("Tipo", width=90),
+            "Monto Bs": st.column_config.TextColumn("Monto Bs", width=110),
+            "Monto $ Zelle": st.column_config.TextColumn("Monto $ Zelle", width=110),
+            "Monto $ Cash": st.column_config.TextColumn("Monto $ Cash", width=110),
+            "Monto $ Ah-Ze": st.column_config.TextColumn("Monto $ Ah-Ze", width=110),
+            "Monto $ Ah-Ch": st.column_config.TextColumn("Monto $ Ah-Ch", width=110),
+            "Comentario": st.column_config.TextColumn("Comentario", width=300),
+        },
+        use_container_width=False,
+        hide_index=True,
+        height=600
     )
-  with col_f2:
-    tipo_sel = st.selectbox(
-        "Filtrar por Flujo",
-        ["Todos", "Ingresos (IN)", "Egresos (EG)"],
-        key="visor_tipo_sel",
-    )
-
-  df_filtered = df_mes.copy()
-
-  if cuenta_sel != "Todas":
-    df_filtered = df_filtered[
-        df_filtered["tipo"].str.contains(cuenta_sel, na=False)
-    ]
-
-  if tipo_sel == "Ingresos (IN)":
-    df_filtered = df_filtered[
-        df_filtered["tipo"].str.startswith("IN-", na=False)
-    ]
-  elif tipo_sel == "Egresos (EG)":
-    df_filtered = df_filtered[
-        df_filtered["tipo"].str.startswith("EG-", na=False)
-    ]
-
-  # Cálculo opcional de saldo corrido
-  if "monto" in df_filtered.columns and "tipo" in df_filtered.columns:
-    df_filtered["monto_neto"] = df_filtered.apply(
-        lambda r: (
-            r["monto"]
-            if str(r.get("tipo", "")).startswith("IN-")
-            else -r["monto"]
-        ),
-        axis=1,
-    )
-    df_filtered["saldo_corrido"] = df_filtered["monto_neto"].cumsum()
-
-  st.dataframe(df_filtered, use_container_width=True, hide_index=True)
-
-
-# Aliases de compatibilidad por si se importa con otro nombre
-render_caja_visor = render_visor
-render_view_caja_visor = render_visor

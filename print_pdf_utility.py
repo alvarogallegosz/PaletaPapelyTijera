@@ -1,24 +1,18 @@
-# print_pdf_utility.py
-import html
 import io
 import os
 import pandas as pd
 import streamlit as st
-from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
 from reportlab.pdfgen import canvas
-from reportlab.platypus import (
-    Image,
-    KeepTogether,
-    Paragraph,
-    SimpleDocTemplate,
-    Spacer,
-    Table,
-    TableStyle,
-)
 
 class NumberedCanvas(canvas.Canvas):
+    """
+    Canvas dinámico de 2 pasadas para calcular el número total de páginas
+    y dibujar el pie de página institucional ('Página X de Y').
+    """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._saved_page_states = []
@@ -40,33 +34,25 @@ class NumberedCanvas(canvas.Canvas):
         self.setFont("Helvetica", 8)
         self.setFillColor(colors.HexColor('#64748b'))
         
+        # Pie de página: 'Página X de Y' alineado a la derecha
         texto_pagina = f"Página {self._pageNumber} de {page_count}"
         self.drawRightString(612 - 36, 20, texto_pagina)
+        
+        # Identificador institucional a la izquierda
         self.drawString(36, 20, "Paletapapelytijera • Presupuesto Detallado")
         
+        # Línea separadora decorativa de pie
         self.setStrokeColor(colors.HexColor('#e2e8f0'))
         self.setLineWidth(0.5)
         self.line(36, 30, 612 - 36, 30)
+        
         self.restoreState()
 
 
-def _escapar_texto(texto: str) -> str:
-    """Sanea caracteres especiales XML (&, <, >) para evitar fallos de parseo en ReportLab."""
-    if not texto:
-        return ""
-    return html.escape(str(texto).strip())
-
-
-def generar_pdf_presupuesto_nativo(modo_interno=False):
-    """
-    Genera el PDF del presupuesto.
-    
-    :param modo_interno: 
-        - False (Cliente): Oculta el desglose de precio unitario por partida, pero conserva los Subtotales y Total General.
-        - True (Control Interno): Incluye la columna de precio unitario por partida para análisis de Gerencia/Administración.
-    """
+def generar_pdf_presupuesto_nativo(incluir_precios=False):
     buffer = io.BytesIO()
     
+    # Configuración de página Carta física (612 x 792 pt) con márgenes de 0.5 in (36 pt)
     doc = SimpleDocTemplate(
         buffer,
         pagesize=letter,
@@ -78,6 +64,7 @@ def generar_pdf_presupuesto_nativo(modo_interno=False):
     
     styles = getSampleStyleSheet()
     
+    # --- 🎨 ESTILOS TIPOGRÁFICOS ---
     style_normal = ParagraphStyle(
         'DocNormal',
         parent=styles['Normal'],
@@ -94,7 +81,7 @@ def generar_pdf_presupuesto_nativo(modo_interno=False):
         fontSize=9,
         leading=11,
         textColor=colors.HexColor('#000000'),
-        alignment=1
+        alignment=1 # Centrado
     )
     
     style_header_left = ParagraphStyle(
@@ -108,25 +95,25 @@ def generar_pdf_presupuesto_nativo(modo_interno=False):
 
     story = []
     
-    # --- ENCABEZADO Y LOGO ---
+    # --- 🖼️ ENCABEZADO Y LOGO ---
     logo_nombre = "encabezado_paleta.png"
     ruta_script = os.path.join(os.path.dirname(__file__), logo_nombre)
     ruta_raiz = os.path.join(os.getcwd(), logo_nombre)
     ruta_final = ruta_script if os.path.exists(ruta_script) else (ruta_raiz if os.path.exists(ruta_raiz) else None)
     
     if ruta_final:
-        ancho_pdf = 432
+        ancho_pdf = 432  # 80% de 540 pt
         altura_pdf = 76  
         story.append(Image(ruta_final, width=ancho_pdf, height=altura_pdf, hAlign='CENTER'))
         story.append(Spacer(1, 10))        
 
-    # --- BLOQUE METADATA ---
+    # --- 📄 BLOQUE METADATA ---
     meta = st.session_state.get("meta_presupuesto", {})
-    p_nombre = _escapar_texto(meta.get('nombre', '')).upper() or 'PRESUPUESTO'
-    p_fecha_evt = _escapar_texto(meta.get('fecha_evento', '')).upper() or 'N/A'
-    p_cliente = _escapar_texto(meta.get('cliente', '')).upper() or 'N/A'
-    p_lugar = _escapar_texto(meta.get('lugar', '')).upper() or 'N/A'
-    p_emision = _escapar_texto(meta.get('fecha_larga', '')).upper() or 'N/A'
+    p_nombre = str(meta.get('nombre', '') or '').upper() or 'PRESUPUESTO'
+    p_fecha_evt = str(meta.get('fecha_evento', '') or '').upper() or 'N/A'
+    p_cliente = str(meta.get('cliente', '') or '').upper() or 'N/A'
+    p_lugar = str(meta.get('lugar', '') or '').upper() or 'N/A'
+    p_emision = str(meta.get('fecha_larga', '') or '').upper() or 'N/A'
     
     meta_izq = f"<b>{p_nombre}</b><br/>FECHA DEL EVENTO: {p_fecha_evt}<br/>CLIENTE: {p_cliente} | LUGAR: {p_lugar}"
     meta_der = f"<b>EMISIÓN: {p_emision}</b>"
@@ -143,10 +130,9 @@ def generar_pdf_presupuesto_nativo(modo_interno=False):
     story.append(meta_tabla)
     story.append(Spacer(1, 8))
     
-    # --- BANNER SUBTÍTULO ---
-    titulo_banner = "DESGLOSE DE COSTOS (CONTROL INTERNO)" if modo_interno else "PRESUPUESTO DETALLADO"
+    # --- 🟢 BANNER SUBTÍTULO ---
     style_banner = ParagraphStyle('BStyle', fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#FFFFFF'), alignment=1)
-    banner_tabla = Table([[Paragraph(titulo_banner, style_banner)]], colWidths=[540])
+    banner_tabla = Table([[Paragraph("PRESUPUESTO DETALLADO", style_banner)]], colWidths=[540])
     banner_tabla.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#b8d7a3')),
         ('TOPPADDING', (0,0), (-1,-1), 5),
@@ -155,21 +141,21 @@ def generar_pdf_presupuesto_nativo(modo_interno=False):
     story.append(banner_tabla)
     story.append(Spacer(1, 10))
     
-    # --- TABLAS DINÁMICAS SECCIONADAS ---
+    # --- 📊 TABLAS DINÁMICAS SECCIONADAS ---
     secciones_activas = st.session_state.get("lista_secciones", [])
     total_general = 0.0
     
-    if modo_interno:
-        anchos_columnas = [35, 225, 120, 65, 40, 55]  # 6 columnas (Control Interno)
+    if incluir_precios:
+        anchos_columnas = [35, 225, 120, 65, 40, 55]  # 6 columnas
     else:
-        anchos_columnas = [35, 260, 140, 65, 40]      # 5 columnas (Cliente)
+        anchos_columnas = [35, 260, 140, 65, 40]      # 5 columnas
     
     for idx_sec, sec in enumerate(secciones_activas):
         sec_id = sec.get('id', '')
-        sec_titulo = _escapar_texto(sec.get('titulo', f'SECCIÓN {idx_sec+1}')).upper()
+        sec_titulo = sec.get('titulo', f'SECCIÓN {idx_sec+1}').upper()
         df_sec = st.session_state.get(f"df_{sec_id}", pd.DataFrame())
         
-        if modo_interno:
+        if incluir_precios:
             tabla_datos = [[
                 Paragraph("<b>ITEM</b>", style_header_center),
                 Paragraph(f"<b>{sec_titulo}</b>", style_header_left),
@@ -192,11 +178,8 @@ def generar_pdf_presupuesto_nativo(modo_interno=False):
         
         if not df_sec.empty:
             for row in df_sec.to_dict('records'):
-                desc_raw = str(row.get('descripción', '') or '').strip()
-                med_raw = str(row.get('medidas', '') or '').strip()
-                
-                desc = _escapar_texto(desc_raw).replace("\n", "<br/>")
-                med = _escapar_texto(med_raw).replace("\n", "<br/>")
+                desc = str(row.get('descripción', '') or '').strip().replace("\n", " ").replace("\r", "")
+                med = str(row.get('medidas', '') or '').strip().replace("\n", " ").replace("\r", "")
                 
                 try:
                     jk_val = float(row.get('juegos/kits')) if pd.notna(row.get('juegos/kits')) and row.get('juegos/kits') != '' else 0.0
@@ -214,15 +197,14 @@ def generar_pdf_presupuesto_nativo(modo_interno=False):
                     pu_val = 0.0
 
                 if desc or med or jk_val or cant_val or pu_val:
-                    factor = ((jk_val if jk_val > 0 else 1.0) * (cant_val if cant_val > 0 else 1.0)) if (jk_val > 0 or cant_val > 0) else 0.0
-                    total_fila = factor * pu_val
+                    total_fila = (jk_val * cant_val * pu_val) if jk_val > 0 else (cant_val * pu_val)
                     subtotal_seccion += total_fila
                     
                     jk_str = f"{int(jk_val) if jk_val.is_integer() else jk_val}" if jk_val > 0 else ""
                     cant_str = f"{int(cant_val) if cant_val.is_integer() else cant_val}" if cant_val > 0 else ""
                     
-                    if modo_interno:
-                        precio_str = f"${total_fila:,.2f}"
+                    if incluir_precios:
+                        precio_str = f"{total_fila:,.2f}"
                         tabla_datos.append([
                             Paragraph(str(item_numeral), style_header_center),
                             Paragraph(desc, style_normal),
@@ -242,9 +224,10 @@ def generar_pdf_presupuesto_nativo(modo_interno=False):
                     item_numeral += 1
         
         if item_numeral == 1:
-            colspan_val = 6 if modo_interno else 5
+            colspan_val = 6 if incluir_precios else 5
             tabla_datos.append([Paragraph("Sección sin registros activos", style_header_center)] + [""] * (colspan_val - 1))
             
+        # repeatRows=1 permite repetir automáticamente el encabezado si la tabla se corta entre páginas
         t = Table(tabla_datos, colWidths=anchos_columnas, repeatRows=1)
         t_style = [
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#fffdeb')),
@@ -255,13 +238,12 @@ def generar_pdf_presupuesto_nativo(modo_interno=False):
             ('LINEBELOW', (0,0), (-1,0), 1, colors.HexColor('#cbd5e1')),
         ]
         if item_numeral == 1:
-            span_limit = 5 if modo_interno else 4
+            span_limit = 5 if incluir_precios else 4
             t_style.append(('SPAN', (0,1), (span_limit, 1)))
             
         t.setStyle(TableStyle(t_style))
         story.append(t)
         
-        # Subtotal de la sección
         txt_subtotal = f"<b>SUB TOTAL {sec_titulo}:&nbsp;&nbsp;&nbsp;&nbsp;${subtotal_seccion:,.2f}</b>"
         sub_p = Paragraph(txt_subtotal, ParagraphStyle('Sub', parent=style_normal, alignment=2, fontSize=9.5))
         sub_tabla = Table([[sub_p]], colWidths=[540])
@@ -275,7 +257,7 @@ def generar_pdf_presupuesto_nativo(modo_interno=False):
         
         total_general += subtotal_seccion
         
-    # --- TOTAL GENERAL ---
+    # --- 🟢 BANNER DE TOTAL GENERAL ---
     tot_izq = Paragraph("TOTAL A CANCELAR", ParagraphStyle('TL', fontName='Helvetica-Bold', fontSize=13))
     tot_der = Paragraph(f"${total_general:,.2f}", ParagraphStyle('TR', fontName='Helvetica-Bold', fontSize=13, alignment=2))
     
@@ -290,18 +272,15 @@ def generar_pdf_presupuesto_nativo(modo_interno=False):
     story.append(total_tabla)
     story.append(Spacer(1, 14))
     
-    # --- CLÁUSULAS ---
+    # --- 📝 CLÁUSULAS ---
     clausulas_txt = st.session_state.get("clausulas_presupuesto", "")
-    if clausulas_txt and str(clausulas_txt).strip():
-        clausulas_html = _escapar_texto(clausulas_txt).replace("\n", "<br/>")
-        
-        bloque_clausulas = [
-            Paragraph("CLAUSULAS:", ParagraphStyle('CT', fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#d53f8c'))),
-            Spacer(1, 4),
-            Paragraph(clausulas_html, ParagraphStyle('CB', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#1a202c'), leading=12))
-        ]
-        story.append(KeepTogether(bloque_clausulas))
+    clausulas_html = str(clausulas_txt or '').replace("\n", "<br/>")
     
+    story.append(Paragraph("CLAUSULAS:", ParagraphStyle('CT', fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#d53f8c'))))
+    story.append(Spacer(1, 4))
+    story.append(Paragraph(clausulas_html, ParagraphStyle('CB', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#1a202c'), leading=12)))
+    
+    # Construcción con canvasmaker personalizado para contador 'Página X de Y'
     doc.build(story, canvasmaker=NumberedCanvas)
     buffer.seek(0)
     return buffer.getvalue()

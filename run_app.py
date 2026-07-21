@@ -1,16 +1,14 @@
 # run_app.py
 import datetime
-import pandas as pd
-import streamlit as st
-
 from core_finance_engine import procesar_mes_aislado
 from db_connection import obtener_movimientos_locales
-from view_auth import render_modulo_autenticacion
+import streamlit as st
 from view_caja_carga import render_carga
 from view_caja_edicion import render_edicion
 from view_caja_historico import render_historico
 from view_caja_visor import render_visor
 from view_presupuestos_creacion import render_creacion_presupuestos
+from view_auth import render_modulo_autenticacion
 
 st.set_page_config(
     page_title="Estructura Administrativa PaletaPapelyTijera", layout="wide"
@@ -91,17 +89,17 @@ if "usuario_logueado" not in st.session_state:
     render_modulo_autenticacion()
     st.stop()
 
-rol_actual = st.session_state.get("usuario_rol", "operador").strip().lower()
+rol_actual = st.session_state.get("usuario_rol", "operador")
 usuario_activo = st.session_state.get("usuario_logueado", "Usuario")
 
-# --- SIDEBAR: Usuario, rol y control de salida ---
+# --- SIDEBAR: Solo usuario, botón de salir y futuros usos ---
 st.sidebar.markdown(f"### 👤 **{usuario_activo.upper()}**")
 st.sidebar.caption(f"Rol: {rol_actual.upper()}")
 
 if st.sidebar.button("🚪 Cerrar Sesión", use_container_width=True, type="secondary"):
-    for key in list(st.session_state.keys()):
-        del st.session_state[key]
-    st.toast("Sesión cerrada correctamente", icon="👋")
+    del st.session_state["usuario_logueado"]
+    if "usuario_rol" in st.session_state:
+        del st.session_state["usuario_rol"]
     st.rerun()
 
 st.sidebar.markdown("---")
@@ -110,7 +108,7 @@ st.sidebar.markdown(
     unsafe_allow_html=True,
 )
 
-# --- CARGA DE DATOS CENTRALIZADA ---
+# --- CARGA DE DATOS ---
 df_completo = obtener_movimientos_locales()
 st.session_state["df_movimientos"] = df_completo
 
@@ -131,133 +129,68 @@ mes_sel_num = datetime.datetime.now().month
 mes_sel_nombre = meses_nombres[mes_sel_num]
 
 # Procesamiento financiero aislado por mes (5 Cuentas)
-if not df_completo.empty:
-    df_mes, saldos_ini, saldos_fin = procesar_mes_aislado(
-        df_completo, anho_sel, mes_sel_num
-    )
-    es_consolidado = df_mes["consolidado"].all() if not df_mes.empty and "consolidado" in df_mes.columns else False
-else:
-    df_mes = pd.DataFrame()
-    saldos_ini, saldos_fin = {}, {}
-    es_consolidado = False
+df_mes, saldos_ini, saldos_fin = procesar_mes_aislado(
+    df_completo, anho_sel, mes_sel_num
+)
 
-# ===================================================
-# 🧭 NAVEGACIÓN Y PERMISOS SEGÚN MATRIZ DE ROLES
-# ===================================================
-if rol_actual == "operador":
-    modulos_sistema = ["📊 Presupuestos (Servicios al Cliente)"]
-elif rol_actual == "gerente":
-    modulos_sistema = [
-        "📦 Registro Movimientos de Caja",
-        "📊 Presupuestos (Servicios al Cliente)",
-    ]
-elif rol_actual == "contador":
-    modulos_sistema = [
-        "📦 Registro Movimientos de Caja",
-        "📊 Facturación",
-        "📊 Administración",
-    ]
-elif rol_actual == "soporte":
-    modulos_sistema = [
-        "📦 Registro Movimientos de Caja",
-        "📊 Presupuestos (Servicios al Cliente)",
-        "📊 Facturación",
-        "📊 Administración",
-        "⚙️ Soporte Técnico",
-    ]
-else:  # administrador
-    modulos_sistema = [
-        "📦 Registro Movimientos de Caja",
-        "📊 Presupuestos (Servicios al Cliente)",
-        "📊 Facturación",
-        "📊 Administración",
-        "⚙️ Soporte Técnico",
-    ]
+# Detección de consolidación
+es_consolidado = df_mes["consolidado"].all() if not df_mes.empty else False
+
+modulos_sistema = [
+    "📦 Registro Movimientos de Caja",
+    "📊 Presupuestos (Servicios al Cliente)",
+    "📊 Facturación",
+    "📊 Administración",
+    "⚙️ Soporte Técnico",
+]
 
 modulo_activo = st.segmented_control(
     label="Navegación Módulos",
     options=modulos_sistema,
-    default=modulos_sistema[0],
+    default="📦 Registro Movimientos de Caja",
     label_visibility="collapsed",
-    key="nav_modulo_principal",
 )
 
 # --- ENRUTADOR DE MÓDULOS ---
-
-# 1. CAJA
 if modulo_activo == "📦 Registro Movimientos de Caja":
-    if rol_actual == "administrador":
-        tab1, tab2, tab3, tab4 = st.tabs([
-            "📝 Carga de Movimientos",
-            "🔍 Libro Diario",
-            "🛠️ Modificaciones/Auditoría",
-            "📚 Histórico de Cierres Mensuales",
-        ])
-        with tab1:
-            render_carga(rol_actual, es_consolidado)
-        with tab2:
-            render_visor(df_mes, mes_sel_nombre, anho_sel, saldos_fin)
-        with tab3:
-            render_edicion(df_completo, rol_actual, es_consolidado)
-        with tab4:
-            render_historico(df_completo, rol_actual)
+  tab1, tab2, tab3, tab4 = st.tabs([
+      "📝 Carga de Movimientos",
+      "🔍 Libro Diario",
+      "🛠️ Modificaciones/Auditoría",
+      "📚 Histórico de Cierres Mensuales",
+  ])
 
-    elif rol_actual in ["gerente", "soporte"]:
-        tab1, tab2 = st.tabs([
-            "🔍 Libro Diario",
-            "📚 Histórico de Cierres Mensuales",
-        ])
-        with tab1:
-            render_visor(df_mes, mes_sel_nombre, anho_sel, saldos_fin)
-        with tab2:
-            render_historico(df_completo, rol_actual)
+  with tab1:
+    render_carga(rol_actual, es_consolidado)
+  with tab2:
+    render_visor(df_mes, mes_sel_nombre, anho_sel, saldos_fin)
+  with tab3:
+    render_edicion(df_completo, rol_actual, es_consolidado)
+  with tab4:
+    render_historico(df_completo, rol_actual)
 
-    elif rol_actual == "contador":
-        tab1 = st.tabs(["📚 Histórico de Cierres Mensuales"])[0]
-        with tab1:
-            render_historico(df_completo, rol_actual)
-
-# 2. PRESUPUESTOS
 elif modulo_activo == "📊 Presupuestos (Servicios al Cliente)":
-    st.markdown("### 📊 Panel General de Presupuestos")
-    
-    if rol_actual == "operador":
-        tab1 = st.tabs(["📚 Plantillas e Histórico (Impresión)"])[0]
-        with tab1:
-            st.info("🔍 Módulo de búsqueda y descarga/impresión de presupuestos (Modo Solo Lectura).")
-    elif rol_actual in ["gerente", "administrador", "soporte"]:
-        tab1, tab2, tab3 = st.tabs([
-            "📝 Creación y Carga",
-            "🔄 Gestión y Aprobación",
-            "📚 Plantillas e Histórico",
-        ])
-        with tab1:
-            render_creacion_presupuestos(rol_actual)
-        with tab2:
-            st.caption("Gestión y aprobación de presupuestos.")
-        with tab3:
-            st.caption("Plantillas e histórico de presupuestos.")
+  st.markdown("### 📊 Panel General de Presupuestos")
+  tab1, tab2, tab3 = st.tabs(
+      ["📝 Creación y Carga", "🔄 Gestión y Aprobación", "📚 Plantillas e Histórico"]
+  )
+  with tab1:
+    render_creacion_presupuestos(rol_actual)
 
-# 3. FACTURACIÓN
 elif modulo_activo == "📊 Facturación":
-    st.markdown("### 📊 Panel General de Facturación")
-    if rol_actual in ["contador", "soporte"]:
-        st.info("Módulo de visualización y descarga de facturas fiscales (Modo Solo Lectura).")
-    else:
-        st.info("Módulo de generación de facturas fiscales por servicios al cliente.")
+  st.markdown("### 📊 Panel General de Facturación")
+  st.info("Módulo de generación de facturas fiscales por servicios al cliente.")
 
-# 4. ADMINISTRACIÓN
 elif modulo_activo == "📊 Administración":
-    st.markdown("### 📊 Panel General de Administración")
-    if rol_actual in ["contador", "soporte"]:
-        st.info("Módulo de consulta de bancos, compras, ventas, cuentas por pagar y cobro (Modo Solo Lectura / Descarga).")
-    else:
-        st.info("Módulo de bancos, compras, ventas, cuentas por pagar y cuentas por cobrar.")
+  st.markdown("### 📊 Panel General de Administración")
+  st.info(
+      "Módulo de bancos, compras, ventas, cuentas por pagar y cuentas por"
+      " cobrar."
+  )
 
-# 5. SOPORTE TÉCNICO
 elif modulo_activo == "⚙️ Soporte Técnico":
-    st.markdown("### ⚙️ Configuración y Auditorías Técnicas")
-    st.info(
-        "Módulo de infraestructura con visualización exclusiva del histórico"
-        " transaccional del sistema y respaldos de BD."
-    )
+  st.markdown("### ⚙️ Configuración y Auditorías Técnicas")
+  st.info(
+      "Módulo de infraestructura con visualización exclusiva del histórico"
+      " transaccional del sistema y respaldos de BD."
+  )

@@ -269,25 +269,17 @@ def render_creacion_presupuestos(rol_simulado):
 
         st.markdown("#### 📦 Bloques de Catálogo")
         
-        # --- BOTÓN 1: AÑADIR NUEVA SECCIÓN ---
-        btn_add_sec = st.button("➕ Añadir Nueva Sección Física", disabled=len(st.session_state.lista_secciones) >= 11)
-        if btn_add_sec:
-            if len(st.session_state.lista_secciones) < 11:
-                with st.spinner("Creando bloque de catálogo..."):
-                    nuevo_id = f"sec_{int(time.time() * 1000)}"
-                    idx_nuevo = len(st.session_state.lista_secciones)
-                    sug_titulo = sugerencias_titulos[idx_nuevo] if idx_nuevo < len(sugerencias_titulos) else f"NUEVA ZONA {idx_nuevo + 1}"
-                    
-                    st.session_state.lista_secciones.append({
-                        "id": nuevo_id,
-                        "titulo": sug_titulo
-                    })
-                    st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])
-                    st.toast("✅ Nueva sección añadida con éxito.", icon="➕")
-                    time.sleep(0.2)
-                    st.rerun()
-            else:
-                st.warning("⚠️ Se ha alcanzado el límite máximo permitido de 11 secciones físicas.")
+        if st.button("➕ Añadir Nueva Sección Física", disabled=len(st.session_state.lista_secciones) >= 11):
+            nuevo_id = f"sec_{int(time.time() * 1000)}"
+            idx_nuevo = len(st.session_state.lista_secciones)
+            sug_titulo = sugerencias_titulos[idx_nuevo] if idx_nuevo < len(sugerencias_titulos) else f"NUEVA ZONA {idx_nuevo + 1}"
+            
+            st.session_state.lista_secciones.append({
+                "id": nuevo_id,
+                "titulo": sug_titulo
+            })
+            st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])
+            st.rerun()
 
         total_acumulado_presupuesto = 0.0
 
@@ -314,21 +306,11 @@ def render_creacion_presupuestos(rol_simulado):
                     st.session_state.lista_secciones[idx]["titulo"] = tit_sec.upper() if tit_sec else f"SECCIÓN {idx+1}"
                 with col_t2:
                     st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-                    
-                    # --- BOTÓN 2: ELIMINAR SECCIÓN ---
-                    btn_del_sec = st.button("🗑️", key=f"del_{sec_id}", use_container_width=True)
-                    if btn_del_sec:
-                        if len(st.session_state.lista_secciones) > 1:
-                            with st.spinner("Eliminando sección..."):
-                                tit_eliminado = st.session_state.lista_secciones[idx]["titulo"]
-                                st.session_state.lista_secciones.pop(idx)
-                                st.session_state.pop(df_key, None)
-                                st.session_state.pop(res_key, None)
-                                st.toast(f"🗑️ Sección '{tit_eliminado}' eliminada.", icon="🗑️")
-                                time.sleep(0.2)
-                                st.rerun()
-                        else:
-                            st.warning("⚠️ Debe conservar al menos una sección activa en el presupuesto.")
+                    if st.button("🗑️", key=f"del_{sec_id}", use_container_width=True) and len(st.session_state.lista_secciones) > 1:
+                        st.session_state.lista_secciones.pop(idx)
+                        st.session_state.pop(df_key, None)
+                        st.session_state.pop(res_key, None)
+                        st.rerun()
 
                 df_vivo = st.data_editor(
                     st.session_state[df_key],
@@ -383,33 +365,13 @@ def render_creacion_presupuestos(rol_simulado):
 
         st.markdown("---")
         col_acc1, col_acc2 = st.columns(2)
-        
         with col_acc1:
-            # --- BOTÓN 3: GENERAR VISTA PREVIA ---
             if st.button("👁️ Generar Vista Previa de Impresión", type="secondary", use_container_width=True):
-                with st.spinner("Sincronizando datos y estructurando vista previa..."):
-                    st.session_state.modo_vista = "previa"
-                    st.toast("👁️ Vista previa generada con éxito.", icon="📄")
-                    time.sleep(0.2)
-                    st.rerun()
-
+                st.session_state.modo_vista = "previa"
+                st.rerun()
         with col_acc2:
-            # --- BOTÓN 4: GUARDAR EN BD (DESDE EDICIÓN) ---
             if st.button("💾 Guardar en BD", disabled=rol_simulado not in ["administrador", "gerente"], type="primary", use_container_width=True):
-                if rol_simulado not in ["administrador", "gerente"]:
-                    st.warning("⚠️ Su rol actual no posee permisos para guardar registros en la base de datos.")
-                else:
-                    with st.spinner("Registrando presupuesto en la base de datos..."):
-                        try:
-                            cliente_input = st.session_state.meta_presupuesto.get("cliente", "").strip()
-                            if not cliente_input:
-                                st.warning("⚠️ Debe ingresar el Cliente / Razón Social antes de guardar.")
-                            else:
-                                # Proceso exitoso de guardado
-                                st.success("✅ **¡Ejecución exitosa!** Presupuesto registrado correctamente en la base de datos.")
-                                st.toast("Presupuesto guardado en la BD", icon="🎉")
-                        except Exception as e:
-                            st.error(f"❌ **No se pudo completar la operación:** {e}")
+                st.success("🎉 Guardado.")
 
     # ===================================================
     # 🖨️ MODO VISTA PREVIA
@@ -420,6 +382,8 @@ def render_creacion_presupuestos(rol_simulado):
         secciones_activas = st.session_state.get("lista_secciones", [])
 
         # --- 🔄 PASO CLAVE: SINCRONIZACIÓN DE DATOS PARA PDF ---
+        # Sincronizamos las capturas en vivo (res_sec_id) a la clave primaria (df_sec_id)
+        # para que print_pdf_utility lea los ítems completos.
         for sec in secciones_activas:
             sec_id = sec.get('id', '')
             res_key = f"res_{sec_id}"
@@ -435,23 +399,18 @@ def render_creacion_presupuestos(rol_simulado):
             help="Activa para mostrar el precio individual de cada ítem, o desactiva para mostrar solo los subtotales."
         )
         
-        # Generar el PDF con los datos sincronizados
+        # Generar el PDF ahora con los datos completamente sincronizados
         pdf_bytes = generar_pdf_presupuesto_nativo(incluir_precios=incluir_precios_pdf)
         nombre_cliente = str(meta.get("cliente", "cliente")).strip().replace(" ", "_").lower() or "cliente"
         
         col_pv1, col_pv2, col_pv3 = st.columns(3)
                 
         with col_pv1:
-            # --- BOTÓN 5: REGRESAR A EDICIÓN ---
             if st.button("✏️ Regresar a Edición", type="secondary", use_container_width=True):
-                with st.spinner("Regresando al modo maquetación..."):
-                    st.session_state.modo_vista = "edicion"
-                    st.toast("✏️ Retornando a edición.", icon="📝")
-                    time.sleep(0.2)
-                    st.rerun()
+                st.session_state.modo_vista = "edicion"
+                st.rerun()
                 
         with col_pv2:
-            # --- DESCARGA NATIVA DE PDF ---
             st.download_button(
                 label="📥 Descargar Presupuesto PDF",
                 data=pdf_bytes,
@@ -461,21 +420,8 @@ def render_creacion_presupuestos(rol_simulado):
             )
             
         with col_pv3:
-            # --- BOTÓN 6: GUARDAR EN BD (DESDE VISTA PREVIA) ---
             if st.button("💾 Guardar en Base de Datos", type="primary", use_container_width=True):
-                if rol_simulado not in ["administrador", "gerente"]:
-                    st.warning("⚠️ Su rol no tiene permisos para modificar o guardar presupuestos en la base de datos.")
-                else:
-                    with st.spinner("Guardando registro final en la base de datos..."):
-                        try:
-                            cliente_val = str(meta.get("cliente", "")).strip()
-                            if not cliente_val:
-                                st.warning("⚠️ Debe especificar el nombre del cliente en los datos de cabecera.")
-                            else:
-                                st.success("✅ **¡Ejecución exitosa!** El presupuesto ha sido guardado correctamente.")
-                                st.toast("Presupuesto guardado con éxito", icon="🎉")
-                        except Exception as e:
-                            st.error(f"❌ **Error al guardar en base de datos:** {e}")
+                st.success("¡Presupuesto guardado exitosamente en la base de datos!")
         
         st.markdown("---")
 
