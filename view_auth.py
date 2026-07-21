@@ -1,10 +1,12 @@
 # view_auth.py
+import hashlib
+import random
+import string
 import os
 import base64
 import streamlit as st
-from db_connection import supabase  # Tu conector existente[cite: 8]
-from core_auth import calcular_hash_256, generar_codigo_temporal, enviar_correo_simulado, ROLES_PERMITIDOS[cite: 9]
-
+from db_connection import supabase
+from core_auth import calcular_hash_256, generar_codigo_temporal, enviar_correo_simulado, ROLES_PERMITIDOS
 def _render_logo_corporativo():
     """Carga y renderiza el logotipo corporativo desde la raíz o directorio del script."""
     logo_nombre = "encabezado_paleta.png"
