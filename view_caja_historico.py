@@ -94,7 +94,8 @@ def render_historico(df_todos, rol_actual):
 
   estado_consolidado = False
   if not df_global[mascara_mes].empty:
-    estado_consolidado = df_global[mascara_mes]["consolidado"].all()
+    # Corrección 1: Conversión explícita a booleano puro de Python
+    estado_consolidado = bool(df_global[mascara_mes]["consolidado"].all())
 
   if estado_consolidado:
     st.success("🔒 **ESTADO PERÍODO: CONSOLIDADO / COMPLETO**")
@@ -179,12 +180,12 @@ def render_historico(df_todos, rol_actual):
         height=600,
     )
 
-  # --- LÓGICA DE CIERRE/APERTURA TOTALMENTE BLINDADA ---
+  # --- LÓGICA DE CIERRE/APERTURA (COMPLETAMENTE CORREGIDA) ---
   rol_limpio = str(rol_actual).strip().lower()
   if rol_limpio in ["administrador", "gerente"]:
     st.markdown("---")
     
-    # 1. Recuperar y mostrar mensaje pendiente (sobrevive a la recarga de página)
+    # Manejo de la notificación de estado persistente entre recargas de pantalla
     if "msg_accion_historico" in st.session_state:
         tipo_msg, texto_msg = st.session_state.pop("msg_accion_historico")
         if tipo_msg == "success":
@@ -192,8 +193,9 @@ def render_historico(df_todos, rol_actual):
         else:
             st.error(texto_msg)
 
+    # Corrección 2: Conversión a enteros puros de Python para evitar incompatibilidad de Pandas en BD
     indices_mes = (
-        df_global[mascara_mes]["id"].tolist()
+        [int(x) for x in df_global[mascara_mes]["id"].tolist()]
         if not df_global[mascara_mes].empty
         else []
     )
@@ -207,34 +209,38 @@ def render_historico(df_todos, rol_actual):
           nuevo_estado = True
 
       if st.button(btn_label, key="btn_toggle_estado", use_container_width=True):
-          try:
-              with st.spinner("Registrando cambios y actualizando entorno..."):
-                  # Impactar la base de datos
-                  actualizar_consolidado_mes_db(indices_mes, nuevo_estado, rol_actual)
-                  
-                  # ACTUALIZACIÓN OPTIMISTA: Modificamos el estado local manualmente
-                  # para no depender de la velocidad de lectura de la base de datos
+          with st.spinner("Registrando cambios en la base de datos..."):
+              
+              # Corrección 3: Llamada exacta según lo requerido en db_connection.py
+              exito, mensaje_bd = actualizar_consolidado_mes_db(
+                  anho=anho_rep,
+                  mes=mes_rep_num,
+                  estado=nuevo_estado
+              )
+              
+              if exito:
+                  # Actualización optimista del entorno local
                   if "df_movimientos" in st.session_state:
                       df_local = st.session_state["df_movimientos"]
                       df_local.loc[df_local["id"].isin(indices_mes), "consolidado"] = nuevo_estado
                       st.session_state["df_movimientos"] = df_local
                   
-                  # Traer la actualización real por debajo
+                  # Sincronización real con Supabase
                   obtener_movimientos_locales()
-              
-              estado_texto = "CERRADO DEFINITIVAMENTE" if nuevo_estado else "ABIERTO"
-              # Guardar el mensaje para que se despliegue en la siguiente carga
-              st.session_state["msg_accion_historico"] = (
-                  "success",
-                  f"✅ El período {mes_rep_nom} {anho_rep} ahora se encuentra {estado_texto}."
-              )
-          except Exception as e:
-              st.session_state["msg_accion_historico"] = (
-                  "error",
-                  f"❌ Ocurrió un error crítico al modificar el mes: {e}"
-              )
+                  
+                  estado_texto = "CERRADO DEFINITIVAMENTE" if nuevo_estado else "ABIERTO"
+                  st.session_state["msg_accion_historico"] = (
+                      "success",
+                      f"✅ El período {mes_rep_nom} {anho_rep} ahora se encuentra {estado_texto}."
+                  )
+              else:
+                  # Atrapa y expone fallos internos de la BD o mala conexión
+                  st.session_state["msg_accion_historico"] = (
+                      "error",
+                      f"❌ No se pudo actualizar la base de datos: {mensaje_bd}"
+                  )
           
-          # Refresco mandatorio
+          # Refresco mandatorio de la interfaz
           try:
               st.rerun()
           except AttributeError:
