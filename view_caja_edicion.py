@@ -34,6 +34,10 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
   df = df_completo.copy()
   df["fecha_dt"] = pd.to_datetime(df["fecha"])
   ym_minimo_global = df["fecha_dt"].min().strftime("%Y-%m")
+  
+  # Garantizar que la columna 'activo' exista en el DataFrame local
+  if "activo" not in df.columns:
+      df["activo"] = True
 
   col_anio, col_mes, col_buscar = st.columns([1, 1, 2])
 
@@ -86,20 +90,21 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
   if bloqueo_total_vista:
     st.warning(f"🔒 **EDICIÓN SUSPENDIDA:** El mes de {mes_sel} {anio_sel} se encuentra cerrado / consolidado.")
     st.dataframe(
-        df_filtrado[["id", "fecha", "categoria", "detalle", "tipo", "monto", "tasa", "comentarios"]],
+        df_filtrado[["id", "activo", "fecha", "categoria", "detalle", "tipo", "monto", "tasa", "comentarios"]],
         use_container_width=False, hide_index=True, height=500,
     )
     return
 
   st.caption(
-      f"💡 Editando {len(df_filtrado)} registros. Modifica solo lo necesario y presiona guardar."
+      f"💡 Editando {len(df_filtrado)} registros. Desmarca la casilla 'Activo' para eliminar lógicamente un asiento."
   )
 
   df_editado = st.data_editor(
       df_filtrado,
-      column_order=["id", "fecha", "categoria", "detalle", "tipo", "monto", "tasa", "comentarios"],
+      column_order=["id", "activo", "fecha", "categoria", "detalle", "tipo", "monto", "tasa", "comentarios"],
       column_config={
           "id": st.column_config.NumberColumn("ID", width=60, disabled=True),
+          "activo": st.column_config.CheckboxColumn("Activo", width=60, help="Desmarca para anular/eliminar este registro"),
           "fecha": st.column_config.DateColumn("Fecha", width=100, format="DD/MM/YYYY"),
           "categoria": st.column_config.TextColumn("Categoría", width=160),
           "detalle": st.column_config.TextColumn("Descripción", width=340),
@@ -130,6 +135,12 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
             row_e = df_edi_comp.loc[id_reg]
             
             cambio = False
+            
+            # Detección de eliminación lógica (cambio en activo)
+            activo_f = bool(row_f["activo"]) if pd.notnull(row_f["activo"]) else True
+            activo_e = bool(row_e["activo"]) if pd.notnull(row_e["activo"]) else True
+            if activo_f != activo_e: cambio = True
+            
             if pd.to_datetime(row_f["fecha"]) != pd.to_datetime(row_e["fecha"]): cambio = True
             if str(row_f["categoria"]).strip().upper() != str(row_e["categoria"]).strip().upper(): cambio = True
             if str(row_f["detalle"]).strip() != str(row_e["detalle"]).strip(): cambio = True
@@ -149,7 +160,7 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
                 ym_nuevo = pd.to_datetime(row_e["fecha"]).strftime("%Y-%m")
                 
                 if ym_original in meses_cerrados_real:
-                    errores_bloqueo.append(f"El ID {id_reg} pertenece a un mes cerrado ({ym_original}).")
+                    errores_bloqueo.append(f"El ID {id_reg} pertenece a un mes cerrado ({ym_original}). No puede ser alterado ni anulado.")
                 elif ym_nuevo in meses_cerrados_real:
                     errores_bloqueo.append(f"No puedes mover el ID {id_reg} a un mes cerrado ({ym_nuevo}).")
                 elif ym_nuevo < ym_minimo_global:
@@ -171,6 +182,7 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
             row_e = df_edi_comp.loc[id_reg]
             fecha_str = row_e["fecha"].strftime("%Y-%m-%d") if hasattr(row_e["fecha"], "strftime") else str(row_e["fecha"])
             cambios = {
+                "activo": bool(row_e["activo"]),
                 "fecha": fecha_str,
                 "categoria": str(row_e["categoria"]).strip().upper(),
                 "detalle": str(row_e["detalle"]).strip(),
