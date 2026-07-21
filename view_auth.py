@@ -97,7 +97,7 @@ def render_modulo_autenticacion():
                 st.session_state["auth_datos_registro"] = {
                     "usuario": nuevo_user,
                     "email": nuevo_email,
-                    "password_hash": calcular_hash_256(nuevo_pass),[cite: 9]
+                    "password_hash": calcular_hash_256(nuevo_pass),
                     "rol": nuevo_rol,
                     "verificado": False
                 }
