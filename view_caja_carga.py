@@ -1,62 +1,118 @@
 # view_caja_carga.py
+import datetime
+import pandas as pd
 import streamlit as st
-from datetime import datetime
-from db_connection import guardar_movimiento_local
+from db_connection import insertar_movimiento_db, obtener_movimientos_locales
 
-opciones_cuentas = [
-    "IN-Bs", "EG-Bs", 
-    "IN-$Ze", "EG-$Ze", 
-    "IN-$Ch", "EG-$Ch",
-    "IN-$AhZe", "EG-$AhZe",
-    "IN-$AhCh", "EG-$AhCh"
-]
 
-def render_carga(rol_actual, es_consolidado):
-    if rol_actual not in ["administrador", "gerente", "contador"]:
-        st.error("⛔ Tu rol actual no posee permisos de ESCRITURA en esta pestaña.")
-        return
+def render_carga_movimientos(rol_actual):
+  st.markdown("### 📝 Carga de Nuevos Movimientos de Caja")
 
-    st.markdown("### 📝 Carga de Movimientos de Caja")
-    
-    if es_consolidado:
-        st.warning("🔒 **PERÍODO CONSOLIDADO:** Este mes ha sido cerrado por la administración. No se permiten modificaciones.")
-        return
-    
-    # clear_on_submit=False evita el vaciado accidental al presionar Enter prematuramente
-    with st.form("form_carga_caja", clear_on_submit=False):
-        c1, c2 = st.columns(2)
-        with c1:
-            f_ins = st.date_input("Fecha de Operación", datetime.now(), disabled=es_consolidado)
-            cat_ins = st.text_input("Categoría", placeholder="Ej: SALARIO PERSONAL, IMPRESIÓN...", disabled=es_consolidado)
-            det_ins = st.text_input("Detalle / Concepto", placeholder="Ej. Pago de arriendo...", disabled=es_consolidado)
-        with c2:
-            t_ins = st.selectbox("Tipo Cuenta", opciones_cuentas, disabled=es_consolidado)
-            monto_raw = st.text_input("Monto Ocurrencia", value="0.00", disabled=es_consolidado)
-            tas_ins = st.number_input("Tasa Monitor", min_value=0.0, value=40.00, step=0.1, disabled=es_consolidado)
-            
-        com_ins = st.text_area("Notas internas / Auditoría", height=68, disabled=es_consolidado)
-        btn_guardar = st.form_submit_button("Registrar Transacción", disabled=es_consolidado)
-        
-        if btn_guardar:
-            if not det_ins.strip():
-                st.error("El campo 'Detalle / Concepto' es obligatorio.")
-                return
-            
-            try:
-                monto_limpio = monto_raw.replace(".", "").replace(",", ".")
-                m_ins = float(monto_limpio)
-                
-                if m_ins <= 0:
-                    st.error("El monto debe ser mayor a cero.")
-                    return
-                
-                reg = {
-                    "fecha": f_ins, "categoria": cat_ins.strip().upper(), "detalle": det_ins.strip(), "tipo": t_ins, "monto": m_ins,
-                    "tasa": tas_ins if "Bs" in t_ins else None, "comentarios": com_ins.strip(),
-                    "activo": True, "consolidado": False, "creado_por": rol_actual, "modificado_por": rol_actual
-                }
-                guardar_movimiento_local(reg)
-                st.success(f"💥 ¡Asiento registrado con éxito! Recuerda usar TAB para navegar entre casillas.")
-                st.rerun()
-            except ValueError:
-                st.error("Formato numérico inválido.")
+  # Formulario de Entrada de Datos
+  with st.form("form_nuevo_movimiento", clear_on_submit=False):
+    col1, col2 = st.columns(2)
+
+    with col1:
+      fecha_input = st.date_input(
+          "Fecha de la transacción:",
+          value=datetime.date.today(),
+          help="Puedes seleccionar cualquier fecha de cualquier mes/año.",
+      )
+      categoria_input = st.text_input(
+          "Categoría (*):", placeholder="Ej: IMPRENTA, VENTA, ALQUILER..."
+      )
+      detalle_input = st.text_input(
+          "Descripción / Detalle (*):",
+          placeholder="Ej: Pago de franelas cliente Marivet",
+      )
+
+    with col2:
+      tipo_input = st.selectbox(
+          "Tipo de Cuenta (*):",
+          options=[
+              "IN-Bs",
+              "EG-Bs",
+              "IN-$Ze",
+              "EG-$Ze",
+              "IN-$Ch",
+              "EG-$Ch",
+              "IN-$AhZe",
+              "EG-$AhZe",
+              "IN-$AhCh",
+              "EG-$AhCh",
+          ],
+      )
+      monto_input = st.number_input(
+          "Monto (*):", min_value=0.0, step=0.01, format="%.2f"
+      )
+      tasa_input = st.number_input(
+          "Tasa de Cambio Monitor:",
+          min_value=0.0,
+          value=1.0,
+          step=0.01,
+          format="%.2f",
+      )
+
+    comentarios_input = st.text_area("Comentarios adicionales (Opcional):")
+
+    st.divider()
+    btn_registrar = st.form_submit_button(
+        "💾 Registrar Transacción en Base de Datos"
+    )
+
+  # --- PROCESAMIENTO AL PRESIONAR EL BOTÓN ---
+  if btn_registrar:
+    # 1. VALIDACIONES PREVIAS (Adverten visualmente en pantalla)
+    errores_validacion = []
+
+    if not categoria_input.strip():
+      errores_validacion.append("La **Categoría** es obligatoria.")
+
+    if not detalle_input.strip():
+      errores_validacion.append(
+          "La **Descripción/Detalle** es obligatoria."
+      )
+
+    if monto_input <= 0:
+      errores_validacion.append("El **Monto** debe ser mayor a 0,00.")
+
+    if "Bs" in tipo_input and tasa_input <= 0:
+      errores_validacion.append(
+          "La **Tasa Monitor** debe ser mayor a 0 para cuentas en Bolívares."
+      )
+
+    # Si hay errores de validación, mostrar advertencia y FRENAR la operación
+    if errores_validacion:
+      for err in errores_validacion:
+        st.warning(f"⚠️ {err}")
+      st.error(
+          "❌ La transacción NO fue enviada a la base de datos debido a datos"
+          " faltantes o erróneos."
+      )
+      return
+
+    # 2. PREPARACIÓN DEL DICCIONARIO PARA SUPABASE
+    nuevo_asiento = {
+        "fecha": fecha_input.strftime("%Y-%m-%d"),
+        "categoria": categoria_input.strip().upper(),
+        "detalle": detalle_input.strip(),
+        "tipo": tipo_input,
+        "monto": float(monto_input),
+        "tasa": float(tasa_input) if tasa_input > 0 else 1.0,
+        "comentarios": comentarios_input.strip(),
+        "activo": True,
+        "consolidado": False,
+        "creado_por": rol_actual,
+    }
+
+    # 3. EJECUCIÓN CON FEEDBACK
+    with st.spinner("Conectando con Supabase..."):
+      exito, mensaje = insertar_movimiento_db(nuevo_asiento)
+
+    if exito:
+      st.balloons()
+      st.success(f"🎉 {mensaje}")
+      # Refrescar la base de datos local y la app
+      obtener_movimientos_locales()
+    else:
+      st.error(f"❌ ATENCIÓN: {mensaje}")
