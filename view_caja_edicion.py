@@ -1,219 +1,91 @@
 # view_caja_edicion.py
-import datetime
-import time
-import pandas as pd
 import streamlit as st
+import pandas as pd
+from db_connection import actualizar_movimiento_db, eliminar_movimiento_db
 
-from db_connection import actualizar_movimiento_db, obtener_movimientos_locales
+def render_view_caja_edicion(df_movimientos: pd.DataFrame):
+    st.header("✏️ Edición y Eliminación de Movimientos")
 
-
-def _obtener_meses_cerrados(df_datos) -> set:
-    if df_datos is None or df_datos.empty or "consolidado" not in df_datos.columns:
-        return set()
-    df_temp = df_datos.copy()
-    df_temp["ym"] = pd.to_datetime(df_temp["fecha"], errors="coerce").dt.strftime("%Y-%m")
-    meses_bloqueados = df_temp[df_temp["consolidado"] == True]["ym"].unique()
-    return set(meses_bloqueados)
-
-
-def render_edicion(df_completo, rol_actual, es_consolidado=False):
-    # --- SISTEMA DE NOTIFICACIONES POST-RECARGA ---
-    if "msg_edicion" in st.session_state:
-        tipo, texto = st.session_state["msg_edicion"]
-        if tipo == "success":
-            st.success(texto)
-            st.toast(texto, icon="🎉")
-        elif tipo == "error":
-            st.error(texto)
-            st.toast(texto, icon="❌")
-        del st.session_state["msg_edicion"]
-
-    st.markdown("### 🛠️ Modificaciones Generales de Auditoría")
-
-    if df_completo.empty:
-        st.info("No hay registros editables en la base de datos.")
+    if df_movimientos.empty:
+        st.info("No hay movimientos registrados en la base de datos.")
         return
 
-    df = df_completo.copy()
-    df["fecha_dt"] = pd.to_datetime(df["fecha"])
-    ym_minimo_global = df["fecha_dt"].min().strftime("%Y-%m")
+    # --- 1. SELECCIÓN DE PERÍODO (AÑO Y MES) ---
+    col_anho, col_mes = st.columns(2)
     
-    if "activo" not in df.columns:
-        df["activo"] = True
-
-    # --- FILTRADO DE SEGURIDAD: Ocultar inactivos por defecto para usuarios normales ---
-    es_soporte = str(rol_actual).lower() in ["soporte técnico", "soporte", "admin", "administrador"]
+    # Extraer años disponibles
+    df_temp = df_movimientos.copy()
+    df_temp["fecha_dt"] = pd.to_datetime(df_temp["fecha"], errors="coerce")
+    anhos_disponibles = sorted(df_temp["fecha_dt"].dt.year.dropna().unique().astype(int), reverse=True)
     
-    col_anio, col_mes, col_buscar, col_ver_inactivos = st.columns([1, 1, 2, 1.2])
-
-    with col_ver_inactivos:
-        st.markdown("<br>", unsafe_allow_html=True) # Espaciador visual
-        ver_inactivos = st.checkbox("🔍 Ver inactivos (Soporte)", value=False, help="Muestra los registros anulados para revisión técnica.")
-
-    if not ver_inactivos:
-        df = df[df["activo"] == True]
-
-    if df.empty:
-        st.warning("No hay registros activos disponibles para editar.")
+    if not anhos_disponibles:
+        st.warning("No se encontraron fechas válidas en los registros.")
         return
 
-    anios = sorted(df["fecha_dt"].dt.year.unique(), reverse=True)
-    with col_anio:
-        anio_sel = st.selectbox("Año a editar:", options=anios, index=0)
-
+    with col_anho:
+        anho_sel = st.selectbox("Seleccione el Año", anhos_disponibles, key="edicion_anho")
+        
     meses_nombres = [
-        "Todo el año", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
     ]
+    
     with col_mes:
-        mes_sel = st.selectbox("Mes:", options=meses_nombres, index=0)
-
-    with col_buscar:
-        busqueda = st.text_input(
-            "🔍 Buscador rápido:", placeholder="Ej: 147, Zelle, Imprenta..."
+        mes_sel = st.selectbox(
+            "Seleccione el Mes", 
+            range(1, 13), 
+            format_func=lambda x: meses_nombres[x-1], 
+            key="edicion_mes"
         )
 
-    df_filtrado = df[df["fecha_dt"].dt.year == anio_sel].copy()
+    # --- 2. FILTRADO DE MOVIMIENTOS ---
+    mascara = (df_temp["fecha_dt"].dt.year == int(anho_sel)) & (df_temp["fecha_dt"].dt.month == int(mes_sel))
+    df_mes = df_temp[mascara].sort_values(by=["fecha", "id"]).copy()
 
-    num_mes_sel = None
-    if mes_sel != "Todo el año":
-        num_mes_sel = meses_nombres.index(mes_sel)
-        df_filtrado = df_filtrado[df_filtrado["fecha_dt"].dt.month == num_mes_sel]
-
-    if busqueda:
-        b_lower = busqueda.strip().lower()
-        df_filtrado = df_filtrado[
-            df_filtrado["id"].astype(str).str.contains(b_lower)
-            | df_filtrado["detalle"].astype(str).str.lower().str.contains(b_lower)
-            | df_filtrado["categoria"].astype(str).str.lower().str.contains(b_lower)
-        ]
-
-    if df_filtrado.empty:
-        st.warning("No se encontraron registros con los filtros seleccionados.")
+    if df_mes.empty:
+        st.info(f"No existen movimientos registrados en **{meses_nombres[mes_sel-1]} de {anho_sel}**.")
         return
 
-    # --- BLOQUEO VISUAL MASIVO ---
-    meses_cerrados_locales = _obtener_meses_cerrados(df)
-    bloqueo_total_vista = False
+    # --- 3. VERIFICACIÓN DE MES CERRADO / CONSOLIDADO ---
+    mes_cerrado = False
+    if "consolidado" in df_mes.columns:
+        # Si existe al menos un registro marcado como consolidado en el período, el mes está cerrado
+        mes_cerrado = df_mes["consolidado"].fillna(False).astype(bool).any()
 
-    if mes_sel != "Todo el año":
-        ym_seleccionado = f"{anio_sel}-{num_mes_sel:02d}"
-        if ym_seleccionado in meses_cerrados_locales:
-            bloqueo_total_vista = True
-        elif ym_seleccionado < ym_minimo_global:
-            bloqueo_total_vista = True
-
-    if bloqueo_total_vista:
-        st.warning(f"🔒 **EDICIÓN SUSPENDIDA:** El mes de {mes_sel} {anio_sel} se encuentra cerrado / consolidado.")
-        st.dataframe(
-            df_filtrado[["id", "activo", "fecha", "categoria", "detalle", "tipo", "monto", "tasa", "comentarios"]],
-            use_container_width=False, hide_index=True, height=500,
+    if mes_cerrado:
+        st.warning(
+            f"🔒 **MES CERRADO / CONSOLIDADO ({meses_nombres[mes_sel-1].upper()} {anho_sel})**\n\n"
+            "No hay modificaciones posibles en este período.\n\n"
+            "💡 *Si necesita modificar o borrar un registro, debe reabrir el mes previamente en la pestaña **Histórico**.*"
         )
+        # Detenemos la vista aquí para ocultar la tabla y evitar acciones innecesarias
         return
 
-    st.caption(
-        f"💡 Editando {len(df_filtrado)} registros. Desmarca 'Activo' para dar de baja un asiento (desaparecerá de las vistas operativas)."
-    )
+    # --- 4. VISTA DE EDICIÓN (SOLO SI EL MES ESTÁ ABIERTO) ---
+    st.success(f"🔓 **Mes Abierto:** Mostrando {len(df_mes)} registro(s) disponible(s) para modificación.")
+    st.markdown("---")
 
-    df_editado = st.data_editor(
-        df_filtrado,
-        column_order=["id", "activo", "fecha", "categoria", "detalle", "tipo", "monto", "tasa", "comentarios"],
-        column_config={
-            "id": st.column_config.NumberColumn("ID", width=60, disabled=True),
-            "activo": st.column_config.CheckboxColumn("Activo", width=60, help="Desmarca para anular lógicamente el registro"),
-            "fecha": st.column_config.DateColumn("Fecha", width=100, format="DD/MM/YYYY"),
-            "categoria": st.column_config.TextColumn("Categoría", width=160),
-            "detalle": st.column_config.TextColumn("Descripción", width=340),
-            "tipo": st.column_config.SelectboxColumn(
-                "Tipo Cuenta", width=120,
-                options=["IN-Bs", "EG-Bs", "IN-$Ze", "EG-$Ze", "IN-$Ch", "EG-$Ch", "IN-$AhZe", "EG-$AhZe", "IN-$AhCh", "EG-$AhCh"],
-            ),
-            "monto": st.column_config.NumberColumn("Monto Base", width=130, min_value=0.0, format="%.2f"),
-            "tasa": st.column_config.NumberColumn("Tasa Monitor", width=110, min_value=0.0, format="%.2f"),
-            "comentarios": st.column_config.TextColumn("Comentario", width=340),
-        },
-        disabled=False, hide_index=True, use_container_width=False, height=500, key="editor_excel_caja",
-    )
+    # Mostrar la tabla interactivamente para selección/edición
+    for _, row in df_mes.iterrows():
+        asiento_id = row.get("id")
+        fecha_str = str(row.get("fecha", ""))
+        concepto = str(row.get("concepto", ""))
+        tipo = str(row.get("tipo", ""))
+        monto = float(row.get("monto", 0.0))
 
-    # --- BOTÓN DE APLICACIÓN DE CAMBIOS CON PROTECCIÓN UX COMPLETA ---
-    btn_guardar = st.button("💾 Aplicar Cambios Consolidados en Base de Datos", type="primary", use_container_width=True)
-    if btn_guardar:
-        with st.spinner("Comparando cambios y validando bloqueos de seguridad..."):
-            df_fresco = obtener_movimientos_locales()
-            meses_cerrados_real = _obtener_meses_cerrados(df_fresco)
-
-            df_fil_comp = df_filtrado.set_index("id")
-            df_edi_comp = df_editado.set_index("id")
+        with st.expander(f"📌 Asiento #{asiento_id} | {fecha_str} | {tipo} | ${monto:,.2f}"):
+            col_info, col_acciones = st.columns([3, 1])
             
-            ids_modificados = []
-            errores_bloqueo = []
-
-            for id_reg in df_edi_comp.index:
-                row_f = df_fil_comp.loc[id_reg]
-                row_e = df_edi_comp.loc[id_reg]
-                
-                cambio = False
-                
-                activo_f = bool(row_f["activo"]) if pd.notnull(row_f["activo"]) else True
-                activo_e = bool(row_e["activo"]) if pd.notnull(row_e["activo"]) else True
-                if activo_f != activo_e: cambio = True
-                
-                if pd.to_datetime(row_f["fecha"]) != pd.to_datetime(row_e["fecha"]): cambio = True
-                if str(row_f["categoria"]).strip().upper() != str(row_e["categoria"]).strip().upper(): cambio = True
-                if str(row_f["detalle"]).strip() != str(row_e["detalle"]).strip(): cambio = True
-                if str(row_f["tipo"]) != str(row_e["tipo"]): cambio = True
-                if float(row_f["monto"]) != float(row_e["monto"]): cambio = True
-                
-                tasa_f = float(row_f["tasa"]) if pd.notnull(row_f["tasa"]) else 1.0
-                tasa_e = float(row_e["tasa"]) if pd.notnull(row_e["tasa"]) else 1.0
-                if tasa_f != tasa_e: cambio = True
-                
-                com_f = str(row_f["comentarios"]).strip() if pd.notnull(row_f["comentarios"]) and str(row_f["comentarios"]).lower() not in ['nan', 'none'] else ""
-                com_e = str(row_e["comentarios"]).strip() if pd.notnull(row_e["comentarios"]) and str(row_e["comentarios"]).lower() not in ['nan', 'none'] else ""
-                if com_f != com_e: cambio = True
-                
-                if cambio:
-                    ym_original = pd.to_datetime(row_f["fecha"]).strftime("%Y-%m")
-                    ym_nuevo = pd.to_datetime(row_e["fecha"]).strftime("%Y-%m")
-                    
-                    if ym_original in meses_cerrados_real:
-                        errores_bloqueo.append(f"El ID {id_reg} pertenece a un mes cerrado ({ym_original}). No puede ser alterado ni anulado.")
-                    elif ym_nuevo in meses_cerrados_real:
-                        errores_bloqueo.append(f"No puedes mover el ID {id_reg} a un mes cerrado ({ym_nuevo}).")
-                    elif ym_nuevo < ym_minimo_global:
-                        errores_bloqueo.append(f"No puedes asignar el ID {id_reg} a un mes anterior al inicio histórico ({ym_nuevo}).")
+            with col_info:
+                st.write(f"**Concepto:** {concepto}")
+                st.write(f"**Tipo de Cuenta:** {tipo}")
+            
+            with col_acciones:
+                # Botón de Eliminación Directa
+                if st.button(f"🗑️ Eliminar #{asiento_id}", key=f"btn_del_{asiento_id}"):
+                    exito, msg = eliminar_movimiento_db(asiento_id)
+                    if exito:
+                        st.success(msg)
+                        st.rerun()
                     else:
-                        ids_modificados.append(id_reg)
-
-            if errores_bloqueo:
-                for err in list(set(errores_bloqueo)):
-                    st.error(f"❌ {err}")
-                st.error("Operación abortada por seguridad.")
-                st.toast("Operación abortada por seguridad", icon="⚠️")
-                return
-
-            if not ids_modificados:
-                st.info("No se detectaron cambios en los datos que requieran guardarse.")
-                st.toast("Sin cambios para guardar", icon="ℹ️")
-                return
-
-            for id_reg in ids_modificados:
-                row_e = df_edi_comp.loc[id_reg]
-                fecha_str = row_e["fecha"].strftime("%Y-%m-%d") if hasattr(row_e["fecha"], "strftime") else str(row_e["fecha"])
-                cambios = {
-                    "activo": bool(row_e["activo"]),
-                    "fecha": fecha_str,
-                    "categoria": str(row_e["categoria"]).strip().upper(),
-                    "detalle": str(row_e["detalle"]).strip(),
-                    "tipo": row_e["tipo"],
-                    "monto": float(row_e["monto"]),
-                    "tasa": float(row_e["tasa"]) if pd.notnull(row_e["tasa"]) else 1.0,
-                    "comentarios": str(row_e["comentarios"]).strip() if pd.notnull(row_e["comentarios"]) and str(row_e["comentarios"]).lower() not in ['nan', 'none'] else "",
-                    "modificado_por": rol_actual,
-                }
-                actualizar_movimiento_db(int(id_reg), cambios)
-
-            st.session_state["df_movimientos"] = obtener_movimientos_locales()
-            st.session_state["msg_edicion"] = ("success", f"🎉 ¡{len(ids_modificados)} registro(s) actualizado(s) correctamente!")
-            time.sleep(0.2)
-            st.rerun()
+                        st.error(msg)
