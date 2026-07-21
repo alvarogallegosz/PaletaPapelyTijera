@@ -1,4 +1,3 @@
-# view_caja_historico.py
 import pandas as pd
 import streamlit as st
 from core_finance_engine import procesar_mes_aislado
@@ -183,23 +182,40 @@ def render_historico(df_todos, rol_actual):
   rol_limpio = str(rol_actual).strip().lower()
   if rol_limpio in ["administrador", "gerente"]:
     st.markdown("---")
-    indices_mes = df_global[mascara_mes]["id"].tolist()
+    indices_mes = (
+        df_global[mascara_mes]["id"].tolist()
+        if not df_global[mascara_mes].empty
+        else []
+    )
 
-    if not estado_consolidado:
-      if st.button("✅ Consolidar y Bloquear Mes Definición"):
-        actualizar_consolidado_mes_db(indices_mes, True, rol_actual)
-        obtener_movimientos_locales()
-        st.success(
-            f"🎉 El período {mes_rep_nom} {anho_rep} ha sido cerrado de forma"
-            " definitiva."
-        )
-        st.rerun()
+    if indices_mes:
+      if not estado_consolidado:
+        if st.button(
+            "✅ Consolidar y Bloquear Mes Seleccionado",
+            key="btn_consolidar_historico",
+        ):
+          actualizar_consolidado_mes_db(indices_mes, True, rol_actual)
+          obtener_movimientos_locales()
+          st.toast(
+              f"El período {mes_rep_nom} {anho_rep} ha sido cerrado"
+              " definitivamente.",
+              icon="✅",
+          )
+          st.rerun()
+      else:
+        if st.button(
+            "🔓 Reabrir Auditoría de este Mes", key="btn_reabrir_historico"
+        ):
+          actualizar_consolidado_mes_db(indices_mes, False, rol_actual)
+          obtener_movimientos_locales()
+          st.toast(
+              f"El período {mes_rep_nom} {anho_rep} se encuentra abierto"
+              " nuevamente.",
+              icon="🔓",
+          )
+          st.rerun()
     else:
-      if st.button("🔓 Reabrir Auditoría de este Mes"):
-        actualizar_consolidado_mes_db(indices_mes, False, rol_actual)
-        obtener_movimientos_locales()
-        st.success(
-            f"🔓 El período {mes_rep_nom} {anho_rep} se encuentra abierto"
-            " nuevamente para modificaciones."
-        )
-        st.rerun()
+      st.info(
+          f"No hay registros en el período {mes_rep_nom} {anho_rep} para"
+          " aplicar acciones de cierre o apertura."
+      )
