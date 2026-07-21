@@ -179,6 +179,7 @@ def render_historico(df_todos, rol_actual):
         height=600,
     )
 
+  # --- LÓGICA DE CIERRE/APERTURA CORREGIDA ---
   rol_limpio = str(rol_actual).strip().lower()
   if rol_limpio in ["administrador", "gerente"]:
     st.markdown("---")
@@ -189,31 +190,38 @@ def render_historico(df_todos, rol_actual):
     )
 
     if indices_mes:
-      if not estado_consolidado:
-        if st.button(
-            "✅ Consolidar y Bloquear Mes Seleccionado",
-            key="btn_consolidar_historico",
-        ):
-          actualizar_consolidado_mes_db(indices_mes, True, rol_actual)
-          obtener_movimientos_locales()
-          st.toast(
-              f"El período {mes_rep_nom} {anho_rep} ha sido cerrado"
-              " definitivamente.",
-              icon="✅",
-          )
-          st.rerun()
+      # Definimos dinámicamente las variables del botón según el estado actual
+      if estado_consolidado:
+          btn_label = "🔓 Reabrir Auditoría de este Mes"
+          nuevo_estado = False
+          toast_msg = f"El período {mes_rep_nom} {anho_rep} se encuentra abierto nuevamente."
+          toast_icon = "🔓"
+          # Clave única obligatoria para evitar conflictos al re-renderizar
+          btn_key = f"btn_abrir_{anho_rep}_{mes_rep_num}"
       else:
-        if st.button(
-            "🔓 Reabrir Auditoría de este Mes", key="btn_reabrir_historico"
-        ):
-          actualizar_consolidado_mes_db(indices_mes, False, rol_actual)
-          obtener_movimientos_locales()
-          st.toast(
-              f"El período {mes_rep_nom} {anho_rep} se encuentra abierto"
-              " nuevamente.",
-              icon="🔓",
-          )
-          st.rerun()
+          btn_label = "✅ Consolidar y Bloquear Mes Seleccionado"
+          nuevo_estado = True
+          toast_msg = f"El período {mes_rep_nom} {anho_rep} ha sido cerrado definitivamente."
+          toast_icon = "✅"
+          btn_key = f"btn_cerrar_{anho_rep}_{mes_rep_num}"
+
+      # Un solo renderizado de botón que ejecuta la acción correspondiente
+      if st.button(btn_label, key=btn_key, use_container_width=True):
+          try:
+              with st.spinner("Actualizando registros en la base de datos..."):
+                  actualizar_consolidado_mes_db(indices_mes, nuevo_estado, rol_actual)
+                  obtener_movimientos_locales()
+              
+              st.toast(toast_msg, icon=toast_icon)
+              
+              # Forzamos el redibujado de la interfaz de manera compatible
+              try:
+                  st.rerun()
+              except AttributeError:
+                  st.experimental_rerun()
+                  
+          except Exception as e:
+              st.error(f"❌ Error al procesar la actualización: {e}")
     else:
       st.info(
           f"No hay registros en el período {mes_rep_nom} {anho_rep} para"
