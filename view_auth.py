@@ -49,7 +49,7 @@ def render_modulo_autenticacion():
             if st.button("Ingresar", use_container_width=True, type="primary"):
                 if usuario_input and pass_input:
                     # Consultar en la tabla 'usuarios'[cite: 8]
-                    hash_login = calcular_hash_256(pass_input)[cite: 9]
+                    hash_login = calcular_hash_256(pass_input)
                     try:
                         res = supabase.table("usuarios").select("*").eq("usuario", usuario_input).execute()
                         if res.data:
@@ -86,12 +86,12 @@ def render_modulo_autenticacion():
         nuevo_user = st.text_input("Define tu Usuario (Único)").strip().lower()
         nuevo_email = st.text_input("Correo Electrónico Corporativo").strip()
         nuevo_pass = st.text_input("Contraseña Sensible", type="password")
-        nuevo_rol = st.selectbox("Rol Solicitado", ROLES_PERMITIDOS)[cite: 9]
+        nuevo_rol = st.selectbox("Rol Solicitado", ROLES_PERMITIDOS)
         
         if st.button("Enviar Código de Certificación", type="primary"):
             if nuevo_user and nuevo_email and nuevo_pass:
                 # Generar token de verificación[cite: 8]
-                codigo = generar_codigo_temporal()[cite: 9]
+                codigo = generar_codigo_temporal()
                 st.session_state["auth_codigo_esperado"] = codigo
                 st.session_state["auth_email_pendiente"] = nuevo_email
                 st.session_state["auth_datos_registro"] = {
@@ -103,7 +103,7 @@ def render_modulo_autenticacion():
                 }
                 
                 # Despachar código[cite: 8]
-                enviar_correo_simulado(nuevo_email, "Código de Certificación de Registro", codigo)[cite: 9]
+                enviar_correo_simulado(nuevo_email, "Código de Certificación de Registro", codigo)
                 st.session_state["auth_vista"] = "verificar"
                 st.info(f"Se ha enviado un código de seguridad a {nuevo_email}. Revisa tu bandeja.")
                 st.rerun()
@@ -117,13 +117,13 @@ def render_modulo_autenticacion():
     # --- PANTALLA 3: CERTIFICACIÓN DE CÓDIGO ---
     elif st.session_state["auth_vista"] == "verificar":
         st.subheader("✉️ Verificación de Correo")
-        st.write(f"Introduce el código de 6 dígitos enviado a: **{st.session_state['auth_email_pendiente']}**")[cite: 8]
+        st.write(f"Introduce el código de 6 dígitos enviado a: **{st.session_state['auth_email_pendiente']}**")
         codigo_ingresado = st.text_input("Código de Seguridad", max_chars=6).strip().upper()
         
         if st.button("Confirmar Registro"):
             if codigo_ingresado == st.session_state["auth_codigo_esperado"]:
                 datos = st.session_state["auth_datos_registro"]
-                datos["verificado"] = True  # Cuenta certificada de forma segura[cite: 8]
+                datos["verificado"] = True  # Cuenta certificada de forma segura
                 
                 try:
                     supabase.table("usuarios").insert(datos).execute()
@@ -146,12 +146,12 @@ def render_modulo_autenticacion():
                     res = supabase.table("usuarios").select("*").eq("email", email_rec).execute()
                     if res.data:
                         user_db = res.data[0]
-                        codigo_temp = generar_codigo_temporal()[cite: 9]
+                        codigo_temp = generar_codigo_temporal()
                         
                         # Guardar el código temporal en la base de datos para ese usuario[cite: 8]
                         supabase.table("usuarios").update({"codigo_temporal": codigo_temp}).eq("usuario", user_db["usuario"]).execute()
                         
-                        enviar_correo_simulado(email_rec, "Código Temporal de Recuperación", codigo_temp)[cite: 9]
+                        enviar_correo_simulado(email_rec, "Código Temporal de Recuperación", codigo_temp)
                         st.session_state["auth_user_recuperando"] = user_db["usuario"]
                         st.session_state["auth_vista"] = "establecer_nueva"
                         st.success("Código enviado. Procede a cambiar tu clave.")
@@ -178,7 +178,7 @@ def render_modulo_autenticacion():
                     res = supabase.table("usuarios").select("codigo_temporal").eq("usuario", user_act).execute()
                     
                     if res.data and res.data[0]["codigo_temporal"] == cod_validacion:
-                        nuevo_hash = calcular_hash_256(pass_nueva)[cite: 9]
+                        nuevo_hash = calcular_hash_256(pass_nueva)
                         # Limpiamos el código temporal para que no pueda ser reusado[cite: 8]
                         supabase.table("usuarios").update({"password_hash": nuevo_hash, "codigo_temporal": None}).eq("usuario", user_act).execute()
                         st.success("Contraseña actualizada correctamente. Ya puedes ingresar.")
