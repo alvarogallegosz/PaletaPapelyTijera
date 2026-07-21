@@ -3,6 +3,18 @@ import pandas as pd
 import streamlit as st
 
 
+def preparar_columnas_monto(df: pd.DataFrame) -> pd.DataFrame:
+  """Normaliza las columnas numéricas/monto en el DataFrame para evitar discrepancias de tipo."""
+  if df.empty:
+    return df
+
+  df_out = df.copy()
+  if "monto" in df_out.columns:
+    df_out["monto"] = pd.to_numeric(df_out["monto"], errors="coerce").fillna(0.0)
+
+  return df_out
+
+
 def render_visor(
     df_movimientos: pd.DataFrame,
     rol_usuario: str = "operador",
@@ -15,7 +27,7 @@ def render_visor(
     st.info("No hay movimientos registrados en la base de datos.")
     return
 
-  df_temp = df_movimientos.copy()
+  df_temp = preparar_columnas_monto(df_movimientos)
   df_temp["fecha_dt"] = pd.to_datetime(df_temp["fecha"], errors="coerce")
 
   # --- 1. SELECCIÓN DE PERÍODO (AÑO Y MES) ---
@@ -232,6 +244,6 @@ def render_visor(
     )
 
 
-# Aliases de compatibilidad para evitar errores de importación
+# Aliases de compatibilidad para exportación cruzada de funciones
 render_view_caja_visor = render_visor
 render_caja_visor = render_visor
