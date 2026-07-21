@@ -71,8 +71,8 @@ def render_banner_saldos(saldos_dict):
         <div style="font-size: 14px; background-color: #f8f9fa; padding: 10px 14px; border-radius: 6px; border-left: 4px solid #3b82f6; margin-top: 5px; margin-bottom: 12px; line-height: 1.8;">
             <strong>Saldos netos actuales en caja:</strong> <br>
             <span style="color: #111827;">🟢 <b>Bs:</b> {val_bs:,.2f}</span> &nbsp;|&nbsp;
-            <span style="color: #111827;">🔵 <b>Zelle Op:</b> ${val_ze:,.2f}</span> &nbsp;|&nbsp;
-            <span style="color: #111827;">💵 <b>Cash Op:</b> ${val_ch:,.2f}</span> &nbsp;|&nbsp;
+            <span style="color: #111827;">🔵 <b>Zelle Operativo:</b> ${val_ze:,.2f}</span> &nbsp;|&nbsp;
+            <span style="color: #111827;">💵 <b>Cash Operativo:</b> ${val_ch:,.2f}</span> &nbsp;|&nbsp;
             <span style="color: #0d9488;">🏦 <b>Ahorro Zelle:</b> ${val_ah_ze:,.2f}</span> &nbsp;|&nbsp;
             <span style="color: #0d9488;">🐷 <b>Ahorro Cash:</b> ${val_ah_ch:,.2f}</span>
         </div>
