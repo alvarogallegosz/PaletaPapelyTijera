@@ -4,7 +4,12 @@ import streamlit as st
 from db_connection import actualizar_movimiento_db, eliminar_movimiento_db
 
 
-def render_edicion(df_movimientos: pd.DataFrame):
+def render_edicion(
+    df_movimientos: pd.DataFrame,
+    rol_usuario: str = "operador",
+    es_consolidado: bool = False,
+):
+  """Renderiza la vista de edición/eliminación de movimientos respetando el estado de consolidación y rol de usuario."""
   st.header("✏️ Edición y Eliminación de Movimientos")
 
   if df_movimientos.empty:
@@ -66,8 +71,9 @@ def render_edicion(df_movimientos: pd.DataFrame):
     return
 
   # --- 3. VERIFICACIÓN DE MES CERRADO / CONSOLIDADO ---
-  mes_cerrado = False
-  if "consolidado" in df_mes.columns:
+  # Se verifica tanto el parámetro directo como la columna en el DataFrame
+  mes_cerrado = es_consolidado
+  if not mes_cerrado and "consolidado" in df_mes.columns:
     mes_cerrado = df_mes["consolidado"].fillna(False).astype(bool).any()
 
   if mes_cerrado:
@@ -115,5 +121,5 @@ def render_edicion(df_movimientos: pd.DataFrame):
             st.error(msg)
 
 
-# Alias de compatibilidad por si se importa con el nombre largo
+# Alias de compatibilidad
 render_view_caja_edicion = render_edicion
