@@ -23,7 +23,7 @@ def enviar_correo_simulado(email: str, asunto: str, codigo: str):
     Envía correos reales mediante SMTP de Gmail utilizando credenciales seguras de st.secrets.
     Si las credenciales no están configuradas, realiza un respaldo impreso en consola.
     """
-    remitente = "alvarogallegosz@gmail.com"
+    remitente = "paletapapelytijera@gmail.com"
     
     # Obtener la contraseña de aplicación de forma segura desde los secretos de Streamlit
     try:
