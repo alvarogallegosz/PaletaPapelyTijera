@@ -179,10 +179,19 @@ def render_historico(df_todos, rol_actual):
         height=600,
     )
 
-  # --- LÓGICA DE CIERRE/APERTURA CORREGIDA ---
+  # --- LÓGICA DE CIERRE/APERTURA TOTALMENTE BLINDADA ---
   rol_limpio = str(rol_actual).strip().lower()
   if rol_limpio in ["administrador", "gerente"]:
     st.markdown("---")
+    
+    # 1. Recuperar y mostrar mensaje pendiente (sobrevive a la recarga de página)
+    if "msg_accion_historico" in st.session_state:
+        tipo_msg, texto_msg = st.session_state.pop("msg_accion_historico")
+        if tipo_msg == "success":
+            st.success(texto_msg)
+        else:
+            st.error(texto_msg)
+
     indices_mes = (
         df_global[mascara_mes]["id"].tolist()
         if not df_global[mascara_mes].empty
@@ -190,38 +199,46 @@ def render_historico(df_todos, rol_actual):
     )
 
     if indices_mes:
-      # Definimos dinámicamente las variables del botón según el estado actual
       if estado_consolidado:
           btn_label = "🔓 Reabrir Auditoría de este Mes"
           nuevo_estado = False
-          toast_msg = f"El período {mes_rep_nom} {anho_rep} se encuentra abierto nuevamente."
-          toast_icon = "🔓"
-          # Clave única obligatoria para evitar conflictos al re-renderizar
-          btn_key = f"btn_abrir_{anho_rep}_{mes_rep_num}"
       else:
           btn_label = "✅ Consolidar y Bloquear Mes Seleccionado"
           nuevo_estado = True
-          toast_msg = f"El período {mes_rep_nom} {anho_rep} ha sido cerrado definitivamente."
-          toast_icon = "✅"
-          btn_key = f"btn_cerrar_{anho_rep}_{mes_rep_num}"
 
-      # Un solo renderizado de botón que ejecuta la acción correspondiente
-      if st.button(btn_label, key=btn_key, use_container_width=True):
+      if st.button(btn_label, key="btn_toggle_estado", use_container_width=True):
           try:
-              with st.spinner("Actualizando registros en la base de datos..."):
+              with st.spinner("Registrando cambios y actualizando entorno..."):
+                  # Impactar la base de datos
                   actualizar_consolidado_mes_db(indices_mes, nuevo_estado, rol_actual)
+                  
+                  # ACTUALIZACIÓN OPTIMISTA: Modificamos el estado local manualmente
+                  # para no depender de la velocidad de lectura de la base de datos
+                  if "df_movimientos" in st.session_state:
+                      df_local = st.session_state["df_movimientos"]
+                      df_local.loc[df_local["id"].isin(indices_mes), "consolidado"] = nuevo_estado
+                      st.session_state["df_movimientos"] = df_local
+                  
+                  # Traer la actualización real por debajo
                   obtener_movimientos_locales()
               
-              st.toast(toast_msg, icon=toast_icon)
-              
-              # Forzamos el redibujado de la interfaz de manera compatible
-              try:
-                  st.rerun()
-              except AttributeError:
-                  st.experimental_rerun()
-                  
+              estado_texto = "CERRADO DEFINITIVAMENTE" if nuevo_estado else "ABIERTO"
+              # Guardar el mensaje para que se despliegue en la siguiente carga
+              st.session_state["msg_accion_historico"] = (
+                  "success",
+                  f"✅ El período {mes_rep_nom} {anho_rep} ahora se encuentra {estado_texto}."
+              )
           except Exception as e:
-              st.error(f"❌ Error al procesar la actualización: {e}")
+              st.session_state["msg_accion_historico"] = (
+                  "error",
+                  f"❌ Ocurrió un error crítico al modificar el mes: {e}"
+              )
+          
+          # Refresco mandatorio
+          try:
+              st.rerun()
+          except AttributeError:
+              st.experimental_rerun()
     else:
       st.info(
           f"No hay registros en el período {mes_rep_nom} {anho_rep} para"
