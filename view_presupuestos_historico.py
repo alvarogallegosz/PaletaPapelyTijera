@@ -153,7 +153,7 @@ def render_historico_presupuestos(rol_actual: str = "administrador"):
   if not lista_presupuestos:
     st.info(
         "No hay presupuestos registrados aún en la base de datos. Crea uno"
-        " nuevo en la pestaña de Maquetación."
+        " nuevo en la pestaña de Creación y Carga."
     )
     return
 
