@@ -509,7 +509,7 @@ def render_creacion_presupuestos(rol_actual):
         )
 
         with st.container(border=True):
-            st.markdown("### 📜 Términos y Cláusulas")
+            st.markdown("## 📜 Términos y Cláusulas")
             st.session_state.clausulas_presupuesto = st.text_area("Modifique cláusulas si es necesario:", value=st.session_state.clausulas_presupuesto, height=150)
 
 # --- NUEVO BLOQUE UNIFICADO ---
