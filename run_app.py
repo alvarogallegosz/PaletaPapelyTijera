@@ -179,10 +179,10 @@ elif modulo_activo == "📊 Presupuestos (Servicios al Cliente)":
   )
   with tab1:
     render_creacion_presupuestos(rol_actual)
-  with tab2:
-    render_gestion_presupuestos(rol_actual)
-  with tab1:
-    render_historico_presupuestos(rol_actual)
+  #with tab2:
+    #render_gestion_presupuestos(rol_actual)
+  #with tab3:
+    #render_historico_presupuestos(rol_actual)
 
 elif modulo_activo == "📊 Facturación":
   st.markdown("### 📊 Panel General de Facturación")
