@@ -10,7 +10,7 @@ from db_connection import (
 )
 
 
-def render_tarjeta_presupuesto(p: dict):
+def render_tarjeta_presupuesto(p: dict, rol_actual: str = "administrador"):
   """Renderiza la tarjeta expandible para un presupuesto individual."""
   id_p = p.get("id")
   nombre = p.get("nombre", "Sin nombre")
@@ -143,7 +143,7 @@ def render_tarjeta_presupuesto(p: dict):
           st.error(msg)
 
 
-def render_historico_presupuestos():
+def render_historico_presupuestos(rol_actual: str = "administrador"):
   """Función principal para renderizar la vista de Histórico y Plantillas."""
   st.subheader("📚 Histórico de Presupuestos y Plantillas Base")
 
@@ -252,7 +252,7 @@ def render_historico_presupuestos():
     )
 
     for pres in items_filtrados:
-      render_tarjeta_presupuesto(pres)
+      render_tarjeta_presupuesto(pres, rol_actual)
 
   # ------------------------------------------
   # TAB 2: PLANTILLAS BASE
@@ -274,4 +274,4 @@ def render_historico_presupuestos():
           " en segundos haciendo clic en **📋 Clonar / Replicar**."
       )
       for pl in plantillas:
-        render_tarjeta_presupuesto(pl)
+        render_tarjeta_presupuesto(pl, rol_actual)
