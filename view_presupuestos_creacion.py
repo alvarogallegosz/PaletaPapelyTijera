@@ -482,8 +482,17 @@ def render_creacion_presupuestos(rol_simulado):
                 st.session_state.modo_vista = "previa"
                 st.rerun()
         with col_acc2:
-            if st.button("💾 Guardar en BD", disabled=rol_simulado not in ["administrador", "gerente"], type="primary", use_container_width=True):
-                st.success("🎉 Guardado.")
+            puede_guardar = rol_simulado in ["administrador", "gerente"]
+            if st.button("💾 Guardar en BD", disabled=not puede_guardar, type="primary", use_container_width=True):
+                usuario_activo = st.session_state.get("usuario_logueado", "Usuario")
+                datos_payload = empaquetar_presupuesto_para_bd(usuario_activo)
+                id_edicion = st.session_state.get("presupuesto_id_activo", None)
+                
+                exito, msj = guardar_presupuesto_db(datos_payload, id_presupuesto=id_edicion)
+                if exito:
+                    st.success(f"🎉 {msj}")
+                else:
+                    st.error(f"❌ {msj}")
 
     # ===================================================
     # 🖨️ MODO VISTA PREVIA
@@ -532,8 +541,17 @@ def render_creacion_presupuestos(rol_simulado):
             )
             
         with col_pv3:
-            if st.button("💾 Guardar en Base de Datos", type="primary", use_container_width=True):
-                st.success("¡Presupuesto guardado exitosamente en la base de datos!")
+            puede_guardar = rol_simulado in ["administrador", "gerente"]
+            if st.button("💾 Guardar en Base de Datos", disabled=not puede_guardar, type="primary", use_container_width=True):
+                usuario_activo = st.session_state.get("usuario_logueado", "Usuario")
+                datos_payload = empaquetar_presupuesto_para_bd(usuario_activo)
+                id_edicion = st.session_state.get("presupuesto_id_activo", None)
+                
+                exito, msj = guardar_presupuesto_db(datos_payload, id_presupuesto=id_edicion)
+                if exito:
+                    st.success(f"🎉 {msj}")
+                else:
+                    st.error(f"❌ {msj}")
         
         st.markdown("---")
 
