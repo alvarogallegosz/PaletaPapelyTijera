@@ -289,7 +289,7 @@ def render_creacion_presupuestos(rol_simulado):
             res_key = f"res_{sec_id}"     # Captura en vivo
             
             if df_key not in st.session_state:
-                st.session_state[df_key] = pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])
+                st.session_state[df_key] = pd.DataFrame(columns=["descripción", "detalles", "juegos/kits", "cantidad", "precio_unitario"])
             
             max_filas = 24 if idx == 0 else 15
             sug_placeholder = sugerencias_titulos[idx] if idx < len(sugerencias_titulos) else f"Ej: ZONA {idx+1}"
@@ -320,7 +320,7 @@ def render_creacion_presupuestos(rol_simulado):
                     hide_index=True,
                     column_config={
                         "descripción": st.column_config.TextColumn("Descripción (80 ch)"),
-                        "medidas": st.column_config.TextColumn("Medidas (40 ch)"),
+                        "detalles": st.column_config.TextColumn("Detalles (40 ch)"),
                         "juegos/kits": st.column_config.NumberColumn("Juegos/Kits (11 ch)", min_value=1),
                         "cantidad": st.column_config.NumberColumn("Cantidad (8 ch)", min_value=1, default=1),
                         "precio_unitario": st.column_config.NumberColumn("Precio ($)", min_value=0.0, format="$%.2f")
