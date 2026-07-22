@@ -475,24 +475,11 @@ def render_creacion_presupuestos(rol_simulado):
             st.markdown("#### 📜 Términos y Cláusulas")
             st.session_state.clausulas_presupuesto = st.text_area("Modifique cláusulas si es necesario:", value=st.session_state.clausulas_presupuesto, height=150)
 
+# --- NUEVO BLOQUE UNIFICADO ---
         st.markdown("---")
-        col_acc1, col_acc2 = st.columns(2)
-        with col_acc1:
-            if st.button("👁️ Generar Vista Previa de Impresión", type="secondary", use_container_width=True):
-                st.session_state.modo_vista = "previa"
-                st.rerun()
-        with col_acc2:
-            puede_guardar = rol_simulado in ["administrador", "gerente"]
-            if st.button("💾 Guardar en BD", disabled=not puede_guardar, type="primary", use_container_width=True):
-                usuario_activo = st.session_state.get("usuario_logueado", "Usuario")
-                datos_payload = empaquetar_presupuesto_para_bd(usuario_activo)
-                id_edicion = st.session_state.get("presupuesto_id_activo", None)
-                
-                exito, msj = guardar_presupuesto_db(datos_payload, id_presupuesto=id_edicion)
-                if exito:
-                    st.success(f"🎉 {msj}")
-                else:
-                    st.error(f"❌ {msj}")
+        if st.button("👁️ Generar Vista Previa del Documento", type="primary", use_container_width=True):
+            st.session_state.modo_vista = "previa"
+            st.rerun()
 
     # ===================================================
     # 🖨️ MODO VISTA PREVIA
