@@ -154,7 +154,7 @@ def calcular_subtotal_df(df_input):
     return round(subtotal, 2)
 
 
-def render_creacion_presupuestos(rol_simulado):
+def render_creacion_presupuestos(rol_actual):
     # --- 🎨 CONTROL DE INYECCIÓN CSS PARA AISLAMIENTO DE IMPRESIÓN Y VISTA PREVIA ---
     st.markdown("""
         <style>
@@ -565,7 +565,7 @@ def render_creacion_presupuestos(rol_simulado):
             )
             
         with col_pv3:
-            puede_guardar = rol_simulado in ["administrador", "gerente"]
+            puede_guardar = rol_actual in ["administrador", "gerente"]
             if st.button("💾 Guardar en Base de Datos", disabled=not puede_guardar, type="primary", use_container_width=True):
                 usuario_activo = st.session_state.get("usuario_logueado", "Usuario")
                 datos_payload = empaquetar_presupuesto_para_bd(usuario_activo)
