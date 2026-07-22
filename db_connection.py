@@ -186,3 +186,86 @@ def guardar_cierre_db(datos_cierre: dict) -> tuple[bool, str]:
     return False, "No se pudo registrar el cierre mensual."
   except Exception as e:
     return False, f"Error al guardar el cierre: {str(e)}"
+
+# ==========================================
+# 3. MANEJO DE PRESUPUESTOS EN SUPABASE
+# ==========================================
+
+def guardar_presupuesto_db(datos_presupuesto: dict, id_presupuesto: int = None) -> tuple[bool, str]:
+    """Inserta o actualiza un presupuesto en Supabase."""
+    if not supabase:
+        return False, "No hay conexión activa con Supabase."
+
+    try:
+        if id_presupuesto:
+            datos_presupuesto["updated_at"] = "now()"
+            respuesta = supabase.table("presupuestos").update(datos_presupuesto).eq("id", id_presupuesto).execute()
+            if respuesta.data:
+                return True, f"¡Presupuesto #{id_presupuesto} actualizado con éxito!"
+            return False, f"No se encontró el presupuesto #{id_presupuesto} para actualizar."
+        else:
+            respuesta = supabase.table("presupuestos").insert(datos_presupuesto).execute()
+            if respuesta.data:
+                nuevo_id = respuesta.data[0].get("id", "N/A")
+                return True, f"¡Presupuesto guardado exitosamente con el ID #{nuevo_id}!"
+            return False, "Respuesta vacía al insertar presupuesto."
+    except Exception as e:
+        return False, f"Error en Supabase: {str(e)}"
+
+
+def obtener_presupuestos_db(incluir_inactivos: bool = False, tipo_filtro: str = None) -> pd.DataFrame:
+    """Consulta los presupuestos guardados en la BD."""
+    if not supabase:
+        return pd.DataFrame()
+
+    try:
+        query = supabase.table("presupuestos").select("*")
+        if not incluir_inactivos:
+            query = query.eq("activo", True)
+        if tipo_filtro and tipo_filtro != "Todos":
+            query = query.eq("tipo_presupuesto", tipo_filtro)
+            
+        response = query.order("created_at", desc=True).execute()
+        return pd.DataFrame(response.data) if response.data else pd.DataFrame()
+    except Exception as e:
+        st.error(f"Error al consultar presupuestos: {e}")
+        return pd.DataFrame()
+
+
+def obtener_presupuesto_por_id_db(id_presupuesto: int) -> dict:
+    """Recupera un presupuesto específico para su rehidratación."""
+    if not supabase:
+        return {}
+
+    try:
+        response = supabase.table("presupuestos").select("*").eq("id", id_presupuesto).execute()
+        return response.data[0] if response.data else {}
+    except Exception as e:
+        st.error(f"Error al recuperar presupuesto #{id_presupuesto}: {e}")
+        return {}
+
+
+def cambiar_estado_presupuesto_db(id_presupuesto: int, nuevo_estado: str, usuario: str) -> tuple[bool, str]:
+    """Cambia el estado del presupuesto ('Borrador', 'Aprobado', 'Rechazado')."""
+    if not supabase:
+        return False, "No hay conexión activa con Supabase."
+
+    try:
+        payload = {"estado": nuevo_estado, "modificado_por": usuario, "updated_at": "now()"}
+        respuesta = supabase.table("presupuestos").update(payload).eq("id", id_presupuesto).execute()
+        return (True, f"Presupuesto #{id_presupuesto} marcado como {nuevo_estado}.") if respuesta.data else (False, "Registro no encontrado.")
+    except Exception as e:
+        return False, f"Error al cambiar estado: {str(e)}"
+
+
+def anular_presupuesto_db(id_presupuesto: int, usuario: str) -> tuple[bool, str]:
+    """Aplica Soft Delete al presupuesto."""
+    if not supabase:
+        return False, "No hay conexión activa con Supabase."
+
+    try:
+        payload = {"activo": False, "modificado_por": usuario, "updated_at": "now()"}
+        respuesta = supabase.table("presupuestos").update(payload).eq("id", id_presupuesto).execute()
+        return (True, f"Presupuesto #{id_presupuesto} anulado con éxito.") if respuesta.data else (False, "Error al anular.")
+    except Exception as e:
+        return False, f"Error de anulación: {str(e)}"
