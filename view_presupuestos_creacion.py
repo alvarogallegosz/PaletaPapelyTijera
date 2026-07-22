@@ -375,7 +375,7 @@ def render_creacion_presupuestos(rol_actual):
     # 📝 MODO EDICIÓN (PANTALLA DE CARGA)
     # ===================================================
     if st.session_state.modo_vista == "edicion":
-        st.markdown("## 📝 Creación de Presupuesto Nuevo")
+        st.markdown("# 📝 Creación de Presupuesto Nuevo")
         
         with st.container(border=True):
             st.markdown("### 🏛️ Datos de Cabecera")
