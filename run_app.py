@@ -10,7 +10,7 @@ from view_caja_edicion import render_edicion
 from view_caja_historico import render_historico
 from view_caja_visor import render_visor
 from view_presupuestos_creacion import render_creacion_presupuestos
-#from view_presupuestos_gestion import render_gestion_presupuestos
+from view_presupuestos_gestion import render_gestion_presupuestos
 #from view_presupuestos_historico import render_historico_presupuestos
 
 st.set_page_config(
@@ -179,8 +179,8 @@ elif modulo_activo == "📊 Presupuestos (Servicios al Cliente)":
   )
   with tab1:
     render_creacion_presupuestos(rol_actual)
-  #with tab2:
-    #render_gestion_presupuestos(rol_actual)
+  with tab2:
+    render_gestion_presupuestos(rol_actual)
   #with tab3:
     #render_historico_presupuestos(rol_actual)
 
