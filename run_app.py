@@ -11,7 +11,7 @@ from view_caja_historico import render_historico
 from view_caja_visor import render_visor
 from view_presupuestos_creacion import render_creacion_presupuestos
 from view_presupuestos_gestion import render_gestion_presupuestos
-#from view_presupuestos_historico import render_historico_presupuestos
+from view_presupuestos_historico import render_historico_presupuestos
 
 st.set_page_config(
     page_title="Estructura Administrativa PaletaPapelyTijera", layout="wide"
@@ -181,8 +181,8 @@ elif modulo_activo == "📊 Presupuestos (Servicios al Cliente)":
     render_creacion_presupuestos(rol_actual)
   with tab2:
     render_gestion_presupuestos(rol_actual)
-  #with tab3:
-    #render_historico_presupuestos(rol_actual)
+  with tab3:
+    render_historico_presupuestos(rol_actual)
 
 elif modulo_activo == "📊 Facturación":
   st.markdown("### 📊 Panel General de Facturación")
