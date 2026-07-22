@@ -4,6 +4,118 @@ import os
 import time
 import base64
 from print_pdf_utility import generar_pdf_presupuesto_nativo
+from db_connection import guardar_presupuesto_db, obtener_presupuesto_por_id_db
+
+# ===================================================
+# 📦 FUNCIONES DE PERSISTENCIA Y REHIDRATACIÓN JSONB
+# ===================================================
+
+def empaquetar_presupuesto_para_bd(usuario_activo: str):
+    """Convierte el estado de la sesión en el diccionario JSONB para Supabase."""
+    meta = st.session_state.get("meta_presupuesto", {})
+    clausulas_txt = st.session_state.get("clausulas_presupuesto", "")
+    secciones_activas = st.session_state.get("lista_secciones", [])
+
+    secciones_exportar = []
+    monto_total_calculado = 0.0
+
+    for sec in secciones_activas:
+        sec_id = sec.get("id", "")
+        sec_titulo = sec.get("titulo", "")
+        df_sec = st.session_state.get(f"res_{sec_id}", st.session_state.get(f"df_{sec_id}", pd.DataFrame()))
+
+        items_list = []
+        if not df_sec.empty:
+            for row in df_sec.to_dict("records"):
+                desc = str(row.get("descripción", "") or "").strip()
+                med = str(row.get("medidas", "") or "").strip()
+                
+                try:
+                    jk_val = float(row.get("juegos/kits")) if pd.notna(row.get("juegos/kits")) and str(row.get("juegos/kits")).strip() != "" else 0.0
+                except Exception:
+                    jk_val = 0.0
+                    
+                try:
+                    cant_val = float(row.get("cantidad")) if pd.notna(row.get("cantidad")) and str(row.get("cantidad")).strip() != "" else 0.0
+                except Exception:
+                    cant_val = 0.0
+                    
+                try:
+                    pu_val = float(row.get("precio_unitario")) if pd.notna(row.get("precio_unitario")) and str(row.get("precio_unitario")).strip() != "" else 0.0
+                except Exception:
+                    pu_val = 0.0
+
+                if desc or med or jk_val or cant_val or pu_val:
+                    total_fila = (jk_val * cant_val * pu_val) if jk_val > 0 else (cant_val * pu_val)
+                    monto_total_calculado += total_fila
+                    items_list.append({
+                        "descripción": desc,
+                        "medidas": med,
+                        "juegos/kits": jk_val,
+                        "cantidad": cant_val,
+                        "precio_unitario": pu_val
+                    })
+
+        secciones_exportar.append({
+            "id": sec_id,
+            "titulo": sec_titulo,
+            "items": items_list
+        })
+
+    return {
+        "nombre": meta.get("nombre", "PRESUPUESTO SIN NOMBRE").strip().upper(),
+        "cliente": meta.get("cliente", "CLIENTE").strip().upper(),
+        "fecha_evento": meta.get("fecha_evento", "").strip(),
+        "lugar": meta.get("lugar", "").strip(),
+        "fecha_larga": meta.get("fecha_larga", "").strip(),
+        "tipo_presupuesto": meta.get("tipo_presupuesto", "Decoración"),
+        "monto_total": round(monto_total_calculado, 2),
+        "clausulas": clausulas_txt,
+        "contenido_json": {"secciones": secciones_exportar},
+        "creado_por": usuario_activo,
+        "modificado_por": usuario_activo,
+        "estado": "Borrador"
+    }
+
+
+def cargar_presupuesto_en_session_state(id_presupuesto: int):
+    """Lee el JSONB desde Supabase y reconstruye los dataframes interactivos."""
+    data = obtener_presupuesto_por_id_db(id_presupuesto)
+    if not data:
+        st.error(f"No se pudo cargar el presupuesto ID #{id_presupuesto}")
+        return False
+
+    st.session_state.meta_presupuesto = {
+        "nombre": data.get("nombre", ""),
+        "cliente": data.get("cliente", ""),
+        "fecha_evento": data.get("fecha_evento", ""),
+        "lugar": data.get("lugar", ""),
+        "fecha_larga": data.get("fecha_larga", ""),
+        "tipo_presupuesto": data.get("tipo_presupuesto", "Decoración")
+    }
+    st.session_state.clausulas_presupuesto = data.get("clausulas", "")
+    st.session_state.presupuesto_id_activo = data.get("id")
+
+    contenido = data.get("contenido_json", {})
+    secciones_guardadas = contenido.get("secciones", [])
+    st.session_state.lista_secciones = []
+
+    for sec in secciones_guardadas:
+        sec_id = sec.get("id")
+        sec_titulo = sec.get("titulo")
+        items_list = sec.get("items", [])
+
+        st.session_state.lista_secciones.append({"id": sec_id, "titulo": sec_titulo})
+
+        if items_list:
+            df_sec = pd.DataFrame(items_list)
+        else:
+            df_sec = pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])
+
+        st.session_state[f"df_{sec_id}"] = df_sec
+
+    st.session_state.modo_vista = "edicion"
+    return True
 
 def calcular_subtotal_df(df_input):
     """
