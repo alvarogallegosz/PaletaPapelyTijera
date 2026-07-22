@@ -159,7 +159,7 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
             tabla_datos = [[
                 Paragraph("<b>ITEM</b>", style_header_center),
                 Paragraph(f"<b>{sec_titulo}</b>", style_header_left),
-                Paragraph("<b>MEDIDAS</b>", style_header_left),
+                Paragraph("<b>DETALLES</b>", style_header_left),
                 Paragraph("<b>JUEGOS<br/>/KITS</b>", style_header_center),
                 Paragraph("<b>CANT.</b>", style_header_center),
                 Paragraph("<b>PRECIO</b>", style_header_center)
@@ -168,7 +168,7 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
             tabla_datos = [[
                 Paragraph("<b>ITEM</b>", style_header_center),
                 Paragraph(f"<b>{sec_titulo}</b>", style_header_left),
-                Paragraph("<b>MEDIDAS</b>", style_header_left),
+                Paragraph("<b>DETALLES</b>", style_header_left),
                 Paragraph("<b>JUEGOS<br/>/KITS</b>", style_header_center),
                 Paragraph("<b>CANT.</b>", style_header_center)
             ]]
@@ -179,7 +179,7 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
         if not df_sec.empty:
             for row in df_sec.to_dict('records'):
                 desc = str(row.get('descripción', '') or '').strip().replace("\n", " ").replace("\r", "")
-                med = str(row.get('medidas', '') or '').strip().replace("\n", " ").replace("\r", "")
+                med = str(row.get('detalles', '') or '').strip().replace("\n", " ").replace("\r", "")
                 
                 try:
                     jk_val = float(row.get('juegos/kits')) if pd.notna(row.get('juegos/kits')) and row.get('juegos/kits') != '' else 0.0
