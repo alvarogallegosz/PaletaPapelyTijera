@@ -28,7 +28,7 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
         if not df_sec.empty:
             for row in df_sec.to_dict("records"):
                 desc = str(row.get("descripción", "") or "").strip()
-                med = str(row.get("medidas", "") or "").strip()
+                det = str(row.get("detalles", "") or "").strip()
                 
                 try:
                     jk_val = float(row.get("juegos/kits")) if pd.notna(row.get("juegos/kits")) and str(row.get("juegos/kits")).strip() != "" else 0.0
@@ -45,12 +45,12 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
                 except Exception:
                     pu_val = 0.0
 
-                if desc or med or jk_val or cant_val or pu_val:
+                if desc or det or jk_val or cant_val or pu_val:
                     total_fila = (jk_val * cant_val * pu_val) if jk_val > 0 else (cant_val * pu_val)
                     monto_total_calculado += total_fila
                     items_list.append({
                         "descripción": desc,
-                        "medidas": med,
+                        "detalles": det,
                         "juegos/kits": jk_val,
                         "cantidad": cant_val,
                         "precio_unitario": pu_val
@@ -110,7 +110,7 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
         if items_list:
             df_sec = pd.DataFrame(items_list)
         else:
-            df_sec = pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])
+            df_sec = pd.DataFrame(columns=["descripción", "detalles", "juegos/kits", "cantidad", "precio_unitario"])
 
         st.session_state[f"df_{sec_id}"] = df_sec
 
@@ -390,7 +390,7 @@ def render_creacion_presupuestos(rol_simulado):
                 "id": nuevo_id,
                 "titulo": sug_titulo
             })
-            st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(columns=["descripción", "medidas", "juegos/kits", "cantidad", "precio_unitario"])
+            st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(columns=["descripción", "detalles", "juegos/kits", "cantidad", "precio_unitario"])
             st.rerun()
 
         total_acumulado_presupuesto = 0.0
@@ -619,7 +619,7 @@ def render_creacion_presupuestos(rol_simulado):
                 th_cols = f"""
                     <th style="width: 8%; text-align: center; white-space: nowrap;">ITEM</th>
                     <th style="width: 44%; text-align: left;">{sec_titulo}</th>
-                    <th style="width: 20%; text-align: left;">MEDIDAS</th>
+                    <th style="width: 20%; text-align: left;">DETALLES</th>
                     <th style="width: 9%; text-align: center;">JUEGOS/KITS</th>
                     <th style="width: 8%; text-align: center; white-space: nowrap;">CANT.</th>
                     <th style="width: 11%; text-align: right; white-space: nowrap;">PRECIO</th>
@@ -628,7 +628,7 @@ def render_creacion_presupuestos(rol_simulado):
                 th_cols = f"""
                     <th style="width: 8%; text-align: center; white-space: nowrap;">ITEM</th>
                     <th style="width: 52%; text-align: left;">{sec_titulo}</th>
-                    <th style="width: 23%; text-align: left;">MEDIDAS</th>
+                    <th style="width: 23%; text-align: left;">DETALLES</th>
                     <th style="width: 9%; text-align: center;">JUEGOS/KITS</th>
                     <th style="width: 8%; text-align: center; white-space: nowrap;">CANT.</th>
                 """
@@ -647,7 +647,7 @@ def render_creacion_presupuestos(rol_simulado):
             if not df_sec.empty:
                 for row in df_sec.to_dict('records'):
                     desc = str(row.get('descripción', '') or '').strip().replace("\n", " ").replace("\r", "").replace("  ", " ")
-                    med = str(row.get('medidas', '') or '').strip().replace("\n", " ").replace("\r", "").replace("  ", " ")
+                    det = str(row.get('detalles', '') or '').strip().replace("\n", " ").replace("\r", "").replace("  ", " ")
                     
                     try:
                         jk_val = float(row.get('juegos/kits')) if pd.notna(row.get('juegos/kits')) and row.get('juegos/kits') != '' else 0.0
@@ -664,7 +664,7 @@ def render_creacion_presupuestos(rol_simulado):
                     except Exception:
                         pu_val = 0.0
 
-                    if desc or med or jk_val or cant_val or pu_val:
+                    if desc or det or jk_val or cant_val or pu_val:
                         total_fila = (jk_val * cant_val * pu_val) if jk_val > 0 else (cant_val * pu_val)
                         subtotal_seccion += total_fila
                         
@@ -676,7 +676,7 @@ def render_creacion_presupuestos(rol_simulado):
                             td_cols = f"""
                                 <td style="text-align: center;">{item_numeral}</td>
                                 <td style="text-align: left;">{desc}</td>
-                                <td style="text-align: left;">{med}</td>
+                                <td style="text-align: left;">{det}</td>
                                 <td style="text-align: center;">{jk_str}</td>
                                 <td style="text-align: center;">{cant_str}</td>
                                 <td style="text-align: right;">{precio_str}</td>
@@ -685,7 +685,7 @@ def render_creacion_presupuestos(rol_simulado):
                             td_cols = f"""
                                 <td style="text-align: center;">{item_numeral}</td>
                                 <td style="text-align: left;">{desc}</td>
-                                <td style="text-align: left;">{med}</td>
+                                <td style="text-align: left;">{det}</td>
                                 <td style="text-align: center;">{jk_str}</td>
                                 <td style="text-align: center;">{cant_str}</td>
                             """
