@@ -378,7 +378,7 @@ def render_creacion_presupuestos(rol_actual):
         st.markdown("# 📝 Creación de Presupuesto Nuevo")
         
         with st.container(border=True):
-            st.markdown("### 🏛️ Datos de Cabecera")
+            st.markdown("## 🏛️ Datos de Cabecera")
             c1, c2, c3 = st.columns(3)
             with c1:
                 st.session_state.meta_presupuesto["nombre"] = st.text_input(
@@ -416,7 +416,7 @@ def render_creacion_presupuestos(rol_actual):
                     index=idx_sel
                 )
 
-        st.markdown("### 📦 Bloques de Catálogo")
+        st.markdown("## 📦 Bloques de Catálogo")
         
         if st.button("➕ Añadir Nueva Sección Física", disabled=len(st.session_state.lista_secciones) >= 11):
             nuevo_id = f"sec_{int(time.time() * 1000)}"
