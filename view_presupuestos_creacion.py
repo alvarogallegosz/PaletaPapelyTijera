@@ -284,6 +284,43 @@ def render_creacion_presupuestos(rol_simulado):
                 font-size: 12px;
                 margin-bottom: 3px;
             }
+            /* ===================================================
+               ✂️ COMPACTACIÓN DE ESPACIOS EN VISTA PREVIA / UI
+               =================================================== */
+            
+            /* 1. Reducir márgenes de títulos y subencabezados (h2, h3, h4) */
+            div[data-testid="stMarkdownContainer"] h2,
+            div[data-testid="stMarkdownContainer"] h3,
+            div[data-testid="stMarkdownContainer"] h4 {
+                margin-top: 2px !important;
+                margin-bottom: 4px !important;
+                padding-top: 0px !important;
+                padding-bottom: 0px !important;
+            }
+            
+            /* 2. Pegar la barra de Pestañas (st.tabs) al contenido inferior */
+            div[data-testid="stTabs"] {
+                margin-bottom: -10px !important;
+            }
+            
+            /* 3. Reducir la separación vertical del Toggle */
+            div[data-testid="stToggle"] {
+                margin-top: -6px !important;
+                margin-bottom: -6px !important;
+                padding-top: 0px !important;
+                padding-bottom: 0px !important;
+            }
+            
+            /* 4. Reducir el espacio interno vertical del contenedor de widgets */
+            div[data-testid="stVerticalBlock"] {
+                gap: 0.5rem !important; /* Espacio global estándar entre elementos (por defecto es 1rem) */
+            }
+            
+            /* 5. Si usas separadores divisores (st.markdown("---") o st.divider()) */
+            hr {
+                margin-top: 8px !important;
+                margin-bottom: 12px !important;
+            }
         </style>
     """, unsafe_allow_html=True)
 
