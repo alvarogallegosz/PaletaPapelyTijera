@@ -71,7 +71,7 @@ def render_gestion_presupuestos(rol_simulado: str):
         lista_presupuestos = obtener_presupuestos_db()
 
     if not lista_presupuestos:
-        st.info("ℹ️ No se encontraron presupuestos registrados en el sistema.")
+        st.info("ℹ️ No hay presupuestos registrados aún en la base de datos. Crea uno nuevo en la pestaña de Creación y Carga.")
         return
 
     df_presupuestos = pd.DataFrame(lista_presupuestos)
