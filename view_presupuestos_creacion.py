@@ -37,7 +37,7 @@ def fecha_a_larga(f):
 # ===================================================
 
 def empaquetar_presupuesto_para_bd(usuario_activo: str):
-    """Convierte el estado de la sesión en el diccionario JSONB para Supabase."""
+    """Convierte el estado de la sesión en el diccionario adaptado a las columnas exactas de Supabase."""
     meta = st.session_state.get("meta_presupuesto", {})
     clausulas_txt = st.session_state.get("clausulas_presupuesto", "")
     secciones_activas = st.session_state.get("lista_secciones", [])
@@ -91,24 +91,24 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
     f_evt = meta.get("fecha_evento")
     fecha_evt_db = f_evt.strftime("%Y-%m-%d") if isinstance(f_evt, (datetime.date, datetime.datetime)) else str(f_evt or "")
 
+    # Mapeo idéntico al esquema de la tabla 'presupuestos'
     return {
         "nombre": meta.get("nombre", "PRESUPUESTO SIN NOMBRE").strip().upper(),
         "cliente": meta.get("cliente", "CLIENTE").strip().upper(),
         "fecha_evento": fecha_evt_db,
-        "lugar": meta.get("lugar", "").strip(),
-        "fecha_larga": fecha_a_larga(f_evt),
+        "lugar_evento": meta.get("lugar", "").strip(),
+        "fecha_emision": datetime.date.today().strftime("%Y-%m-%d"),
         "tipo_presupuesto": meta.get("tipo_presupuesto", "Decoración"),
         "monto_total": round(monto_total_calculado, 2),
         "clausulas": clausulas_txt,
-        "contenido_json": {"secciones": secciones_exportar},
-        "creado_por": usuario_activo,
-        "modificado_por": usuario_activo,
-        "estado": "Borrador"
+        "secciones": secciones_exportar,  # Columna jsonb directa
+        "estado": "Borrador",
+        "es_plantilla": False
     }
 
 
 def cargar_presupuesto_en_session_state(id_presupuesto: int):
-    """Lee el JSONB desde Supabase y reconstruye los dataframes interactivos."""
+    """Lee la fila desde Supabase y reconstruye los dataframes interactivos."""
     data = obtener_presupuesto_por_id_db(id_presupuesto)
     if not data:
         return False
@@ -125,15 +125,18 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
         "nombre": data.get("nombre", ""),
         "cliente": data.get("cliente", ""),
         "fecha_evento": fecha_obj,
-        "lugar": data.get("lugar", ""),
-        "fecha_larga": data.get("fecha_larga", ""),
+        "lugar": data.get("lugar_evento", ""),
+        "fecha_larga": data.get("fecha_emision", ""),
         "tipo_presupuesto": data.get("tipo_presupuesto", "Decoración")
     }
     st.session_state.clausulas_presupuesto = data.get("clausulas", "")
     st.session_state.presupuesto_id_activo = data.get("id")
 
-    contenido = data.get("contenido_json", {})
-    secciones_guardadas = contenido.get("secciones", [])
+    # Lectura directa desde la columna 'secciones'
+    secciones_guardadas = data.get("secciones", [])
+    if isinstance(secciones_guardadas, dict) and "secciones" in secciones_guardadas:
+        secciones_guardadas = secciones_guardadas["secciones"]
+
     st.session_state.lista_secciones = []
 
     for sec in secciones_guardadas:
