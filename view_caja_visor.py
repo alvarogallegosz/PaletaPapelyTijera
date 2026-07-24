@@ -243,10 +243,11 @@ def render_visor(df_mes, mes_nombre, anho, saldos_fin, rol_actual=None):
         "Comentario": st.column_config.TextColumn("Comentario", width=300),
     }
 
+# Renderizado de la tabla con scroll horizontal habilitado
     st.dataframe(
         df_visual[cols_existentes],
         column_config={k: v for k, v in config_cols.items() if k in cols_existentes},
-        use_container_width=False,
+        use_container_width=True,  # 👈 CAMBIO CLAVE: Permite activar el scroll horizontal nativo
         hide_index=True,
-        height=600
+        height=500  # 👈 Reducido ligeramente para que la barra inferior sea visible fácilmente
     )
