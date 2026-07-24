@@ -20,9 +20,12 @@ def _obtener_meses_cerrados(df_datos) -> set:
 
 def render_edicion(df_completo, rol_actual, es_consolidado=False):
     # ↔️ CSS INYECTADO PARA FORZAR SCROLLBAR HORIZONTAL EN EL DATA_EDITOR
+    # Permite scrollbar horizontal DINÁMICO (solo aparece si el contenido sobrepasa la pantalla)
     st.markdown("""
         <style>
-            div[data-testid="stDataFrame"] > div,
+            div[data-testid="stDataEditor"] {
+                width: 100%;
+            }
             div[data-testid="stDataEditor"] > div {
                 overflow-x: auto !important;
             }
