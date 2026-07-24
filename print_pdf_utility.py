@@ -2,6 +2,7 @@ import io
 import os
 import pandas as pd
 import streamlit as st
+from PIL import Image as PILImage  # 🟢 Importado para calcular la proporción real del logo
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -102,8 +103,16 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
     ruta_final = ruta_script if os.path.exists(ruta_script) else (ruta_raiz if os.path.exists(ruta_raiz) else None)
     
     if ruta_final:
-        ancho_pdf = 432  # 80% de 540 pt
-        altura_pdf = 76  
+        ancho_pdf = 432  # 80% de 540 pt (ancho imprimible de la página)
+        
+        # 🟢 CÁLCULO PROPORCIONAL AUTOMÁTICO DE LA ALTURA
+        try:
+            with PILImage.open(ruta_final) as img_pil:
+                orig_w, orig_h = img_pil.size
+            altura_pdf = ancho_pdf * (orig_h / orig_w)
+        except Exception:
+            altura_pdf = 76  # Fallback por seguridad
+            
         story.append(Image(ruta_final, width=ancho_pdf, height=altura_pdf, hAlign='CENTER'))
         story.append(Spacer(1, 10))        
 
@@ -227,7 +236,6 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
             colspan_val = 6 if incluir_precios else 5
             tabla_datos.append([Paragraph("Sección sin registros activos", style_header_center)] + [""] * (colspan_val - 1))
             
-        # repeatRows=1 permite repetir automáticamente el encabezado si la tabla se corta entre páginas
         t = Table(tabla_datos, colWidths=anchos_columnas, repeatRows=1)
         t_style = [
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#fffdeb')),
