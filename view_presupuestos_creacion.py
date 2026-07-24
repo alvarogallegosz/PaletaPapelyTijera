@@ -3,8 +3,34 @@ import pandas as pd
 import os
 import time
 import base64
+import datetime
+import re
 from print_pdf_utility import generar_pdf_presupuesto_nativo
 from db_connection import guardar_presupuesto_db, obtener_presupuesto_por_id_db
+
+# ===================================================
+# 🗓️ HELPER DE FORMATO DE FECHA EN ESPAÑOL
+# ===================================================
+MESES_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+DIAS_ES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+
+def fecha_a_larga(f):
+    """Convierte un objeto date o string ISO en texto largo en español."""
+    if not f:
+        return ""
+    if isinstance(f, str):
+        try:
+            f = datetime.datetime.strptime(f, "%Y-%m-%d").date()
+        except ValueError:
+            try:
+                f = datetime.datetime.strptime(f, "%d/%m/%Y").date()
+            except ValueError:
+                return f.upper()
+    if isinstance(f, (datetime.date, datetime.datetime)):
+        dia_semana = DIAS_ES[f.weekday()]
+        mes = MESES_ES[f.month - 1]
+        return f"{dia_semana.upper()} {f.day} DE {mes.upper()} DE {f.year}"
+    return str(f).upper()
 
 # ===================================================
 # 📦 FUNCIONES DE PERSISTENCIA Y REHIDRATACIÓN JSONB
@@ -62,12 +88,15 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
             "items": items_list
         })
 
+    f_evt = meta.get("fecha_evento")
+    fecha_evt_db = f_evt.strftime("%Y-%m-%d") if isinstance(f_evt, (datetime.date, datetime.datetime)) else str(f_evt or "")
+
     return {
         "nombre": meta.get("nombre", "PRESUPUESTO SIN NOMBRE").strip().upper(),
         "cliente": meta.get("cliente", "CLIENTE").strip().upper(),
-        "fecha_evento": meta.get("fecha_evento", "").strip(),
+        "fecha_evento": fecha_evt_db,
         "lugar": meta.get("lugar", "").strip(),
-        "fecha_larga": meta.get("fecha_larga", "").strip(),
+        "fecha_larga": fecha_a_larga(f_evt),
         "tipo_presupuesto": meta.get("tipo_presupuesto", "Decoración"),
         "monto_total": round(monto_total_calculado, 2),
         "clausulas": clausulas_txt,
@@ -82,13 +111,20 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
     """Lee el JSONB desde Supabase y reconstruye los dataframes interactivos."""
     data = obtener_presupuesto_por_id_db(id_presupuesto)
     if not data:
-        st.error(f"No se pudo cargar el presupuesto ID #{id_presupuesto}")
         return False
+
+    raw_fecha = data.get("fecha_evento", "")
+    fecha_obj = datetime.date.today()
+    if raw_fecha:
+        try:
+            fecha_obj = datetime.datetime.strptime(str(raw_fecha), "%Y-%m-%d").date()
+        except ValueError:
+            pass
 
     st.session_state.meta_presupuesto = {
         "nombre": data.get("nombre", ""),
         "cliente": data.get("cliente", ""),
-        "fecha_evento": data.get("fecha_evento", ""),
+        "fecha_evento": fecha_obj,
         "lugar": data.get("lugar", ""),
         "fecha_larga": data.get("fecha_larga", ""),
         "tipo_presupuesto": data.get("tipo_presupuesto", "Decoración")
@@ -118,52 +154,49 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
     return True
 
 def resetear_formulario_presupuesto():
-    """Limpia todo el estado de la sesión para iniciar un presupuesto desde cero."""
-    # 1. Resetear Metadatos
-    st.session_state.meta_presupuesto = {
-        "cliente": "", 
-        "nombre": "", 
-        "fecha_evento": "", 
-        "lugar": "", 
-        "fecha_larga": "",
-        "tipo_presupuesto": "Decoración"
-    }
+    """Carga la plantilla fija ID=1 si existe; si no, realiza el reseteo limpio en memoria."""
+    cargado = cargar_presupuesto_en_session_state(1)
     
-    # 2. Eliminar referencia a ID cargado previamente
-    if "presupuesto_id_activo" in st.session_state:
+    if cargado:
+        st.session_state.meta_presupuesto.update({
+            "cliente": "", 
+            "nombre": "", 
+            "fecha_evento": datetime.date.today(), 
+            "lugar": "", 
+            "fecha_larga": ""
+        })
         st.session_state.presupuesto_id_activo = None
+    else:
+        # Fallback si la plantilla ID=1 aún no existe en la BD
+        st.session_state.meta_presupuesto = {
+            "cliente": "", 
+            "nombre": "", 
+            "fecha_evento": datetime.date.today(), 
+            "lugar": "", 
+            "fecha_larga": "",
+            "tipo_presupuesto": "Decoración"
+        }
+        
+        if "presupuesto_id_activo" in st.session_state:
+            st.session_state.presupuesto_id_activo = None
 
-    # 3. Eliminar tablas y widgets antiguos de las secciones
-    secciones_actuales = st.session_state.get("lista_secciones", [])
-    for sec in secciones_actuales:
-        sec_id = sec.get("id")
-        st.session_state.pop(f"df_{sec_id}", None)
-        st.session_state.pop(f"res_{sec_id}", None)
-        st.session_state.pop(f"editor_widget_{sec_id}", None)
-        st.session_state.pop(f"tit_input_{sec_id}", None)
+        secciones_actuales = st.session_state.get("lista_secciones", [])
+        for sec in secciones_actuales:
+            sec_id = sec.get("id")
+            st.session_state.pop(f"df_{sec_id}", None)
+            st.session_state.pop(f"res_{sec_id}", None)
+            st.session_state.pop(f"editor_widget_{sec_id}", None)
+            st.session_state.pop(f"tit_input_{sec_id}", None)
 
-    # 4. Restablecer la primera sección limpia por defecto
-    nuevo_id = f"sec_{int(time.time() * 1000)}"
-    st.session_state.lista_secciones = [
-        {"id": nuevo_id, "titulo": "DECORACIÓN PRINCIPAL"}
-    ]
-    st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(
-        columns=["descripción", "detalles", "dias", "cantidad", "precio_unitario"]
-    )
+        nuevo_id = f"sec_{int(time.time() * 1000)}"
+        st.session_state.lista_secciones = [
+            {"id": nuevo_id, "titulo": "DECORACIÓN PRINCIPAL"}
+        ]
+        st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(
+            columns=["descripción", "detalles", "dias", "cantidad", "precio_unitario"]
+        )
 
-    # 5. Restablecer las cláusulas por defecto
-    st.session_state.clausulas_presupuesto = (
-        "Las condiciones generales de nuestra oferta son las siguientes:\n"
-        "* Precios se entienden en: Dólares netos. El costo debe ser pagado el 50% a la aceptación del contrato y el otro 50% 2 días antes del evento.\n"
-        "* Si el pago lo realizará en bs la tasa que manejamos es Euro indicado por el Banco Central de Venezuela.\n"
-        "* Validez de la Oferta: 3 días contínuos.\n"
-        "* Si el cliente cancela el servicio (es decir no va a querer el servicio) 2 días antes del evento le será devuelto un 30% del monto pagado.\n"
-        "* Si el cliente cancela el servicio (es decir no va a querer el servicio) 1 día antes ó el día del evento no se le devolverá nada del monto pagado.\n"
-        "* El cliente es enteramente responsable de todo el material suministrado para el evento y cancelara cualquier daño al mismo.\n\n"
-        "Sin más a que hacer referencia, a la espera de vuestra consideración, nos despedimos de Ud.,\n"
-        "Atentamente,\n"
-        "Paletapapelytijera"
-    )
+        st.session_state.clausulas_presupuesto = ""
 
 def calcular_subtotal_df(df_input):
     """
@@ -175,21 +208,18 @@ def calcular_subtotal_df(df_input):
 
     subtotal = 0.0
     for _, row in df_input.iterrows():
-        # Juegos / Kits
         jk_raw = row.get('dias')
         try:
             jk_val = float(jk_raw) if pd.notna(jk_raw) and str(jk_raw).strip() != '' else 0.0
         except Exception:
             jk_val = 0.0
             
-        # Cantidad
         cant_raw = row.get('cantidad')
         try:
             cant_val = float(cant_raw) if pd.notna(cant_raw) and str(cant_raw).strip() != '' else 0.0
         except Exception:
             cant_val = 0.0
             
-        # Precio Unitario
         pu_raw = row.get('precio_unitario')
         try:
             pu_val = float(pu_raw) if pd.notna(pu_raw) and str(pu_raw).strip() != '' else 0.0
@@ -332,11 +362,7 @@ def render_creacion_presupuestos(rol_actual):
                 font-size: 12px;
                 margin-bottom: 3px;
             }
-            /* ===================================================
-               ✂️ COMPACTACIÓN DE ESPACIOS EN VISTA PREVIA / UI
-               =================================================== */
-            
-            /* 1. Reducir márgenes de títulos y subencabezados (h2, h3, h4) */
+
             div[data-testid="stMarkdownContainer"] h2,
             div[data-testid="stMarkdownContainer"] h3,
             div[data-testid="stMarkdownContainer"] h4 {
@@ -346,12 +372,10 @@ def render_creacion_presupuestos(rol_actual):
                 padding-bottom: 0px !important;
             }
             
-            /* 2. Pegar la barra de Pestañas (st.tabs) al contenido inferior */
             div[data-testid="stTabs"] {
                 margin-bottom: -10px !important;
             }
             
-            /* 3. Reducir la separación vertical del Toggle */
             div[data-testid="stToggle"] {
                 margin-top: -6px !important;
                 margin-bottom: -6px !important;
@@ -359,12 +383,10 @@ def render_creacion_presupuestos(rol_actual):
                 padding-bottom: 0px !important;
             }
             
-            /* 4. Reducir el espacio interno vertical del contenedor de widgets */
             div[data-testid="stVerticalBlock"] {
-                gap: 0.5rem !important; /* Espacio global estándar entre elementos (por defecto es 1rem) */
+                gap: 0.5rem !important;
             }
             
-            /* 5. Si usas separadores divisores (st.markdown("---") o st.divider()) */
             hr {
                 margin-top: 8px !important;
                 margin-bottom: 12px !important;
@@ -377,28 +399,10 @@ def render_creacion_presupuestos(rol_actual):
         st.session_state.modo_vista = "edicion"
 
     if "meta_presupuesto" not in st.session_state:
-        st.session_state.meta_presupuesto = {
-            "cliente": "", 
-            "nombre": "", 
-            "fecha_evento": "", 
-            "lugar": "", 
-            "fecha_larga": "",
-            "tipo_presupuesto": "Decoración"
-        }
+        resetear_formulario_presupuesto()
 
     if "clausulas_presupuesto" not in st.session_state:
-        st.session_state.clausulas_presupuesto = (
-            "Las condiciones generales de nuestra oferta son las siguientes:\n"
-            "* Precios se entienden en: Dólares netos. El costo debe ser pagado el 50% a la aceptación del contrato y el otro 50% 2 días antes del evento.\n"
-            "* Si el pago lo realizará en bs la tasa que manejamos es Euro indicado por el Banco Central de Venezuela.\n"
-            "* Validez de la Oferta: 3 días contínuos.\n"
-            "* Si el cliente cancela el servicio (es decir no va a querer el servicio) 2 días antes del evento le será devuelto un 30% del monto pagado.\n"
-            "* Si el cliente cancela el servicio (es decir no va a querer el servicio) 1 día antes ó el día del evento no se le devolverá nada del monto pagado.\n"
-            "* El cliente es enteramente responsable de todo el material suministrado para el evento y cancelara cualquier daño al mismo.\n\n"
-            "Sin más a que hacer referencia, a la espera de vuestra consideración, nos despedimos de Ud.,\n"
-            "Atentamente,\n"
-            "Paletapapelytijera"
-        )
+        st.session_state.clausulas_presupuesto = ""
 
     if "lista_secciones" not in st.session_state:
         st.session_state.lista_secciones = [
@@ -423,7 +427,6 @@ def render_creacion_presupuestos(rol_actual):
     # 📝 MODO EDICIÓN (PANTALLA DE CARGA)
     # ===================================================
     if st.session_state.modo_vista == "edicion":
-# --- Encabezado con Botón de Limpiar ---
         col_tit, col_btn = st.columns([3, 1])
         with col_tit:
             st.markdown("# 📝 Creación de Presupuesto Nuevo")
@@ -449,11 +452,18 @@ def render_creacion_presupuestos(rol_actual):
                     placeholder="Ej: Sra. María Pérez"
                 )
             with c2:
-                st.session_state.meta_presupuesto["fecha_evento"] = st.text_input(
+                val_fecha = st.session_state.meta_presupuesto.get("fecha_evento")
+                if not isinstance(val_fecha, (datetime.date, datetime.datetime)):
+                    val_fecha = datetime.date.today()
+
+                fecha_sel = st.date_input(
                     "Fecha del Evento:", 
-                    value=st.session_state.meta_presupuesto.get("fecha_evento", ""),
-                    placeholder="Ej: SÁBADO 25 DE JULIO DE 2026"
+                    value=val_fecha,
+                    format="DD/MM/YYYY"
                 )
+                st.session_state.meta_presupuesto["fecha_evento"] = fecha_sel
+                st.caption(f"🗓️ **Vista larga:** {fecha_a_larga(fecha_sel)}")
+
                 st.session_state.meta_presupuesto["lugar"] = st.text_input(
                     "Lugar del Evento:", 
                     value=st.session_state.meta_presupuesto.get("lugar", ""),
@@ -491,8 +501,8 @@ def render_creacion_presupuestos(rol_actual):
 
         for idx, sec in enumerate(st.session_state.lista_secciones):
             sec_id = sec["id"]
-            df_key = f"df_{sec_id}"       # Base estática de la tabla
-            res_key = f"res_{sec_id}"     # Captura en vivo
+            df_key = f"df_{sec_id}"
+            res_key = f"res_{sec_id}"
             
             if df_key not in st.session_state:
                 st.session_state[df_key] = pd.DataFrame(columns=["descripción", "detalles", "dias", "cantidad", "precio_unitario"])
@@ -569,7 +579,6 @@ def render_creacion_presupuestos(rol_actual):
             st.markdown("## 📜 Términos y Cláusulas")
             st.session_state.clausulas_presupuesto = st.text_area("Modifique cláusulas si es necesario:", value=st.session_state.clausulas_presupuesto, height=150)
 
-# --- NUEVO BLOQUE UNIFICADO ---
         st.markdown("---")
         if st.button("👁️ Generar Vista Previa del Documento", type="primary", use_container_width=True):
             st.session_state.modo_vista = "previa"
@@ -583,9 +592,6 @@ def render_creacion_presupuestos(rol_actual):
         clausulas_txt = st.session_state.get("clausulas_presupuesto", "")
         secciones_activas = st.session_state.get("lista_secciones", [])
 
-        # --- 🔄 PASO CLAVE: SINCRONIZACIÓN DE DATOS PARA PDF ---
-        # Sincronizamos las capturas en vivo (res_sec_id) a la clave primaria (df_sec_id)
-        # para que print_pdf_utility lea los ítems completos.
         for sec in secciones_activas:
             sec_id = sec.get('id', '')
             res_key = f"res_{sec_id}"
@@ -601,9 +607,16 @@ def render_creacion_presupuestos(rol_actual):
             help="Activa para mostrar el precio individual de cada ítem, o desactiva para mostrar solo los subtotales."
         )
         
-        # Generar el PDF ahora con los datos completamente sincronizados
+        # --- Generar PDF y Nombrado Dinámico ---
         pdf_bytes = generar_pdf_presupuesto_nativo(incluir_precios=incluir_precios_pdf)
-        nombre_presupuesto = str(meta.get("nombre", "")).strip().replace(" ", "_").lower() or "nombre"
+        
+        p_nombre = str(meta.get("nombre", "PRESUPUESTO")).strip().upper() or "PRESUPUESTO"
+        p_fecha_larga = fecha_a_larga(meta.get("fecha_evento"))
+
+        nombre_clean = re.sub(r'[^\w\s-]', '', p_nombre).strip().replace(" ", "_")
+        fecha_clean = re.sub(r'[^\w\s-]', '', p_fecha_larga).strip().replace(" ", "_")
+
+        nombre_archivo_pdf = f"Presupuesto_{nombre_clean}_{fecha_clean}.pdf"
         
         col_pv1, col_pv2, col_pv3 = st.columns(3)
                 
@@ -616,7 +629,7 @@ def render_creacion_presupuestos(rol_actual):
             st.download_button(
                 label="📥 Descargar Presupuesto PDF",
                 data=pdf_bytes,
-                file_name=f"presupuesto_{nombre_presupuesto}.pdf",
+                file_name=nombre_archivo_pdf,
                 mime="application/pdf",
                 use_container_width=True
             )
@@ -668,7 +681,7 @@ def render_creacion_presupuestos(rol_actual):
             """
         
         p_nombre = str(meta.get('nombre', '') or '').upper() or 'PRESUPUESTO'
-        p_fecha_evt = str(meta.get('fecha_evento', '') or '').upper() or 'N/A'
+        p_fecha_evt = fecha_a_larga(meta.get('fecha_evento'))
         p_cliente = str(meta.get('cliente', '') or '').upper() or 'N/A'
         p_lugar = str(meta.get('lugar', '') or '').upper() or 'N/A'
         p_emision = str(meta.get('fecha_larga', '') or '').upper() or 'N/A'
