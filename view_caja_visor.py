@@ -104,12 +104,18 @@ def render_banner_acumulados(df_filtrado):
     """, unsafe_allow_html=True)
 
 
-def render_visor(df_mes, mes_nombre, anho, saldos_fin, rol_actual="administrador"):
+def render_visor(df_mes, mes_nombre, anho, saldos_fin, rol_actual=None):
     """Punto de entrada principal invocado por run_app.py."""
     
-    # --- EVALUACIÓN DE PERMISOS DE ROL ---
-    rol_usuario = str(rol_actual or st.session_state.get("rol_actual", "administrador")).lower()
-    mostrar_activos = (rol_usuario == "soporte")
+    # --- EVALUACIÓN RIGUROSA DE PERMISOS DE ROL ---
+    rol_detectado = (
+        rol_actual 
+        or st.session_state.get("rol_actual") 
+        or st.session_state.get("rol_simulado") 
+        or st.session_state.get("rol") 
+        or "administrador"
+    )
+    es_soporte = (str(rol_detectado).strip().lower() == "soporte")
 
     df_base = df_mes.copy() if not df_mes.empty else pd.DataFrame()
     if not df_base.empty:
@@ -177,13 +183,11 @@ def render_visor(df_mes, mes_nombre, anho, saldos_fin, rol_actual="administrador
         df_filtrado = df_filtrado[df_filtrado["tipo"].isin(tipos_sel)]
 
     # --- SALDOS DINÁMICOS SITUADOS DEBAJO DE LOS FILTROS ---
-    
-    # 1. Saldos acumulados hasta la fecha máxima del filtro
     saldos_hasta_max = calcular_acumulados_filtrados(df_hasta_max)
     fecha_hasta_str = fecha_hasta.strftime("%d/%m/%Y") if fecha_hasta else ""
     render_banner_saldos(saldos_hasta_max, fecha_hasta_str=fecha_hasta_str)
     
-    # 2. Flujo específico del período filtrado (Sin acumulado anterior)
+    # Flujo específico del período filtrado (Sin acumulado anterior)
     render_banner_acumulados(df_filtrado)
 
     if df_filtrado.empty:
@@ -195,22 +199,28 @@ def render_visor(df_mes, mes_nombre, anho, saldos_fin, rol_actual="administrador
     df_visual = preparar_columnas_monto(df_visual)
     df_visual["Fecha Ext"] = pd.to_datetime(df_visual["fecha"]).dt.strftime("%d/%m/%Y")
     
-    rename_dict = {
+    # 🔒 ELIMINACIÓN EXPLICITA Y DEFINITIVA DE LA COLUMNA ACTIVO/ACTIVOS PARA USUARIOS NO SOPORTE
+    columnas_activo_detectadas = [c for c in df_visual.columns if c.lower() in ["activo", "activos"]]
+    
+    if not es_soporte:
+        # Si NO es soporte, se eliminan completamente del DataFrame
+        df_visual = df_visual.drop(columns=columnas_activo_detectadas, errors="ignore")
+    else:
+        # Si ES soporte, estandarizamos el nombre a "Activos"
+        for col_act in columnas_activo_detectadas:
+            df_visual = df_visual.rename(columns={col_act: "Activos"})
+
+    df_visual = df_visual.rename(columns={
         "detalle": "Descripción",
         "categoria": "Categoría",
         "tipo": "Tipo",
         "comentarios": "Comentario"
-    }
-    if "activos" in df_visual.columns:
-        rename_dict["activos"] = "Activos"
-        
-    df_visual = df_visual.rename(columns=rename_dict)
+    })
     
-    # Construcción dinámica de columnas según rol
+    # Construcción dinámica de columnas
     columnas_pantalla = ["Fecha Ext", "Descripción", "Categoría", "Tipo"]
     
-    # Ocultar o mostrar la columna 'Activos' (Solo visible en Soporte)
-    if mostrar_activos and "Activos" in df_visual.columns:
+    if es_soporte and "Activos" in df_visual.columns:
         columnas_pantalla.append("Activos")
         
     columnas_pantalla.extend([
