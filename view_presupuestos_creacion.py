@@ -117,6 +117,54 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
     st.session_state.modo_vista = "edicion"
     return True
 
+def resetear_formulario_presupuesto():
+    """Limpia todo el estado de la sesión para iniciar un presupuesto desde cero."""
+    # 1. Resetear Metadatos
+    st.session_state.meta_presupuesto = {
+        "cliente": "", 
+        "nombre": "", 
+        "fecha_evento": "", 
+        "lugar": "", 
+        "fecha_larga": "",
+        "tipo_presupuesto": "Decoración"
+    }
+    
+    # 2. Eliminar referencia a ID cargado previamente
+    if "presupuesto_id_activo" in st.session_state:
+        st.session_state.presupuesto_id_activo = None
+
+    # 3. Eliminar tablas y widgets antiguos de las secciones
+    secciones_actuales = st.session_state.get("lista_secciones", [])
+    for sec in secciones_actuales:
+        sec_id = sec.get("id")
+        st.session_state.pop(f"df_{sec_id}", None)
+        st.session_state.pop(f"res_{sec_id}", None)
+        st.session_state.pop(f"editor_widget_{sec_id}", None)
+        st.session_state.pop(f"tit_input_{sec_id}", None)
+
+    # 4. Restablecer la primera sección limpia por defecto
+    nuevo_id = f"sec_{int(time.time() * 1000)}"
+    st.session_state.lista_secciones = [
+        {"id": nuevo_id, "titulo": "DECORACIÓN PRINCIPAL"}
+    ]
+    st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(
+        columns=["descripción", "detalles", "dias", "cantidad", "precio_unitario"]
+    )
+
+    # 5. Restablecer las cláusulas por defecto
+    st.session_state.clausulas_presupuesto = (
+        "Las condiciones generales de nuestra oferta son las siguientes:\n"
+        "* Precios se entienden en: Dólares netos. El costo debe ser pagado el 50% a la aceptación del contrato y el otro 50% 2 días antes del evento.\n"
+        "* Si el pago lo realizará en bs la tasa que manejamos es Euro indicado por el Banco Central de Venezuela.\n"
+        "* Validez de la Oferta: 3 días contínuos.\n"
+        "* Si el cliente cancela el servicio (es decir no va a querer el servicio) 2 días antes del evento le será devuelto un 30% del monto pagado.\n"
+        "* Si el cliente cancela el servicio (es decir no va a querer el servicio) 1 día antes ó el día del evento no se le devolverá nada del monto pagado.\n"
+        "* El cliente es enteramente responsable de todo el material suministrado para el evento y cancelara cualquier daño al mismo.\n\n"
+        "Sin más a que hacer referencia, a la espera de vuestra consideración, nos despedimos de Ud.,\n"
+        "Atentamente,\n"
+        "Paletapapelytijera"
+    )
+
 def calcular_subtotal_df(df_input):
     """
     Calcula el subtotal dinámico (Días * Cantidad * PU) para los
@@ -375,10 +423,19 @@ def render_creacion_presupuestos(rol_actual):
     # 📝 MODO EDICIÓN (PANTALLA DE CARGA)
     # ===================================================
     if st.session_state.modo_vista == "edicion":
-        st.markdown("# 📝 Creación de Presupuesto Nuevo")
+# --- Encabezado con Botón de Limpiar ---
+        col_tit, col_btn = st.columns([3, 1])
+        with col_tit:
+            st.markdown("# 📝 Creación de Presupuesto Nuevo")
+        with col_btn:
+            st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+            if st.button("🧹 Limpiar / Desde Cero", use_container_width=True, help="Borra todos los campos y restablece el formulario"):
+                resetear_formulario_presupuesto()
+                st.toast("✨ Formulario limpiado correctamente.", icon="🧹")
+                st.rerun()
         
         with st.container(border=True):
-            st.markdown("## 🏛️ Datos de Cabecera")
+            st.markdown("## 🏛️ Datos de Encabezado")
             c1, c2, c3 = st.columns(3)
             with c1:
                 st.session_state.meta_presupuesto["nombre"] = st.text_input(
