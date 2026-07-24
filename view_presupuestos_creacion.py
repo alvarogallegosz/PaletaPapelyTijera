@@ -354,11 +354,11 @@ def render_creacion_presupuestos(rol_actual):
 
     if "lista_secciones" not in st.session_state:
         st.session_state.lista_secciones = [
-            {"id": "sec_inicial_1", "titulo": "DECORACIÓN PRINCIPAL (ALQUILER)"}
+            {"id": "sec_inicial_1", "titulo": "DECORACIÓN PRINCIPAL"}
         ]
 
     sugerencias_titulos = [
-        "DECORACIÓN PRINCIPAL (ALQUILER)",
+        "DECORACIÓN PRINCIPAL",
         "ZONA DE CENTRO DE MESA",
         "ZONA DE DULCES / TORTA",
         "MONTAJE Y LOGÍSTICA",
