@@ -160,7 +160,7 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
                 Paragraph("<b>ITEM</b>", style_header_center),
                 Paragraph(f"<b>{sec_titulo}</b>", style_header_left),
                 Paragraph("<b>DETALLES</b>", style_header_left),
-                Paragraph("<b>JUEGOS<br/>/KITS</b>", style_header_center),
+                Paragraph("<b>DÍAS</b>", style_header_center),
                 Paragraph("<b>CANT.</b>", style_header_center),
                 Paragraph("<b>PRECIO</b>", style_header_center)
             ]]
@@ -169,7 +169,7 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
                 Paragraph("<b>ITEM</b>", style_header_center),
                 Paragraph(f"<b>{sec_titulo}</b>", style_header_left),
                 Paragraph("<b>DETALLES</b>", style_header_left),
-                Paragraph("<b>JUEGOS<br/>/KITS</b>", style_header_center),
+                Paragraph("<b>DÍAS</b>", style_header_center),
                 Paragraph("<b>CANT.</b>", style_header_center)
             ]]
         
@@ -182,7 +182,7 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
                 med = str(row.get('detalles', '') or '').strip().replace("\n", " ").replace("\r", "")
                 
                 try:
-                    jk_val = float(row.get('juegos/kits')) if pd.notna(row.get('juegos/kits')) and row.get('juegos/kits') != '' else 0.0
+                    jk_val = float(row.get('dias')) if pd.notna(row.get('dias')) and row.get('dias') != '' else 0.0
                 except Exception:
                     jk_val = 0.0
                     
