@@ -546,7 +546,7 @@ def render_creacion_presupuestos(rol_actual):
         
         # Generar el PDF ahora con los datos completamente sincronizados
         pdf_bytes = generar_pdf_presupuesto_nativo(incluir_precios=incluir_precios_pdf)
-        nombre_cliente = str(meta.get("cliente", "cliente")).strip().replace(" ", "_").lower() or "cliente"
+        nombre_presupuesto = str(meta.get("nombre", "")).strip().replace(" ", "_").lower() or "nombre"
         
         col_pv1, col_pv2, col_pv3 = st.columns(3)
                 
@@ -559,7 +559,7 @@ def render_creacion_presupuestos(rol_actual):
             st.download_button(
                 label="📥 Descargar Presupuesto PDF",
                 data=pdf_bytes,
-                file_name=f"presupuesto_{nombre_cliente}.pdf",
+                file_name=f"presupuesto_{nombre_presupuesto}.pdf",
                 mime="application/pdf",
                 use_container_width=True
             )
