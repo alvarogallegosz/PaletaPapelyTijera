@@ -429,7 +429,7 @@ def render_creacion_presupuestos(rol_actual):
             st.markdown("# 📝 Creación de Presupuesto Nuevo")
         with col_btn:
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-            if st.button("🧹 Limpiar / Desde Cero", use_container_width=True, help="Borra todos los campos y restablece el formulario"):
+            if st.button("🧹 Limpiar datos / Comenzar desde Cero", use_container_width=True, help="Borra todos los campos y restablece el formulario"):
                 resetear_formulario_presupuesto()
                 st.toast("✨ Formulario limpiado correctamente.", icon="🧹")
                 st.rerun()
