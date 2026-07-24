@@ -1,7 +1,10 @@
-import streamlit as st
-import pandas as pd
 import datetime
 import calendar
+import pandas as pd
+import streamlit as st
+
+from db_connection import obtener_movimientos_locales
+
 
 def preparar_columnas_monto(df):
     """Desglosa la columna genérica 'monto' en 5 columnas visuales según el tipo de movimiento."""
@@ -52,7 +55,7 @@ def render_banner_saldos(saldos_dict, fecha_hasta_str=None):
 
 
 def calcular_acumulados_filtrados(df):
-    """Calcula el flujo neto (Ingresos - Egresos) de las 5 cuentas sobre el conjunto filtrado."""
+    """Calcula el flujo neto (Ingresos - Egresos) de las 5 cuentas sobre el conjunto de datos recibido."""
     acumulados = {'Bs': 0.0, 'Ze': 0.0, 'Ch': 0.0, 'AhZe': 0.0, 'AhCh': 0.0}
     if df.empty:
         return acumulados
@@ -107,6 +110,15 @@ def render_banner_acumulados(df_filtrado):
 def render_visor(df_mes, mes_nombre, anho, saldos_fin, rol_actual=None):
     """Punto de entrada principal invocado por run_app.py."""
     
+    # CSS dinámico para asegurar la barra de desplazamiento horizontal
+    st.markdown("""
+        <style>
+            div[data-testid="stDataFrame"] > div {
+                overflow-x: auto !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+    
     # --- EVALUACIÓN RIGUROSA DE PERMISOS DE ROL ---
     rol_detectado = (
         rol_actual 
@@ -117,9 +129,18 @@ def render_visor(df_mes, mes_nombre, anho, saldos_fin, rol_actual=None):
     )
     es_soporte = (str(rol_detectado).strip().lower() == "soporte")
 
-    df_base = df_mes.copy() if not df_mes.empty else pd.DataFrame()
+    # --- OBTENCIÓN DEL HISTÓRICO COMPLETO (MISMO ESQUEMA QUE EN EDICIÓN) ---
+    df_completo = st.session_state.get("df_movimientos")
+    if df_completo is None or df_completo.empty:
+        df_completo = obtener_movimientos_locales()
+
+    df_base = df_completo.copy() if df_completo is not None and not df_completo.empty else df_mes.copy()
+
     if not df_base.empty:
-        df_base["fecha_date"] = pd.to_datetime(df_base["fecha"]).dt.date
+        df_base["fecha_dt"] = pd.to_datetime(df_base["fecha"])
+        df_base["fecha_date"] = df_base["fecha_dt"].dt.date
+        if "activo" not in df_base.columns:
+            df_base["activo"] = True
 
     # --- FECHAS PREDETERMINADAS: MES ACTUAL ---
     hoy = datetime.date.today()
@@ -127,7 +148,6 @@ def render_visor(df_mes, mes_nombre, anho, saldos_fin, rol_actual=None):
     _, ultimo_dia_num = calendar.monthrange(hoy.year, hoy.month)
     ultimo_dia_mes = datetime.date(hoy.year, hoy.month, ultimo_dia_num)
 
-    # Límites defensivos para el date_input
     if not df_base.empty:
         min_limite = min(df_base["fecha_date"].min(), primer_dia_mes)
         max_limite = max(df_base["fecha_date"].max(), ultimo_dia_mes)
@@ -158,7 +178,7 @@ def render_visor(df_mes, mes_nombre, anho, saldos_fin, rol_actual=None):
         tipos_opts = sorted(df_base["tipo"].dropna().unique()) if not df_base.empty and "tipo" in df_base.columns else []
         tipos_sel = st.multiselect("Filtrar Tipo", options=tipos_opts, key="v_tipo")
 
-    # --- APLICACIÓN DE FILTROS ---
+    # --- APLICACIÓN DE RANGOS ---
     fecha_desde = primer_dia_mes
     fecha_hasta = ultimo_dia_mes
 
@@ -168,26 +188,26 @@ def render_visor(df_mes, mes_nombre, anho, saldos_fin, rol_actual=None):
         elif len(rango_fecha) == 1:
             fecha_desde = fecha_hasta = rango_fecha[0]
 
-    if not df_base.empty:
-        # Registros acumulados hasta la fecha máxima del filtro
-        df_hasta_max = df_base[df_base["fecha_date"] <= fecha_hasta]
-        # Registros dentro del rango específico
-        df_filtrado = df_base[(df_base["fecha_date"] >= fecha_desde) & (df_base["fecha_date"] <= fecha_hasta)]
-    else:
-        df_hasta_max = pd.DataFrame()
-        df_filtrado = pd.DataFrame()
+    # --- 1. SALDO ACUMULADO REAL (HISTÓRICO HASTA FECHA_HASTA) ---
+    df_activos_historicos = df_base[df_base["activo"] == True] if "activo" in df_base.columns else df_base
+    df_hasta_max = df_activos_historicos[df_activos_historicos["fecha_date"] <= fecha_hasta]
+    
+    saldos_hasta_max = calcular_acumulados_filtrados(df_hasta_max)
+    fecha_hasta_str = fecha_hasta.strftime("%d/%m/%Y") if fecha_hasta else ""
+    render_banner_saldos(saldos_hasta_max, fecha_hasta_str=fecha_hasta_str)
+
+    # --- 2. FILTRADO ESPECÍFICO DEL PERÍODO ---
+    df_filtrado = df_activos_historicos[
+        (df_activos_historicos["fecha_date"] >= fecha_desde) & 
+        (df_activos_historicos["fecha_date"] <= fecha_hasta)
+    ]
 
     if cats_sel and not df_filtrado.empty:
         df_filtrado = df_filtrado[df_filtrado["categoria"].isin(cats_sel)]
     if tipos_sel and not df_filtrado.empty:
         df_filtrado = df_filtrado[df_filtrado["tipo"].isin(tipos_sel)]
 
-    # --- SALDOS DINÁMICOS SITUADOS DEBAJO DE LOS FILTROS ---
-    saldos_hasta_max = calcular_acumulados_filtrados(df_hasta_max)
-    fecha_hasta_str = fecha_hasta.strftime("%d/%m/%Y") if fecha_hasta else ""
-    render_banner_saldos(saldos_hasta_max, fecha_hasta_str=fecha_hasta_str)
-    
-    # Flujo específico del período filtrado (Sin acumulado anterior)
+    # Flujo neto exclusivo del rango seleccionado
     render_banner_acumulados(df_filtrado)
 
     if df_filtrado.empty:
@@ -199,14 +219,10 @@ def render_visor(df_mes, mes_nombre, anho, saldos_fin, rol_actual=None):
     df_visual = preparar_columnas_monto(df_visual)
     df_visual["Fecha Ext"] = pd.to_datetime(df_visual["fecha"]).dt.strftime("%d/%m/%Y")
     
-    # 🔒 ELIMINACIÓN EXPLICITA Y DEFINITIVA DE LA COLUMNA ACTIVO/ACTIVOS PARA USUARIOS NO SOPORTE
     columnas_activo_detectadas = [c for c in df_visual.columns if c.lower() in ["activo", "activos"]]
-    
     if not es_soporte:
-        # Si NO es soporte, se eliminan completamente del DataFrame
         df_visual = df_visual.drop(columns=columnas_activo_detectadas, errors="ignore")
     else:
-        # Si ES soporte, estandarizamos el nombre a "Activos"
         for col_act in columnas_activo_detectadas:
             df_visual = df_visual.rename(columns={col_act: "Activos"})
 
@@ -217,9 +233,7 @@ def render_visor(df_mes, mes_nombre, anho, saldos_fin, rol_actual=None):
         "comentarios": "Comentario"
     })
     
-    # Construcción dinámica de columnas
     columnas_pantalla = ["Fecha Ext", "Descripción", "Categoría", "Tipo"]
-    
     if es_soporte and "Activos" in df_visual.columns:
         columnas_pantalla.append("Activos")
         
@@ -231,23 +245,22 @@ def render_visor(df_mes, mes_nombre, anho, saldos_fin, rol_actual=None):
 
     config_cols = {
         "Fecha Ext": st.column_config.TextColumn("Fecha", width=100),
-        "Descripción": st.column_config.TextColumn("Descripción", width=300),
-        "Categoría": st.column_config.TextColumn("Categoría", width=140),
-        "Tipo": st.column_config.TextColumn("Tipo", width=90),
+        "Descripción": st.column_config.TextColumn("Descripción", width=320),
+        "Categoría": st.column_config.TextColumn("Categoría", width=150),
+        "Tipo": st.column_config.TextColumn("Tipo", width=100),
         "Activos": st.column_config.TextColumn("Activos", width=120),
-        "Monto Bs": st.column_config.TextColumn("Monto Bs", width=110),
-        "Monto $ Zelle": st.column_config.TextColumn("Monto $ Zelle", width=110),
-        "Monto $ Cash": st.column_config.TextColumn("Monto $ Cash", width=110),
-        "Monto $ Ah-Ze": st.column_config.TextColumn("Monto $ Ah-Ze", width=110),
-        "Monto $ Ah-Ch": st.column_config.TextColumn("Monto $ Ah-Ch", width=110),
-        "Comentario": st.column_config.TextColumn("Comentario", width=300),
+        "Monto Bs": st.column_config.TextColumn("Monto Bs", width=120),
+        "Monto $ Zelle": st.column_config.TextColumn("Monto $ Zelle", width=120),
+        "Monto $ Cash": st.column_config.TextColumn("Monto $ Cash", width=120),
+        "Monto $ Ah-Ze": st.column_config.TextColumn("Monto $ Ah-Ze", width=120),
+        "Monto $ Ah-Ch": st.column_config.TextColumn("Monto $ Ah-Ch", width=120),
+        "Comentario": st.column_config.TextColumn("Comentario", width=320),
     }
 
-# Renderizado de la tabla con scroll horizontal habilitado
     st.dataframe(
         df_visual[cols_existentes],
         column_config={k: v for k, v in config_cols.items() if k in cols_existentes},
-        use_container_width=True,  # 👈 CAMBIO CLAVE: Permite activar el scroll horizontal nativo
+        use_container_width=False,
         hide_index=True,
-        height=500  # 👈 Reducido ligeramente para que la barra inferior sea visible fácilmente
+        height=550
     )
