@@ -31,7 +31,7 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
                 det = str(row.get("detalles", "") or "").strip()
                 
                 try:
-                    jk_val = float(row.get("juegos/kits")) if pd.notna(row.get("juegos/kits")) and str(row.get("juegos/kits")).strip() != "" else 0.0
+                    jk_val = float(row.get("dias")) if pd.notna(row.get("dias")) and str(row.get("dias")).strip() != "" else 0.0
                 except Exception:
                     jk_val = 0.0
                     
@@ -51,7 +51,7 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
                     items_list.append({
                         "descripción": desc,
                         "detalles": det,
-                        "juegos/kits": jk_val,
+                        "dias": jk_val,
                         "cantidad": cant_val,
                         "precio_unitario": pu_val
                     })
@@ -110,7 +110,7 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
         if items_list:
             df_sec = pd.DataFrame(items_list)
         else:
-            df_sec = pd.DataFrame(columns=["descripción", "detalles", "juegos/kits", "cantidad", "precio_unitario"])
+            df_sec = pd.DataFrame(columns=["descripción", "detalles", "dias", "cantidad", "precio_unitario"])
 
         st.session_state[f"df_{sec_id}"] = df_sec
 
@@ -119,7 +119,7 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
 
 def calcular_subtotal_df(df_input):
     """
-    Calcula el subtotal dinámico (Juegos/Kits * Cantidad * PU) para los
+    Calcula el subtotal dinámico (Días * Cantidad * PU) para los
     indicadores de pantalla sin alterar la estructura del data_editor.
     """
     if df_input is None or df_input.empty:
@@ -128,7 +128,7 @@ def calcular_subtotal_df(df_input):
     subtotal = 0.0
     for _, row in df_input.iterrows():
         # Juegos / Kits
-        jk_raw = row.get('juegos/kits')
+        jk_raw = row.get('dias')
         try:
             jk_val = float(jk_raw) if pd.notna(jk_raw) and str(jk_raw).strip() != '' else 0.0
         except Exception:
@@ -427,7 +427,7 @@ def render_creacion_presupuestos(rol_actual):
                 "id": nuevo_id,
                 "titulo": sug_titulo
             })
-            st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(columns=["descripción", "detalles", "juegos/kits", "cantidad", "precio_unitario"])
+            st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(columns=["descripción", "detalles", "dias", "cantidad", "precio_unitario"])
             st.rerun()
 
         total_acumulado_presupuesto = 0.0
@@ -438,7 +438,7 @@ def render_creacion_presupuestos(rol_actual):
             res_key = f"res_{sec_id}"     # Captura en vivo
             
             if df_key not in st.session_state:
-                st.session_state[df_key] = pd.DataFrame(columns=["descripción", "detalles", "juegos/kits", "cantidad", "precio_unitario"])
+                st.session_state[df_key] = pd.DataFrame(columns=["descripción", "detalles", "dias", "cantidad", "precio_unitario"])
             
             max_filas = 24 if idx == 0 else 15
             sug_placeholder = sugerencias_titulos[idx] if idx < len(sugerencias_titulos) else f"Ej: ZONA {idx+1}"
@@ -470,7 +470,7 @@ def render_creacion_presupuestos(rol_actual):
                     column_config={
                         "descripción": st.column_config.TextColumn("Descripción (80 ch)"),
                         "detalles": st.column_config.TextColumn("Detalles (40 ch)"),
-                        "juegos/kits": st.column_config.NumberColumn("Juegos/Kits (11 ch)", min_value=1),
+                        "dias": st.column_config.NumberColumn("Días (11 ch)", min_value=1),
                         "cantidad": st.column_config.NumberColumn("Cantidad (8 ch)", min_value=1, default=1),
                         "precio_unitario": st.column_config.NumberColumn("Precio ($)", min_value=0.0, format="$%.2f")
                     }
@@ -644,7 +644,7 @@ def render_creacion_presupuestos(rol_actual):
                     <th style="width: 8%; text-align: center; white-space: nowrap;">ITEM</th>
                     <th style="width: 44%; text-align: left;">{sec_titulo}</th>
                     <th style="width: 20%; text-align: left;">DETALLES</th>
-                    <th style="width: 9%; text-align: center;">JUEGOS/KITS</th>
+                    <th style="width: 9%; text-align: center;">DÍAS</th>
                     <th style="width: 8%; text-align: center; white-space: nowrap;">CANT.</th>
                     <th style="width: 11%; text-align: right; white-space: nowrap;">PRECIO</th>
                 """
@@ -653,7 +653,7 @@ def render_creacion_presupuestos(rol_actual):
                     <th style="width: 8%; text-align: center; white-space: nowrap;">ITEM</th>
                     <th style="width: 52%; text-align: left;">{sec_titulo}</th>
                     <th style="width: 23%; text-align: left;">DETALLES</th>
-                    <th style="width: 9%; text-align: center;">JUEGOS/KITS</th>
+                    <th style="width: 9%; text-align: center;">DÍAS</th>
                     <th style="width: 8%; text-align: center; white-space: nowrap;">CANT.</th>
                 """
 
@@ -674,7 +674,7 @@ def render_creacion_presupuestos(rol_actual):
                     det = str(row.get('detalles', '') or '').strip().replace("\n", " ").replace("\r", "").replace("  ", " ")
                     
                     try:
-                        jk_val = float(row.get('juegos/kits')) if pd.notna(row.get('juegos/kits')) and row.get('juegos/kits') != '' else 0.0
+                        jk_val = float(row.get('dias')) if pd.notna(row.get('dias')) and row.get('dias') != '' else 0.0
                     except Exception:
                         jk_val = 0.0
                         
