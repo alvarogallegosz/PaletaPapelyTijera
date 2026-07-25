@@ -126,8 +126,8 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
         if items_list:
             df_sec = pd.DataFrame(items_list)
         else:
-            df_sec = pd.DataFrame(columns=["descripción", "detalles", "dias", "cantidad", "precio_unitario"])
-
+            df_sec = pd.DataFrame(columns=["activo", "descripción", "detalles", "dias", "cantidad", "precio_unitario"])
+                    
         st.session_state[f"df_{sec_id}"] = df_sec
 
     st.session_state.modo_vista = "edicion"
@@ -188,6 +188,8 @@ def calcular_subtotal_df(df_input):
 
     subtotal = 0.0
     for _, row in df_input.iterrows():
+        if not row.get("activo", True):
+            continue
         jk_raw = row.get('dias')
         try:
             jk_val = float(jk_raw) if pd.notna(jk_raw) and str(jk_raw).strip() != '' else 0.0
@@ -515,6 +517,7 @@ def render_creacion_presupuestos(rol_actual):
                     use_container_width=True,
                     hide_index=True,
                     column_config={
+                        "activo": st.column_config.CheckboxColumn("Activo", default=True, help="Desmarca para desactivar el asiento sin perderlo"),
                         "descripción": st.column_config.TextColumn("Descripción (80 ch)"),
                         "detalles": st.column_config.TextColumn("Detalles (40 ch)"),
                         "dias": st.column_config.NumberColumn("Días (11 ch)", min_value=1),
@@ -522,7 +525,37 @@ def render_creacion_presupuestos(rol_actual):
                         "precio_unitario": st.column_config.NumberColumn("Precio ($)", min_value=0.0, format="$%.2f")
                     }
                 )
+# --- 🔍 VALIDACIÓN DE DUPLICADOS Y BORRADO LÓGICO ---
+                registros_vivos = df_vivo.to_dict("records")
+                duplicados_encontrados = False
+                vistos = set()
+                
+                for r in registros_vivos:
+                    clave = (
+                        str(r.get("descripción", "")).strip().lower(),
+                        str(r.get("detalles", "")).strip().lower(),
+                        float(r.get("dias") or 0) if pd.notna(r.get("dias")) else 0.0,
+                        float(r.get("cantidad") or 0) if pd.notna(r.get("cantidad")) else 0.0,
+                        float(r.get("precio_unitario") or 0) if pd.notna(r.get("precio_unitario")) else 0.0
+                    )
+                    if not any(clave): # Omitir filas vacías
+                        continue
+                    if clave in vistos:
+                        duplicados_encontrados = True
+                        break
+                    vistos.add(clave)
 
+                key_dup_confirm = f"confirmar_dup_{sec_id}"
+                if duplicados_encontrados and not st.session_state.get(key_dup_confirm, False):
+                    st.warning("⚠️ Se han detectado asientos idénticos con los mismos datos exactos en esta sección.")
+                    if st.button("Confirmar y aceptar asientos idénticos", key=f"btn_conf_dup_{sec_id}", type="secondary"):
+                        st.session_state[key_dup_confirm] = True
+                        st.rerun()
+                    else:
+                        st.stop()
+                elif not duplicados_encontrados:
+                    st.session_state[key_dup_confirm] = False
+                    
                 if len(df_vivo) > max_filas:
                     st.error(f"⚠️ Sección {idx+1} limitada a {max_filas} líneas máximas.")
                     df_guardar = df_vivo.head(max_filas)
