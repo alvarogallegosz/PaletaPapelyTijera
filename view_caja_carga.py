@@ -89,12 +89,21 @@ def _formatear_monto_callback():
         return
 
     try:
-        # Limpieza básica de caracteres para permitir re-edición fluida
-        val_limpio = val_str.replace(",", "")
-        
-        # Manejo flexible de comas por puntos en caso de ingreso tipo '1000,50'
-        if "." not in val_limpio and "," in val_str:
-            val_limpio = val_str.replace(".", "").replace(",", ".")
+        # Limpieza inteligente para soportar tanto coma ',' como punto '.' como decimales
+        if "," in val_str and "." not in val_str:
+            # Solo tiene coma (ej: "1500,50" o "50,5") -> la convertimos en punto decimal
+            val_limpio = val_str.replace(",", ".")
+        elif "," in val_str and "." in val_str:
+            # Tiene ambos: verificamos cuál está más a la derecha para saber cuál es el decimal
+            if val_str.rfind(",") > val_str.rfind("."):
+                # Formato europeo (ej: "1.500,50") -> quitamos puntos de miles y cambiamos coma por punto
+                val_limpio = val_str.replace(".", "").replace(",", ".")
+            else:
+                # Formato anglosajón (ej: "1,500.50") -> solo quitamos las comas de miles
+                val_limpio = val_str.replace(",", "")
+        else:
+            # Solo tiene puntos o ningún separador (ej: "1500.50" o "1500")
+            val_limpio = val_str
 
         monto_flt = float(val_limpio)
 
