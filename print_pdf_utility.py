@@ -2,6 +2,8 @@ import io
 import os
 import pandas as pd
 import streamlit as st
+import datetime
+
 from PIL import Image as PILImage  # 🟢 Importado para calcular la proporción real del logo
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
@@ -118,8 +120,10 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
 
     # --- 📄 BLOQUE METADATA ---
     meta = st.session_state.get("meta_presupuesto", {})
+    fecha_evento_cruda = meta.get("fecha_evento")
+    fecha_evento_larga = fecha_a_larga(fecha_evento_cruda)
     p_nombre = str(meta.get('nombre', '') or '').upper() or 'PRESUPUESTO'
-    p_fecha_evt = str(meta.get('fecha_evento', '') or '').upper() or 'N/A'
+    p_fecha_evt = str(meta.get('fecha_evento_larga', '') or '').upper() or 'N/A'
     p_cliente = str(meta.get('cliente', '') or '').upper() or 'N/A'
     p_lugar = str(meta.get('lugar', '') or '').upper() or 'N/A'
     p_emision = str(meta.get('fecha_larga', '') or '').upper() or 'N/A'
