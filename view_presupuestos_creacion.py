@@ -3,34 +3,10 @@ import pandas as pd
 import os
 import time
 import base64
-import datetime
 import re
+
 from print_pdf_utility import generar_pdf_presupuesto_nativo
 from db_connection import guardar_presupuesto_db, obtener_presupuesto_por_id_db
-
-# ===================================================
-# 🗓️ HELPER DE FORMATO DE FECHA EN ESPAÑOL
-# ===================================================
-MESES_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
-DIAS_ES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
-
-def fecha_a_larga(f):
-    """Convierte un objeto date o string ISO en texto largo en español."""
-    if not f:
-        return ""
-    if isinstance(f, str):
-        try:
-            f = datetime.datetime.strptime(f, "%Y-%m-%d").date()
-        except ValueError:
-            try:
-                f = datetime.datetime.strptime(f, "%d/%m/%Y").date()
-            except ValueError:
-                return f.upper()
-    if isinstance(f, (datetime.date, datetime.datetime)):
-        dia_semana = DIAS_ES[f.weekday()]
-        mes = MESES_ES[f.month - 1]
-        return f"{dia_semana.upper()} {f.day} DE {mes.upper()} DE {f.year}"
-    return str(f).upper()
 
 # ===================================================
 # 📦 FUNCIONES DE PERSISTENCIA Y REHIDRATACIÓN JSONB
