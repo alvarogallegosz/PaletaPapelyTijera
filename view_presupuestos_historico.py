@@ -251,8 +251,8 @@ def render_historico_presupuestos(rol_actual: str = "administrador"):
         f"Mostrando {len(items_filtrados)} de {total_registros} registros."
     )
 
-    for pres in items_filtrados:
-      render_tarjeta_presupuesto(pres, rol_actual)
+    for idx, pres in enumerate(lista_presupuestos):
+        render_tarjeta_presupuesto(pres, rol_actual, idx=idx)
 
   # ------------------------------------------
   # TAB 2: PLANTILLAS BASE
