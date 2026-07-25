@@ -88,3 +88,27 @@ def procesar_mes_aislado(df_todos, anho, mes):
         "AhCh": s_ah_ch
     }
     return df_mes, saldos_iniciales, saldos_finales
+
+# ===================================================
+# 🗓️ HELPER DE FORMATO DE FECHA EN ESPAÑOL
+# ===================================================
+MESES_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+DIAS_ES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+
+def fecha_a_larga(f):
+    """Convierte un objeto date o string ISO en texto largo en español."""
+    if not f:
+        return ""
+    if isinstance(f, str):
+        try:
+            f = datetime.datetime.strptime(f, "%Y-%m-%d").date()
+        except ValueError:
+            try:
+                f = datetime.datetime.strptime(f, "%d/%m/%Y").date()
+            except ValueError:
+                return f.upper()
+    if isinstance(f, (datetime.date, datetime.datetime)):
+        dia_semana = DIAS_ES[f.weekday()]
+        mes = MESES_ES[f.month - 1]
+        return f"{dia_semana.upper()} {f.day} DE {mes.upper()} DE {f.year}"
+    return str(f).upper()
