@@ -1,6 +1,7 @@
 # core_finance_engine.py
 import pandas as pd
 import datetime
+import xml.sax.saxutils
 
 def obtener_saldo_inicial_mes(df_todos, anho, mes):
     """Calcula vectorialmente el saldo acumulado de las 5 cajas antes del mes consultado."""
