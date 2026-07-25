@@ -80,7 +80,7 @@ def render_banner_saldos(saldos_dict):
 
 
 def _formatear_monto_callback():
-    """Formatea la cadena ingresada con separadores de miles y 2 decimales al presionar Enter o Tab."""
+    """Formatea la cadena ingresada con puntos para miles y coma para decimales (estilo LATAM)."""
     val_str = st.session_state.get("carga_monto_texto", "").strip()
 
     if not val_str:
@@ -89,20 +89,15 @@ def _formatear_monto_callback():
         return
 
     try:
-        # Limpieza inteligente para soportar tanto coma ',' como punto '.' como decimales
+        # Limpieza inteligente para lectura flexible durante la escritura
         if "," in val_str and "." not in val_str:
-            # Solo tiene coma (ej: "1500,50" o "50,5") -> la convertimos en punto decimal
             val_limpio = val_str.replace(",", ".")
         elif "," in val_str and "." in val_str:
-            # Tiene ambos: verificamos cuál está más a la derecha para saber cuál es el decimal
             if val_str.rfind(",") > val_str.rfind("."):
-                # Formato europeo (ej: "1.500,50") -> quitamos puntos de miles y cambiamos coma por punto
                 val_limpio = val_str.replace(".", "").replace(",", ".")
             else:
-                # Formato anglosajón (ej: "1,500.50") -> solo quitamos las comas de miles
                 val_limpio = val_str.replace(",", "")
         else:
-            # Solo tiene puntos o ningún separador (ej: "1500.50" o "1500")
             val_limpio = val_str
 
         monto_flt = float(val_limpio)
@@ -110,12 +105,15 @@ def _formatear_monto_callback():
         # 1. Guardamos el número flotante puro para insertar en Base de Datos
         st.session_state["monto_real_float"] = abs(monto_flt)
 
-        # 2. Mostramos en pantalla el texto formateado bonito con separadores de miles
-        st.session_state["carga_monto_texto"] = f"{abs(monto_flt):,.2f}"
+        # 2. Formato visual LATAM: 18.500,50 (puntos para miles, coma para decimales)
+        s_aux = f"{abs(monto_flt):,.2f}"  # Genera base US temporal: "18,500.50"
+        s_latam = s_aux.replace(",", "X").replace(".", ",").replace("X", ".")
+        
+        st.session_state["carga_monto_texto"] = s_latam
 
     except ValueError:
         st.session_state["monto_real_float"] = 0.0
-        st.session_state["carga_monto_texto"] = "0.00"
+        st.session_state["carga_monto_texto"] = "0,00"
 
 
 def render_carga(rol_actual, es_consolidado=False):
