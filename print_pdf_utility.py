@@ -120,16 +120,16 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
         story.append(Spacer(1, 10))        
 
     # --- 📄 BLOQUE METADATA ---
-meta = st.session_state.get("meta_presupuesto", {})
-
-p_nombre = limpiar_texto_pdf(meta.get('nombre'), 'PRESUPUESTO')
-p_fecha_evt = fecha_a_larga(meta.get("fecha_evento"))
-p_cliente = limpiar_texto_pdf(meta.get('cliente'))
-p_lugar = limpiar_texto_pdf(meta.get('lugar_evento') or meta.get('lugar'))
-p_emision = fecha_a_larga(meta.get("fecha_emision") or datetime.date.today())
-
-meta_izq = f"<b>{p_nombre}</b><br/>FECHA DEL EVENTO: {p_fecha_evt}<br/>CLIENTE: {p_cliente} | LUGAR: {p_lugar}"
-meta_der = f"<b>EMISIÓN: {p_emision}</b>"
+        meta = st.session_state.get("meta_presupuesto", {})
+        
+        p_nombre = limpiar_texto_pdf(meta.get('nombre'), 'PRESUPUESTO')
+        p_fecha_evt = fecha_a_larga(meta.get("fecha_evento"))
+        p_cliente = limpiar_texto_pdf(meta.get('cliente'))
+        p_lugar = limpiar_texto_pdf(meta.get('lugar_evento') or meta.get('lugar'))
+        p_emision = fecha_a_larga(meta.get("fecha_emision") or datetime.date.today())
+        
+        meta_izq = f"<b>{p_nombre}</b><br/>FECHA DEL EVENTO: {p_fecha_evt}<br/>CLIENTE: {p_cliente} | LUGAR: {p_lugar}"
+        meta_der = f"<b>EMISIÓN: {p_emision}</b>"
     
     meta_tabla = Table(
         [[Paragraph(meta_izq, style_normal), Paragraph(meta_der, ParagraphStyle('R', parent=style_normal, alignment=2))]], 
