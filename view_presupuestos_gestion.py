@@ -143,7 +143,7 @@ def render_gestion_presupuestos(rol_simulado: str):
         filtro_estado = st.selectbox("📌 Filtrar por Estado:", options=estados_disponibles, index=0)
     with f3:
         tipos_disponibles = ["Todos"] + list(df_presupuestos["tipo_presupuesto"].dropna().unique())
-        filtro_tipo = st.selectbox("📂 Tipo de Presupuesto:", opciones=tipos_disponibles, index=0)
+        filtro_tipo = st.selectbox("📂 Tipo de Presupuesto:", options=tipos_disponibles, index=0)
 
     # Aplicar Filtros sobre el DataFrame
     df_filtrado = df_presupuestos.copy()
