@@ -96,9 +96,9 @@ MESES_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "ago
 DIAS_ES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 
 def fecha_a_larga(f):
-    """Convierte un objeto date o string ISO en texto largo en español."""
+    """Convierte una fecha en texto largo en español de forma segura."""
     if not f:
-        return ""
+        return datetime.date.today().strftime("%Y-%m-%d") # Respaldo seguro por defecto
     if isinstance(f, str):
         try:
             f = datetime.datetime.strptime(f, "%Y-%m-%d").date()
@@ -106,9 +106,15 @@ def fecha_a_larga(f):
             try:
                 f = datetime.datetime.strptime(f, "%d/%m/%Y").date()
             except ValueError:
-                return f.upper()
+                return str(f).upper()
     if isinstance(f, (datetime.date, datetime.datetime)):
         dia_semana = DIAS_ES[f.weekday()]
         mes = MESES_ES[f.month - 1]
         return f"{dia_semana.upper()} {f.day} DE {mes.upper()} DE {f.year}"
     return str(f).upper()
+
+def limpiar_texto_pdf(texto, valor_por_defecto="N/A"):
+    """Sanitiza y prepara cualquier texto para ReportLab evitando errores de sintaxis XML."""
+    if not texto:
+        return valor_por_defecto
+    return xml.sax.saxutils.escape(str(texto).strip().upper())
