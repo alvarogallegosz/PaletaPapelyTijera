@@ -14,6 +14,7 @@ def render_tarjeta_presupuesto(p: dict, rol_actual: str = "administrador", idx="
     id_p = p.get("id") or f"temp_{idx}"
     nombre = p.get("nombre", "Sin nombre")
     cliente = p.get("cliente", "N/A")
+    fecha = p.get("fecha_evento", "N/A")
     tipo = p.get("tipo_presupuesto", "General")
     estado = p.get("estado", "Borrador")
     monto = p.get("monto_total", 0.0)
@@ -28,7 +29,7 @@ def render_tarjeta_presupuesto(p: dict, rol_actual: str = "administrador", idx="
     }.get(estado, "⚪")
 
     titulo_tarjeta = (
-        f"#{id_p} | {badge_color} {nombre} — {cliente} (${monto:,.2f})"
+        f"#{id_p} | {badge_color} {nombre} — {cliente} — {fecha}  (${monto:,.2f})"
     )
 
     with st.expander(titulo_tarjeta, expanded=False):
