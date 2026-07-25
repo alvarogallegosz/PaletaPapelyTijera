@@ -10,7 +10,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.pdfgen import canvas
-from core_finance_engine import fecha_a_larga
+from core_finance_engine import fecha_a_larga, limpiar_texto_pdf
 
 class NumberedCanvas(canvas.Canvas):
     """
@@ -120,19 +120,16 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
         story.append(Spacer(1, 10))        
 
     # --- 📄 BLOQUE METADATA ---
-    meta = st.session_state.get("meta_presupuesto", {})
-    
-    fecha_evento_cruda = meta.get("fecha_evento")
-    fecha_evento_larga = fecha_a_larga(fecha_evento_cruda)
-    
-    p_nombre = str(meta.get('nombre', '') or '').upper() or 'PRESUPUESTO'
-    p_fecha_evt = str(fecha_evento_larga or '').upper() or 'N/A'
-    p_cliente = str(meta.get('cliente', '') or '').upper() or 'N/A'
-    p_lugar = str(meta.get('lugar_evento', '') or meta.get('lugar', '') or '').upper() or 'N/A'
-    p_emision = str(meta.get('fecha_emision', '') or '').upper() or 'N/A'
+meta = st.session_state.get("meta_presupuesto", {})
 
-    meta_izq = f"<b>{p_nombre}</b><br>FECHA DEL EVENTO: {p_fecha_evt}<br>CLIENTE: {p_cliente} | LUGAR: {p_lugar}"
-    meta_der = f"<b>EMISIÓN: {p_emision}</b>"
+p_nombre = limpiar_texto_pdf(meta.get('nombre'), 'PRESUPUESTO')
+p_fecha_evt = fecha_a_larga(meta.get("fecha_evento"))
+p_cliente = limpiar_texto_pdf(meta.get('cliente'))
+p_lugar = limpiar_texto_pdf(meta.get('lugar_evento') or meta.get('lugar'))
+p_emision = fecha_a_larga(meta.get("fecha_emision") or datetime.date.today())
+
+meta_izq = f"<b>{p_nombre}</b><br/>FECHA DEL EVENTO: {p_fecha_evt}<br/>CLIENTE: {p_cliente} | LUGAR: {p_lugar}"
+meta_der = f"<b>EMISIÓN: {p_emision}</b>"
     
     meta_tabla = Table(
         [[Paragraph(meta_izq, style_normal), Paragraph(meta_der, ParagraphStyle('R', parent=style_normal, alignment=2))]], 
