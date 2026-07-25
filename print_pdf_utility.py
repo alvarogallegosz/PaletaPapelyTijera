@@ -121,16 +121,20 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
 
     # --- 📄 BLOQUE METADATA ---
     meta = st.session_state.get("meta_presupuesto", {})
+    
     fecha_evento_cruda = meta.get("fecha_evento")
     fecha_evento_larga = fecha_a_larga(fecha_evento_cruda)
-  
-    p_nombre = str(meta.get('nombre', '') or '').upper() or 'PRESUPUESTO'
-    p_fecha_evt = str(fecha_evento_larga) or '').upper() or 'N/A'
-    p_cliente = str(meta.get('cliente', '') or '').upper() or 'N/A'
-    p_lugar = str(meta.get('lugar', '') or '').upper() or 'N/A'
-    p_emision = str(meta.get('fecha_larga', '') or '').upper() or 'N/A'
     
-    meta_izq = f"<b>{p_nombre}</b><br/>FECHA DEL EVENTO: {p_fecha_evt}<br/>CLIENTE: {p_cliente} | LUGAR: {p_lugar}"
+    fecha_emision_cruda = meta.get("fecha_emision") or datetime.date.today()
+    fecha_emision_larga = fecha_a_larga(fecha_emision_cruda)
+
+    p_nombre = str(meta.get('nombre', '') or '').upper() or 'PRESUPUESTO'
+    p_fecha_evt = str(fecha_evento_larga or '').upper() or 'N/A'
+    p_cliente = str(meta.get('cliente', '') or '').upper() or 'N/A'
+    p_lugar = str(meta.get('lugar_evento', '') or meta.get('lugar', '') or '').upper() or 'N/A'
+    p_emision = str(fecha_emision_larga or '').upper() or 'N/A'
+
+    meta_izq = f"<b>{p_nombre}</b><br>FECHA DEL EVENTO: {p_fecha_evt}<br>CLIENTE: {p_cliente} | LUGAR: {p_lugar}"
     meta_der = f"<b>EMISIÓN: {p_emision}</b>"
     
     meta_tabla = Table(
