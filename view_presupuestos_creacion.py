@@ -25,6 +25,7 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
     for sec in secciones_activas:
         sec_id = sec.get("id", "")
         sec_titulo = sec.get("titulo", "")
+        # FIX 1: Se restauró st.session_state
         df_sec = st.session_state.get(f"res_{sec_id}", st.session_state.get(f"df_{sec_id}", pd.DataFrame()))
 
         items_list = []
@@ -98,6 +99,7 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
         except ValueError:
             pass
 
+    # FIX 2: Se restauró st.session_state
     st.session_state.meta_presupuesto = {
         "nombre": data.get("nombre", ""),
         "cliente": data.get("cliente", ""),
@@ -106,6 +108,7 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
         "fecha_larga": data.get("fecha_emision", ""),
         "tipo_presupuesto": data.get("tipo_presupuesto", "Decoración")
     }
+    # FIX 3 y 4: Se restauró st.session_state
     st.session_state.clausulas_presupuesto = data.get("clausulas", "")
     st.session_state.presupuesto_id_activo = data.get("id")
 
@@ -114,6 +117,7 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
     if isinstance(secciones_guardadas, dict) and "secciones" in secciones_guardadas:
         secciones_guardadas = secciones_guardadas["secciones"]
 
+    # FIX 5: Se restauró st.session_state
     st.session_state.lista_secciones = []
 
     for sec in secciones_guardadas:
@@ -121,14 +125,16 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
         sec_titulo = sec.get("titulo")
         items_list = sec.get("items", [])
 
-        .lista_secciones.append({"id": sec_id, "titulo": sec_titulo})
+        # FIX 6: Se restauró st.session_state
+        st.session_state.lista_secciones.append({"id": sec_id, "titulo": sec_titulo})
 
         if items_list:
             df_sec = pd.DataFrame(items_list)
         else:
             df_sec = pd.DataFrame(columns=["descripción", "detalles", "dias", "cantidad", "precio_unitario"])
                     
-        [f"df_{sec_id}"] = df_sec
+        # FIX 7: Se restauró st.session_state
+        st.session_state[f"df_{sec_id}"] = df_sec
 
     st.session_state.modo_vista = "edicion"
     return True
@@ -179,6 +185,10 @@ def resetear_formulario_presupuesto():
         st.session_state.clausulas_presupuesto = ""
 
 def calcular_subtotal_df(df_input):
+    """
+    Calcula el subtotal dinámico (Días * Cantidad * PU) para los
+    indicadores de pantalla sin alterar la estructura del data_editor.
+    """
     if df_input is None or df_input.empty:
         return 0.0
 
@@ -206,7 +216,7 @@ def calcular_subtotal_df(df_input):
         except Exception:
             cant_val = 0.0
             
-        # Procesar Precio Unitario
+        # Procesar Precio Unitario (con soporte robusto para formato LATAM)
         pu_raw = row.get('precio_unitario')
         try:
             if pd.notna(pu_raw) and str(pu_raw).strip() != '':
