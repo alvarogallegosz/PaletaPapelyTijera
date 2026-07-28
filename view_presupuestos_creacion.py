@@ -25,7 +25,7 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
     for sec in secciones_activas:
         sec_id = sec.get("id", "")
         sec_titulo = sec.get("titulo", "")
-        df_sec = .get(f"res_{sec_id}", .get(f"df_{sec_id}", pd.DataFrame()))
+        df_sec = st.session_state.get(f"res_{sec_id}", st.session_state.get(f"df_{sec_id}", pd.DataFrame()))
 
         items_list = []
         if not df_sec.empty:
