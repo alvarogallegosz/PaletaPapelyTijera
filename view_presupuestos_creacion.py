@@ -9,6 +9,36 @@ import datetime
 from print_pdf_utility import generar_pdf_presupuesto_nativo
 from db_connection import guardar_presupuesto_db, obtener_presupuesto_por_id_db
 from core_finance_engine import fecha_a_larga
+
+# ===================================================
+# 🛠️ HELPER PARSER NUMÉRICO SEGURO
+# ===================================================
+
+def a_flotante(val) -> float:
+    """Convierte de forma segura cualquier valor (int, float, str con formato ES/EN) a float."""
+    if pd.isna(val) or val is None:
+        return 0.0
+    if isinstance(val, (int, float)):
+        return float(val)
+    
+    s = str(val).strip()
+    if not s:
+        return 0.0
+        
+    try:
+        # Formato LATAM con punto en miles y coma en decimales (ej: 1.250,50)
+        if ',' in s and '.' in s:
+            if s.rfind(',') > s.rfind('.'):
+                s = s.replace('.', '').replace(',', '.')
+            else:
+                s = s.replace(',', '')
+        elif ',' in s:
+            s = s.replace(',', '.')
+        
+        return float(s)
+    except Exception:
+        return 0.0
+
 # ===================================================
 # 📦 FUNCIONES DE PERSISTENCIA Y REHIDRATACIÓN JSONB
 # ===================================================
@@ -25,7 +55,6 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
     for sec in secciones_activas:
         sec_id = sec.get("id", "")
         sec_titulo = sec.get("titulo", "")
-        # FIX 1: Se restauró st.session_state
         df_sec = st.session_state.get(f"res_{sec_id}", st.session_state.get(f"df_{sec_id}", pd.DataFrame()))
 
         items_list = []
@@ -34,20 +63,9 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
                 desc = str(row.get("descripción", "") or "").strip()
                 det = str(row.get("detalles", "") or "").strip()
                 
-                try:
-                    jk_val = float(row.get("dias")) if pd.notna(row.get("dias")) and str(row.get("dias")).strip() != "" else 0.0
-                except Exception:
-                    jk_val = 0.0
-                    
-                try:
-                    cant_val = float(row.get("cantidad")) if pd.notna(row.get("cantidad")) and str(row.get("cantidad")).strip() != "" else 0.0
-                except Exception:
-                    cant_val = 0.0
-                    
-                try:
-                    pu_val = float(row.get("precio_unitario")) if pd.notna(row.get("precio_unitario")) and str(row.get("precio_unitario")).strip() != "" else 0.0
-                except Exception:
-                    pu_val = 0.0
+                jk_val = a_flotante(row.get("dias"))
+                cant_val = a_flotante(row.get("cantidad"))
+                pu_val = a_flotante(row.get("precio_unitario"))
 
                 if desc or det or jk_val or cant_val or pu_val:
                     total_fila = (jk_val * cant_val * pu_val) if jk_val > 0 else (cant_val * pu_val)
@@ -69,7 +87,6 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
     f_evt = meta.get("fecha_evento")
     fecha_evt_db = f_evt.strftime("%Y-%m-%d") if isinstance(f_evt, (datetime.date, datetime.datetime)) else str(f_evt or "")
 
-    # Mapeo idéntico al esquema de la tabla 'presupuestos'
     return {
         "nombre": meta.get("nombre", "PRESUPUESTO SIN NOMBRE").strip().upper(),
         "cliente": meta.get("cliente", "CLIENTE").strip().upper(),
@@ -79,7 +96,7 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
         "tipo_presupuesto": meta.get("tipo_presupuesto", "Decoración"),
         "monto_total": round(monto_total_calculado, 2),
         "clausulas": clausulas_txt,
-        "secciones": secciones_exportar,  # Columna jsonb directa
+        "secciones": secciones_exportar,
         "estado": "Borrador",
         "es_plantilla": False
     }
@@ -99,7 +116,6 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
         except ValueError:
             pass
 
-    # FIX 2: Se restauró st.session_state
     st.session_state.meta_presupuesto = {
         "nombre": data.get("nombre", ""),
         "cliente": data.get("cliente", ""),
@@ -108,16 +124,13 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
         "fecha_larga": data.get("fecha_emision", ""),
         "tipo_presupuesto": data.get("tipo_presupuesto", "Decoración")
     }
-    # FIX 3 y 4: Se restauró st.session_state
     st.session_state.clausulas_presupuesto = data.get("clausulas", "")
     st.session_state.presupuesto_id_activo = data.get("id")
 
-    # Lectura directa desde la columna 'secciones'
     secciones_guardadas = data.get("secciones", [])
     if isinstance(secciones_guardadas, dict) and "secciones" in secciones_guardadas:
         secciones_guardadas = secciones_guardadas["secciones"]
 
-    # FIX 5: Se restauró st.session_state
     st.session_state.lista_secciones = []
 
     for sec in secciones_guardadas:
@@ -125,7 +138,6 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
         sec_titulo = sec.get("titulo")
         items_list = sec.get("items", [])
 
-        # FIX 6: Se restauró st.session_state
         st.session_state.lista_secciones.append({"id": sec_id, "titulo": sec_titulo})
 
         if items_list:
@@ -133,7 +145,6 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
         else:
             df_sec = pd.DataFrame(columns=["descripción", "detalles", "dias", "cantidad", "precio_unitario"])
                     
-        # FIX 7: Se restauró st.session_state
         st.session_state[f"df_{sec_id}"] = df_sec
 
     st.session_state.modo_vista = "edicion"
@@ -153,7 +164,6 @@ def resetear_formulario_presupuesto():
         })
         st.session_state.presupuesto_id_activo = None
     else:
-        # Fallback si la plantilla ID=1 aún no existe en la BD
         st.session_state.meta_presupuesto = {
             "cliente": "", 
             "nombre": "", 
@@ -194,45 +204,9 @@ def calcular_subtotal_df(df_input):
 
     subtotal = 0.0
     for _, row in df_input.iterrows():
-        # Procesar Días
-        jk_raw = row.get('dias')
-        try:
-            if pd.notna(jk_raw) and str(jk_raw).strip() != '':
-                jk_str = str(jk_raw).strip().replace('.', '').replace(',', '.')
-                jk_val = float(jk_str)
-            else:
-                jk_val = 0.0
-        except Exception:
-            jk_val = 0.0
-            
-        # Procesar Cantidad
-        cant_raw = row.get('cantidad')
-        try:
-            if pd.notna(cant_raw) and str(cant_raw).strip() != '':
-                cant_str = str(cant_raw).strip().replace('.', '').replace(',', '.')
-                cant_val = float(cant_str)
-            else:
-                cant_val = 0.0
-        except Exception:
-            cant_val = 0.0
-            
-        # Procesar Precio Unitario (con soporte robusto para formato LATAM)
-        pu_raw = row.get('precio_unitario')
-        try:
-            if pd.notna(pu_raw) and str(pu_raw).strip() != '':
-                pu_str = str(pu_raw).strip()
-                if ',' in pu_str and '.' in pu_str:
-                    if pu_str.rfind(',') > pu_str.rfind('.'):
-                        pu_str = pu_str.replace('.', '').replace(',', '.')
-                    else:
-                        pu_str = pu_str.replace(',', '')
-                elif ',' in pu_str:
-                    pu_str = pu_str.replace(',', '.')
-                pu_val = float(pu_str)
-            else:
-                pu_val = 0.0
-        except Exception:
-            pu_val = 0.0
+        jk_val = a_flotante(row.get('dias'))
+        cant_val = a_flotante(row.get('cantidad'))
+        pu_val = a_flotante(row.get('precio_unitario'))
 
         total_fila = (jk_val * cant_val * pu_val) if jk_val > 0 else (cant_val * pu_val)
         subtotal += total_fila
@@ -241,7 +215,7 @@ def calcular_subtotal_df(df_input):
 
 
 def render_creacion_presupuestos(rol_actual):
-    # --- 🎨 CONTROL DE INYECCIÓN CSS PARA AISLAMIENTO DE IMPRESIÓN Y VISTA PREVIA ---
+    # --- 🎨 CONTROL DE INYECCIÓN CSS ---
     st.markdown("""
         <style>
             @page {
@@ -402,7 +376,6 @@ def render_creacion_presupuestos(rol_actual):
         </style>
     """, unsafe_allow_html=True)
 
-    # --- 🔄 CONTROL DE ESTADOS Y AUTOGUARDADO ---
     if "modo_vista" not in st.session_state:
         st.session_state.modo_vista = "edicion"
 
@@ -435,7 +408,7 @@ def render_creacion_presupuestos(rol_actual):
     ]
 
     # ===================================================
-    # 📝 MODO EDICIÓN (PANTALLA DE CARGA)
+    # 📝 MODO EDICIÓN
     # ===================================================
     if st.session_state.modo_vista == "edicion":
         col_tit, col_btn = st.columns([3, 1])
@@ -539,12 +512,11 @@ def render_creacion_presupuestos(rol_actual):
                         st.session_state.pop(res_key, None)
                         st.rerun()
 
-                # APLICACIÓN DE MANTENIMIENTO PREVENTIVO
                 df_vivo = st.data_editor(
                     st.session_state[df_key],
                     key=f"editor_widget_{sec_id}",
                     num_rows="dynamic",
-                    width="stretch", # Corrección: Reemplaza a use_container_width=True
+                    width="stretch",
                     hide_index=True,
                     column_config={
                         "descripción": st.column_config.TextColumn("Descripción (80 ch)"),
@@ -554,7 +526,7 @@ def render_creacion_presupuestos(rol_actual):
                         "precio_unitario": st.column_config.NumberColumn("Precio ($)", min_value=0.0, format="$%.2f")
                     }
                 )
-# --- 🔍 VALIDACIÓN DE DUPLICADOS Y BORRADO LÓGICO ---
+
                 registros_vivos = df_vivo.to_dict("records")
                 duplicados_encontrados = False
                 vistos = set()
@@ -563,11 +535,11 @@ def render_creacion_presupuestos(rol_actual):
                     clave = (
                         str(r.get("descripción", "")).strip().lower(),
                         str(r.get("detalles", "")).strip().lower(),
-                        float(r.get("dias") or 0) if pd.notna(r.get("dias")) else 0.0,
-                        float(r.get("cantidad") or 0) if pd.notna(r.get("cantidad")) else 0.0,
-                        float(r.get("precio_unitario") or 0) if pd.notna(r.get("precio_unitario")) else 0.0
+                        a_flotante(r.get("dias")),
+                        a_flotante(r.get("cantidad")),
+                        a_flotante(r.get("precio_unitario"))
                     )
-                    if not any(clave): # Omitir filas vacías
+                    if not any(clave):
                         continue
                     if clave in vistos:
                         duplicados_encontrados = True
@@ -621,22 +593,19 @@ def render_creacion_presupuestos(rol_actual):
             st.markdown("## 📜 Términos y Cláusulas")
             st.session_state.clausulas_presupuesto = st.text_area("Modifique cláusulas si es necesario:", value=st.session_state.clausulas_presupuesto, height=150)
 
-        # --- LÓGICA DE AUTOGUARDADO TEMPORAL ---
         tiempo_actual = time.time()
-        if tiempo_actual - st.session_state.ultimo_guardado >= 300: # 300 segundos = 5 minutos
+        if tiempo_actual - st.session_state.ultimo_guardado >= 300:
             usuario_activo = st.session_state.get("usuario_logueado", "Usuario")
             datos_payload = empaquetar_presupuesto_para_bd(usuario_activo)
             id_edicion = st.session_state.get("presupuesto_id_activo", None)
             
-            # Solo guardamos si el presupuesto tiene al menos un item costeado
             if total_acumulado_presupuesto > 0:
                 try:
                     guardar_presupuesto_db(datos_payload, id_presupuesto=id_edicion)
                     st.toast("💾 Borrador guardado automáticamente en la base de datos.", icon="☁️")
                 except Exception:
-                    pass # Se omite la interrupción visual en caso de fallo de conexión temporal
+                    pass
             
-            # Se resetea el reloj independientemente del resultado para no saturar la red
             st.session_state.ultimo_guardado = tiempo_actual
 
         st.markdown("---")
@@ -667,7 +636,6 @@ def render_creacion_presupuestos(rol_actual):
             help="Activa para mostrar el precio individual de cada ítem, o desactiva para mostrar solo los subtotales."
         )
         
-        # --- Generar PDF y Nombrado Dinámico ---
         pdf_bytes = generar_pdf_presupuesto_nativo(incluir_precios=incluir_precios_pdf)
         
         p_nombre = str(meta.get("nombre", "PRESUPUESTO")).strip().upper() or "PRESUPUESTO"
@@ -803,20 +771,9 @@ def render_creacion_presupuestos(rol_actual):
                     desc = str(row.get('descripción', '') or '').strip().replace("\n", " ").replace("\r", "").replace("  ", " ")
                     det = str(row.get('detalles', '') or '').strip().replace("\n", " ").replace("\r", "").replace("  ", " ")
                     
-                    try:
-                        jk_val = float(row.get('dias')) if pd.notna(row.get('dias')) and row.get('dias') != '' else 0.0
-                    except Exception:
-                        jk_val = 0.0
-                        
-                    try:
-                        cant_val = float(row.get('cantidad')) if pd.notna(row.get('cantidad')) and row.get('cantidad') != '' else 0.0
-                    except Exception:
-                        cant_val = 0.0
-                        
-                    try:
-                        pu_val = float(row.get('precio_unitario')) if pd.notna(row.get('precio_unitario')) and row.get('precio_unitario') != '' else 0.0
-                    except Exception:
-                        pu_val = 0.0
+                    jk_val = a_flotante(row.get('dias'))
+                    cant_val = a_flotante(row.get('cantidad'))
+                    pu_val = a_flotante(row.get('precio_unitario'))
 
                     if desc or det or jk_val or cant_val or pu_val:
                         total_fila = (jk_val * cant_val * pu_val) if jk_val > 0 else (cant_val * pu_val)
