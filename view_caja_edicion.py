@@ -41,6 +41,10 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
             st.error(texto)
         del st.session_state["msg_edicion"]
 
+    # Control de estado para la doble confirmación del borrado lógico
+    if "confirmar_borrado_caja" not in st.session_state:
+        st.session_state.confirmar_borrado_caja = False
+
     st.markdown("### 🛠️ Modificaciones Generales de Auditoría")
 
     if df_completo.empty:
@@ -148,121 +152,178 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
         elif ym_seleccionado < ym_minimo_global:
             bloqueo_total_vista = True
 
-    # Definición dinámica de columnas visibles según rol (Oculta 'activo' en Admin / Gerente)
-    if es_soporte:
-        columnas_orden = ["id", "activo", "fecha", "categoria", "detalle", "tipo", "monto", "tasa", "comentarios"]
-    else:
-        columnas_orden = ["id", "fecha", "categoria", "detalle", "tipo", "monto", "tasa", "comentarios"]
-
     if bloqueo_total_vista:
         st.warning(f"🔒 **EDICIÓN SUSPENDIDA:** El mes de {mes_sel} {anio_sel} se encuentra cerrado / consolidado.")
         st.dataframe(
-            df_filtrado[columnas_orden],
+            df_filtrado[["id", "fecha", "categoria", "detalle", "tipo", "monto", "tasa", "comentarios"]],
             use_container_width=True, hide_index=True, height=500,
         )
         return
 
-    st.caption(
-        f"💡 Editando {len(df_filtrado)} registros. Desmarca 'Activo' para dar de baja un asiento (desaparecerá de las vistas operativas)." if es_soporte else f"💡 Editando {len(df_filtrado)} registros."
+    # --- 🚨 MODO SEGURO DE ELIMINACIÓN (INYECCIÓN DE LÓGICA) ---
+    st.markdown("---")
+    modo_borrado = st.toggle(
+        "🚨 Habilitar modo de eliminación", 
+        value=False, 
+        help="Encienda para poder seleccionar y eliminar asientos de la caja de forma lógica."
     )
 
-    df_editado = st.data_editor(
-        df_filtrado,
-        column_order=columnas_orden,
-        column_config={
-            "id": st.column_config.NumberColumn("ID", width=60, disabled=True),
-            "activo": st.column_config.CheckboxColumn("Activo", width=60, help="Desmarca para anular lógicamente el registro"),
-            "fecha": st.column_config.DateColumn("Fecha", width=100, format="DD/MM/YYYY"),
-            "categoria": st.column_config.TextColumn("Categoría", width=160),
-            "detalle": st.column_config.TextColumn("Descripción", width=340),
-            "tipo": st.column_config.SelectboxColumn(
-                "Tipo Cuenta", width=120,
-                options=["IN-Bs", "EG-Bs", "IN-$Ze", "EG-$Ze", "IN-$Ch", "EG-$Ch", "IN-$AhZe", "EG-$AhZe", "IN-$AhCh", "EG-$AhCh"],
-            ),
-            "monto": st.column_config.NumberColumn("Monto Base", width=130, min_value=0.0, format="%.2f"),
-            "tasa": st.column_config.NumberColumn("Tasa Monitor", width=110, min_value=0.0, format="%.2f"),
-            "comentarios": st.column_config.TextColumn("Comentario", width=340),
-        },
-        disabled=False, hide_index=True, use_container_width=True, height=500, key="editor_excel_caja",
-    )
+    columnas_base = ["id", "fecha", "categoria", "detalle", "tipo", "monto", "tasa", "comentarios"]
+    
+    # Configuración base de columnas. Si el modo borrado está activo, se bloquea la edición de campos.
+    column_config_base = {
+        "id": st.column_config.NumberColumn("ID", width=60, disabled=True),
+        "fecha": st.column_config.DateColumn("Fecha", width=100, format="DD/MM/YYYY", disabled=modo_borrado),
+        "categoria": st.column_config.TextColumn("Categoría", width=160, disabled=modo_borrado),
+        "detalle": st.column_config.TextColumn("Descripción", width=340, disabled=modo_borrado),
+        "tipo": st.column_config.SelectboxColumn(
+            "Tipo Cuenta", width=120, disabled=modo_borrado,
+            options=["IN-Bs", "EG-Bs", "IN-$Ze", "EG-$Ze", "IN-$Ch", "EG-$Ch", "IN-$AhZe", "EG-$AhZe", "IN-$AhCh", "EG-$AhCh"],
+        ),
+        "monto": st.column_config.NumberColumn("Monto Base", width=130, min_value=0.0, format="%.2f", disabled=modo_borrado),
+        "tasa": st.column_config.NumberColumn("Tasa Monitor", width=110, min_value=0.0, format="%.2f", disabled=modo_borrado),
+        "comentarios": st.column_config.TextColumn("Comentario", width=340, disabled=modo_borrado),
+    }
 
-    if st.button("💾 Aplicar Cambios Consolidados en Base de Datos"):
-        with st.spinner("Comparando cambios y validando bloqueos..."):
-            df_fresco = obtener_movimientos_locales()
-            meses_cerrados_real = _obtener_meses_cerrados(df_fresco)
-
-            df_fil_comp = df_filtrado.set_index("id")
-            df_edi_comp = df_editado.set_index("id")
+    if modo_borrado:
+        st.caption("💡 Modo Eliminación Activo: Marque las casillas de los registros que desea dar de baja.")
+        if "seleccionar_borrar" not in df_filtrado.columns:
+            df_filtrado.insert(0, "seleccionar_borrar", False)
+        
+        columnas_orden = ["seleccionar_borrar"] + columnas_base
+        column_config_base["seleccionar_borrar"] = st.column_config.CheckboxColumn("🗑️ Borrar", width=80, default=False)
+        
+        df_editado = st.data_editor(
+            df_filtrado,
+            column_order=columnas_orden,
+            column_config=column_config_base,
+            disabled=False, hide_index=True, use_container_width=True, height=500, key="editor_caja_borrado",
+        )
+        
+        asientos_marcados = df_editado[df_editado["seleccionar_borrar"] == True]
+        
+        if not asientos_marcados.empty:
+            st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+            if st.button("🗑️ Proceder a eliminar asientos seleccionados", type="primary"):
+                st.session_state.confirmar_borrado_caja = True
+                
+        if st.session_state.confirmar_borrado_caja:
+            cantidad_borrar = len(asientos_marcados)
+            st.error(f"⚠️ **¿Está seguro de borrar definitivamente estos asientos?**")
+            st.caption(f"Se anularán de la vista **{cantidad_borrar}** registro(s).")
             
-            ids_modificados = []
-            errores_bloqueo = []
-
-            for id_reg in df_edi_comp.index:
-                row_f = df_fil_comp.loc[id_reg]
-                row_e = df_edi_comp.loc[id_reg]
-                
-                cambio = False
-                
-                activo_f = bool(row_f["activo"]) if pd.notnull(row_f["activo"]) else True
-                activo_e = bool(row_e["activo"]) if "activo" in row_e and pd.notnull(row_e["activo"]) else activo_f
-                if activo_f != activo_e: cambio = True
-                
-                if pd.to_datetime(row_f["fecha"]) != pd.to_datetime(row_e["fecha"]): cambio = True
-                if str(row_f["categoria"]).strip().upper() != str(row_e["categoria"]).strip().upper(): cambio = True
-                if str(row_f["detalle"]).strip() != str(row_e["detalle"]).strip(): cambio = True
-                if str(row_f["tipo"]) != str(row_e["tipo"]): cambio = True
-                if float(row_f["monto"]) != float(row_e["monto"]): cambio = True
-                
-                tasa_f = float(row_f["tasa"]) if pd.notnull(row_f["tasa"]) else 1.0
-                tasa_e = float(row_e["tasa"]) if pd.notnull(row_e["tasa"]) else 1.0
-                if tasa_f != tasa_e: cambio = True
-                
-                com_f = str(row_f["comentarios"]).strip() if pd.notnull(row_f["comentarios"]) and str(row_f["comentarios"]).lower() not in ['nan', 'none'] else ""
-                com_e = str(row_e["comentarios"]).strip() if pd.notnull(row_e["comentarios"]) and str(row_e["comentarios"]).lower() not in ['nan', 'none'] else ""
-                if com_f != com_e: cambio = True
-                
-                if cambio:
-                    ym_original = pd.to_datetime(row_f["fecha"]).strftime("%Y-%m")
-                    ym_nuevo = pd.to_datetime(row_e["fecha"]).strftime("%Y-%m")
+            col_conf1, col_conf2 = st.columns(2)
+            with col_conf1:
+                if st.button("✔️ Sí, borrar definitivamente", use_container_width=True):
+                    ids_a_borrar = asientos_marcados["id"].tolist()
+                    for id_reg in ids_a_borrar:
+                        # Se cambia el estado en base de datos directamente
+                        actualizar_movimiento_db(int(id_reg), {"activo": False, "modificado_por": rol_actual})
                     
-                    if ym_original in meses_cerrados_real:
-                        errores_bloqueo.append(f"El ID {id_reg} pertenece a un mes cerrado ({ym_original}). No puede ser alterado ni anulado.")
-                    elif ym_nuevo in meses_cerrados_real:
-                        errores_bloqueo.append(f"No puedes mover el ID {id_reg} a un mes cerrado ({ym_nuevo}).")
-                    elif ym_nuevo < ym_minimo_global:
-                        errores_bloqueo.append(f"No puedes asignar el ID {id_reg} a un mes anterior al inicio histórico ({ym_nuevo}).")
-                    else:
-                        ids_modificados.append(id_reg)
+                    st.session_state.confirmar_borrado_caja = False
+                    st.session_state["df_movimientos"] = obtener_movimientos_locales()
+                    st.session_state["msg_edicion"] = ("success", "🗑️ Asiento eliminado de la vista. Los totales han sido actualizados. El registro se conserva en la base de datos para fines de auditoría.")
+                    st.rerun()
+            with col_conf2:
+                if st.button("❌ Cancelar", type="secondary", use_container_width=True):
+                    st.session_state.confirmar_borrado_caja = False
+                    st.rerun()
 
-            if errores_bloqueo:
-                for err in list(set(errores_bloqueo)):
-                    st.error(f"❌ {err}")
-                st.error("Operación abortada por seguridad.")
-                return
+    # --- EDICIÓN ESTÁNDAR ---
+    else:
+        st.session_state.confirmar_borrado_caja = False
+        st.caption(f"💡 Editando {len(df_filtrado)} registros. Modifique los campos y presione 'Aplicar Cambios'.")
+        
+        if es_soporte and ver_inactivos:
+            columnas_orden = ["id", "activo"] + [c for c in columnas_base if c != "id"]
+            column_config_base["activo"] = st.column_config.CheckboxColumn("Activo", width=60)
+        else:
+            columnas_orden = columnas_base
 
-            if not ids_modificados:
-                st.info("No se detectaron cambios en los datos que requieran guardarse.")
-                return
+        df_editado = st.data_editor(
+            df_filtrado,
+            column_order=columnas_orden,
+            column_config=column_config_base,
+            disabled=False, hide_index=True, use_container_width=True, height=500, key="editor_excel_caja",
+        )
 
-            for id_reg in ids_modificados:
-                row_e = df_edi_comp.loc[id_reg]
-                fecha_str = row_e["fecha"].strftime("%Y-%m-%d") if hasattr(row_e["fecha"], "strftime") else str(row_e["fecha"])
+        if st.button("💾 Aplicar Cambios Consolidados en Base de Datos"):
+            with st.spinner("Comparando cambios y validando bloqueos..."):
+                df_fresco = obtener_movimientos_locales()
+                meses_cerrados_real = _obtener_meses_cerrados(df_fresco)
+
+                df_fil_comp = df_filtrado.set_index("id")
+                df_edi_comp = df_editado.set_index("id")
                 
-                val_activo = bool(row_e["activo"]) if "activo" in row_e else True
+                ids_modificados = []
+                errores_bloqueo = []
 
-                cambios = {
-                    "activo": val_activo,
-                    "fecha": fecha_str,
-                    "categoria": str(row_e["categoria"]).strip().upper(),
-                    "detalle": str(row_e["detalle"]).strip(),
-                    "tipo": row_e["tipo"],
-                    "monto": float(row_e["monto"]),
-                    "tasa": float(row_e["tasa"]) if pd.notnull(row_e["tasa"]) else 1.0,
-                    "comentarios": str(row_e["comentarios"]).strip() if pd.notnull(row_e["comentarios"]) and str(row_e["comentarios"]).lower() not in ['nan', 'none'] else "",
-                    "modificado_por": rol_actual,
-                }
-                actualizar_movimiento_db(int(id_reg), cambios)
+                for id_reg in df_edi_comp.index:
+                    row_f = df_fil_comp.loc[id_reg]
+                    row_e = df_edi_comp.loc[id_reg]
+                    
+                    cambio = False
+                    
+                    activo_f = bool(row_f["activo"]) if pd.notnull(row_f["activo"]) else True
+                    activo_e = bool(row_e["activo"]) if "activo" in row_e and pd.notnull(row_e["activo"]) else activo_f
+                    if activo_f != activo_e: cambio = True
+                    
+                    if pd.to_datetime(row_f["fecha"]) != pd.to_datetime(row_e["fecha"]): cambio = True
+                    if str(row_f["categoria"]).strip().upper() != str(row_e["categoria"]).strip().upper(): cambio = True
+                    if str(row_f["detalle"]).strip() != str(row_e["detalle"]).strip(): cambio = True
+                    if str(row_f["tipo"]) != str(row_e["tipo"]): cambio = True
+                    if float(row_f["monto"]) != float(row_e["monto"]): cambio = True
+                    
+                    tasa_f = float(row_f["tasa"]) if pd.notnull(row_f["tasa"]) else 1.0
+                    tasa_e = float(row_e["tasa"]) if pd.notnull(row_e["tasa"]) else 1.0
+                    if tasa_f != tasa_e: cambio = True
+                    
+                    com_f = str(row_f["comentarios"]).strip() if pd.notnull(row_f["comentarios"]) and str(row_f["comentarios"]).lower() not in ['nan', 'none'] else ""
+                    com_e = str(row_e["comentarios"]).strip() if pd.notnull(row_e["comentarios"]) and str(row_e["comentarios"]).lower() not in ['nan', 'none'] else ""
+                    if com_f != com_e: cambio = True
+                    
+                    if cambio:
+                        ym_original = pd.to_datetime(row_f["fecha"]).strftime("%Y-%m")
+                        ym_nuevo = pd.to_datetime(row_e["fecha"]).strftime("%Y-%m")
+                        
+                        if ym_original in meses_cerrados_real:
+                            errores_bloqueo.append(f"El ID {id_reg} pertenece a un mes cerrado ({ym_original}). No puede ser alterado ni anulado.")
+                        elif ym_nuevo in meses_cerrados_real:
+                            errores_bloqueo.append(f"No puedes mover el ID {id_reg} a un mes cerrado ({ym_nuevo}).")
+                        elif ym_nuevo < ym_minimo_global:
+                            errores_bloqueo.append(f"No puedes asignar el ID {id_reg} a un mes anterior al inicio histórico ({ym_nuevo}).")
+                        else:
+                            ids_modificados.append(id_reg)
 
-            st.session_state["df_movimientos"] = obtener_movimientos_locales()
-            st.session_state["msg_edicion"] = ("success", f"🎉 ¡{len(ids_modificados)} registro(s) actualizado(s) correctamente!")
-            st.rerun()
+                if errores_bloqueo:
+                    for err in list(set(errores_bloqueo)):
+                        st.error(f"❌ {err}")
+                    st.error("Operación abortada por seguridad.")
+                    return
+
+                if not ids_modificados:
+                    st.info("No se detectaron cambios en los datos que requieran guardarse.")
+                    return
+
+                for id_reg in ids_modificados:
+                    row_e = df_edi_comp.loc[id_reg]
+                    fecha_str = row_e["fecha"].strftime("%Y-%m-%d") if hasattr(row_e["fecha"], "strftime") else str(row_e["fecha"])
+                    
+                    val_activo = bool(row_e["activo"]) if "activo" in row_e else True
+
+                    cambios = {
+                        "activo": val_activo,
+                        "fecha": fecha_str,
+                        "categoria": str(row_e["categoria"]).strip().upper(),
+                        "detalle": str(row_e["detalle"]).strip(),
+                        "tipo": row_e["tipo"],
+                        "monto": float(row_e["monto"]),
+                        "tasa": float(row_e["tasa"]) if pd.notnull(row_e["tasa"]) else 1.0,
+                        "comentarios": str(row_e["comentarios"]).strip() if pd.notnull(row_e["comentarios"]) and str(row_e["comentarios"]).lower() not in ['nan', 'none'] else "",
+                        "modificado_por": rol_actual,
+                    }
+                    actualizar_movimiento_db(int(id_reg), cambios)
+
+                st.session_state["df_movimientos"] = obtener_movimientos_locales()
+                st.session_state["msg_edicion"] = ("success", f"🎉 ¡{len(ids_modificados)} registro(s) actualizado(s) correctamente!")
+                st.rerun()
