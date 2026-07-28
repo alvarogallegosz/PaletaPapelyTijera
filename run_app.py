@@ -80,6 +80,27 @@ st.markdown(
             font-weight: 600 !important;
             border-bottom: 3px solid #3b82f6 !important;
         }
+        /* --- FORZAR BARRAS DE DESPLAZAMIENTO SIEMPRE VISIBLES Y AMIGABLES PARA MÓVIL --- */
+        ::-webkit-scrollbar {
+            height: 10px !important;  /* Grosor de la barra horizontal */
+            width: 10px !important;   /* Grosor de la barra vertical */
+            display: block !important;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9 !important; /* Fondo suave de la pista */
+            border-radius: 5px !important;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8 !important; /* Color gris visible de la barra */
+            border-radius: 5px !important;
+            border: 2px solid #f1f5f9 !important; /* Margen interno para que se vea limpia */
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b !important; /* Color al pasar el cursor o tocar */
+        }
     </style>
 """,
     unsafe_allow_html=True,
