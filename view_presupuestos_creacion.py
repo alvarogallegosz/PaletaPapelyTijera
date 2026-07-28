@@ -188,23 +188,43 @@ def calcular_subtotal_df(df_input):
 
     subtotal = 0.0
     for _, row in df_input.iterrows():
-        if not row.get("activo", True):
-            continue
+        # Procesar Días
         jk_raw = row.get('dias')
         try:
-            jk_val = float(jk_raw) if pd.notna(jk_raw) and str(jk_raw).strip() != '' else 0.0
+            if pd.notna(jk_raw) and str(jk_raw).strip() != '':
+                jk_str = str(jk_raw).strip().replace('.', '').replace(',', '.')
+                jk_val = float(jk_str)
+            else:
+                jk_val = 0.0
         except Exception:
             jk_val = 0.0
             
+        # Procesar Cantidad
         cant_raw = row.get('cantidad')
         try:
-            cant_val = float(cant_raw) if pd.notna(cant_raw) and str(cant_raw).strip() != '' else 0.0
+            if pd.notna(cant_raw) and str(cant_raw).strip() != '':
+                cant_str = str(cant_raw).strip().replace('.', '').replace(',', '.')
+                cant_val = float(cant_str)
+            else:
+                cant_val = 0.0
         except Exception:
             cant_val = 0.0
             
+        # Procesar Precio Unitario (con soporte robusto para formato LATAM)
         pu_raw = row.get('precio_unitario')
         try:
-            pu_val = float(pu_raw) if pd.notna(pu_raw) and str(pu_raw).strip() != '' else 0.0
+            if pd.notna(pu_raw) and str(pu_raw).strip() != '':
+                pu_str = str(pu_raw).strip()
+                if ',' in pu_str and '.' in pu_str:
+                    if pu_str.rfind(',') > pu_str.rfind('.'):
+                        pu_str = pu_str.replace('.', '').replace(',', '.')
+                    else:
+                        pu_str = pu_str.replace(',', '')
+                elif ',' in pu_str:
+                    pu_str = pu_str.replace(',', '.')
+                pu_val = float(pu_str)
+            else:
+                pu_val = 0.0
         except Exception:
             pu_val = 0.0
 
