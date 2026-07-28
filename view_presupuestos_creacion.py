@@ -25,7 +25,7 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
     for sec in secciones_activas:
         sec_id = sec.get("id", "")
         sec_titulo = sec.get("titulo", "")
-        df_sec = st.session_state.get(f"res_{sec_id}", st.session_state.get(f"df_{sec_id}", pd.DataFrame()))
+        df_sec = .get(f"res_{sec_id}", .get(f"df_{sec_id}", pd.DataFrame()))
 
         items_list = []
         if not df_sec.empty:
@@ -98,7 +98,7 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
         except ValueError:
             pass
 
-    st.session_state.meta_presupuesto = {
+    .meta_presupuesto = {
         "nombre": data.get("nombre", ""),
         "cliente": data.get("cliente", ""),
         "fecha_evento": fecha_obj,
@@ -106,29 +106,29 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
         "fecha_larga": data.get("fecha_emision", ""),
         "tipo_presupuesto": data.get("tipo_presupuesto", "Decoración")
     }
-    st.session_state.clausulas_presupuesto = data.get("clausulas", "")
-    st.session_state.presupuesto_id_activo = data.get("id")
+    .clausulas_presupuesto = data.get("clausulas", "")
+    .presupuesto_id_activo = data.get("id")
 
     # Lectura directa desde la columna 'secciones'
     secciones_guardadas = data.get("secciones", [])
     if isinstance(secciones_guardadas, dict) and "secciones" in secciones_guardadas:
         secciones_guardadas = secciones_guardadas["secciones"]
 
-    st.session_state.lista_secciones = []
+    .lista_secciones = []
 
     for sec in secciones_guardadas:
         sec_id = sec.get("id")
         sec_titulo = sec.get("titulo")
         items_list = sec.get("items", [])
 
-        st.session_state.lista_secciones.append({"id": sec_id, "titulo": sec_titulo})
+        .lista_secciones.append({"id": sec_id, "titulo": sec_titulo})
 
         if items_list:
             df_sec = pd.DataFrame(items_list)
         else:
-            df_sec = pd.DataFrame(columns=["activo", "descripción", "detalles", "dias", "cantidad", "precio_unitario"])
+            df_sec = pd.DataFrame(columns=["descripción", "detalles", "dias", "cantidad", "precio_unitario"])
                     
-        st.session_state[f"df_{sec_id}"] = df_sec
+        [f"df_{sec_id}"] = df_sec
 
     st.session_state.modo_vista = "edicion"
     return True
