@@ -117,11 +117,17 @@ def _formatear_monto_callback():
 
 
 def render_carga(rol_actual, es_consolidado=False):
-    # --- INICIALIZACIÓN DE VARIABLES DE ESTADO PARA EL MONTO ---
+# --- INICIALIZACIÓN DE VARIABLES DE ESTADO ---
     if "carga_monto_texto" not in st.session_state:
         st.session_state["carga_monto_texto"] = ""
     if "monto_real_float" not in st.session_state:
         st.session_state["monto_real_float"] = 0.0
+
+    # 🧹 Limpieza segura antes de que se renderice cualquier widget
+    if st.session_state.get("debe_limpiar_formulario", False):
+        st.session_state["carga_monto_texto"] = ""
+        st.session_state["monto_real_float"] = 0.0
+        st.session_state["debe_limpiar_formulario"] = False
 
     # --- SISTEMA DE NOTIFICACIONES POST-RECARGA ---
     if "msg_carga" in st.session_state:
@@ -130,7 +136,7 @@ def render_carga(rol_actual, es_consolidado=False):
             st.success(texto)
         elif tipo == "error":
             st.error(texto)
-        del st.session_state["msg_carga"] # Limpiamos para que no salga siempre
+        del st.session_state["msg_carga"]
 
     # --- OBTENCIÓN Y RENDERIZADO DEL BANNER DE SALDOS EN EL TOPE ---
     df_actual = st.session_state.get("df_movimientos", pd.DataFrame())
