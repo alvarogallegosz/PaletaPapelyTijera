@@ -98,7 +98,7 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
         except ValueError:
             pass
 
-    .meta_presupuesto = {
+    st.session_state.meta_presupuesto = {
         "nombre": data.get("nombre", ""),
         "cliente": data.get("cliente", ""),
         "fecha_evento": fecha_obj,
@@ -106,15 +106,15 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
         "fecha_larga": data.get("fecha_emision", ""),
         "tipo_presupuesto": data.get("tipo_presupuesto", "Decoración")
     }
-    .clausulas_presupuesto = data.get("clausulas", "")
-    .presupuesto_id_activo = data.get("id")
+    st.session_state.clausulas_presupuesto = data.get("clausulas", "")
+    st.session_state.presupuesto_id_activo = data.get("id")
 
     # Lectura directa desde la columna 'secciones'
     secciones_guardadas = data.get("secciones", [])
     if isinstance(secciones_guardadas, dict) and "secciones" in secciones_guardadas:
         secciones_guardadas = secciones_guardadas["secciones"]
 
-    .lista_secciones = []
+    st.session_state.lista_secciones = []
 
     for sec in secciones_guardadas:
         sec_id = sec.get("id")
