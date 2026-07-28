@@ -179,10 +179,6 @@ def resetear_formulario_presupuesto():
         st.session_state.clausulas_presupuesto = ""
 
 def calcular_subtotal_df(df_input):
-    """
-    Calcula el subtotal dinámico (Días * Cantidad * PU) para los
-    indicadores de pantalla sin alterar la estructura del data_editor.
-    """
     if df_input is None or df_input.empty:
         return 0.0
 
@@ -210,7 +206,7 @@ def calcular_subtotal_df(df_input):
         except Exception:
             cant_val = 0.0
             
-        # Procesar Precio Unitario (con soporte robusto para formato LATAM)
+        # Procesar Precio Unitario
         pu_raw = row.get('precio_unitario')
         try:
             if pd.notna(pu_raw) and str(pu_raw).strip() != '':
