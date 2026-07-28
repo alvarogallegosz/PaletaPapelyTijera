@@ -517,7 +517,6 @@ def render_creacion_presupuestos(rol_actual):
                     use_container_width=True,
                     hide_index=True,
                     column_config={
-                        "activo": st.column_config.CheckboxColumn("Activo", default=True, help="Desmarca para desactivar el asiento sin perderlo"),
                         "descripción": st.column_config.TextColumn("Descripción (80 ch)"),
                         "detalles": st.column_config.TextColumn("Detalles (40 ch)"),
                         "dias": st.column_config.NumberColumn("Días (11 ch)", min_value=1),
