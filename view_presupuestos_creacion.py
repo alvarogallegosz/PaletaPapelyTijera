@@ -402,9 +402,12 @@ def render_creacion_presupuestos(rol_actual):
         </style>
     """, unsafe_allow_html=True)
 
-    # --- 🔄 CONTROL DE ESTADOS ---
+    # --- 🔄 CONTROL DE ESTADOS Y AUTOGUARDADO ---
     if "modo_vista" not in st.session_state:
         st.session_state.modo_vista = "edicion"
+
+    if "ultimo_guardado" not in st.session_state:
+        st.session_state.ultimo_guardado = time.time()
 
     if "meta_presupuesto" not in st.session_state:
         resetear_formulario_presupuesto()
@@ -536,11 +539,12 @@ def render_creacion_presupuestos(rol_actual):
                         st.session_state.pop(res_key, None)
                         st.rerun()
 
+                # APLICACIÓN DE MANTENIMIENTO PREVENTIVO
                 df_vivo = st.data_editor(
                     st.session_state[df_key],
                     key=f"editor_widget_{sec_id}",
                     num_rows="dynamic",
-                    use_container_width=True,
+                    width="stretch", # Corrección: Reemplaza a use_container_width=True
                     hide_index=True,
                     column_config={
                         "descripción": st.column_config.TextColumn("Descripción (80 ch)"),
@@ -616,6 +620,24 @@ def render_creacion_presupuestos(rol_actual):
         with st.container(border=True):
             st.markdown("## 📜 Términos y Cláusulas")
             st.session_state.clausulas_presupuesto = st.text_area("Modifique cláusulas si es necesario:", value=st.session_state.clausulas_presupuesto, height=150)
+
+        # --- LÓGICA DE AUTOGUARDADO TEMPORAL ---
+        tiempo_actual = time.time()
+        if tiempo_actual - st.session_state.ultimo_guardado >= 300: # 300 segundos = 5 minutos
+            usuario_activo = st.session_state.get("usuario_logueado", "Usuario")
+            datos_payload = empaquetar_presupuesto_para_bd(usuario_activo)
+            id_edicion = st.session_state.get("presupuesto_id_activo", None)
+            
+            # Solo guardamos si el presupuesto tiene al menos un item costeado
+            if total_acumulado_presupuesto > 0:
+                try:
+                    guardar_presupuesto_db(datos_payload, id_presupuesto=id_edicion)
+                    st.toast("💾 Borrador guardado automáticamente en la base de datos.", icon="☁️")
+                except Exception:
+                    pass # Se omite la interrupción visual en caso de fallo de conexión temporal
+            
+            # Se resetea el reloj independientemente del resultado para no saturar la red
+            st.session_state.ultimo_guardado = tiempo_actual
 
         st.markdown("---")
         if st.button("👁️ Generar Vista Previa del Documento", type="primary", use_container_width=True):
