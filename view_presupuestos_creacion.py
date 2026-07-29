@@ -467,7 +467,7 @@ def render_creacion_presupuestos(rol_actual):
                     format="DD/MM/YYYY"
                 )
                 st.session_state.meta_presupuesto["fecha_evento"] = fecha_sel
-                st.caption(f"🗓️ **Vista larga:** {fecha_a_larga(fecha_sel)}")
+                
 
                 st.session_state.meta_presupuesto["lugar"] = st.text_input(
                     "Lugar del Evento:", 
