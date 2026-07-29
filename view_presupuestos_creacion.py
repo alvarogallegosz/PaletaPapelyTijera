@@ -643,7 +643,7 @@ def render_creacion_presupuestos(rol_actual):
                 <span style="font-size: 16px; font-weight: bold; color: #b91c1c;">- ${monto_descuento:,.2f}</span>
             </div>
             <div style="background-color: #b8d7a3; padding: 10px 18px; border-radius: 6px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #86efac;">
-                <span style="font-size: 16px; font-weight: bold; color: #000000;">TOTAL GENERAL ESTIMADO</span>
+                <span style="font-size: 16px; font-weight: bold; color: #000000;">TOTAL GENERAL</span>
                 <span style="font-size: 22px; font-weight: bold; color: #000000;">${total_final:,.2f}</span>
             </div>
             """, unsafe_allow_html=True)
