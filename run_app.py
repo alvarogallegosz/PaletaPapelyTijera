@@ -21,10 +21,10 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-        /* 1. Ajuste del lienzo superior */
+        /* 1. Ajuste del lienzo superior y respiro inferior global */
         .block-container {
             padding-top: 3.8rem !important; 
-            padding-bottom: 2rem !important;
+            padding-bottom: 120px !important; /* 🚀 Espacio amplio para evitar el efecto apretado */
             max-width: 98% !important;     
         }
         
@@ -80,6 +80,7 @@ st.markdown(
             font-weight: 600 !important;
             border-bottom: 3px solid #3b82f6 !important;
         }
+        
         /* --- FORZAR BARRAS DE DESPLAZAMIENTO SIEMPRE VISIBLES Y AMIGABLES PARA MÓVIL --- */
         ::-webkit-scrollbar {
             height: 10px !important;  /* Grosor de la barra horizontal */
@@ -177,48 +178,60 @@ modulo_activo = st.segmented_control(
 
 # --- ENRUTADOR DE MÓDULOS ---
 if modulo_activo == "📦 Registro Movimientos de Caja":
-  tab1, tab2, tab3, tab4 = st.tabs([
-      "📝 Carga de Movimientos",
-      "🔍 Libro Diario",
-      "🛠️ Modificaciones/Auditoría",
-      "📚 Histórico de Cierres Mensuales",
-  ])
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📝 Carga de Movimientos",
+        "🔍 Libro Diario",
+        "🛠️ Modificaciones/Auditoría",
+        "📚 Histórico de Cierres Mensuales",
+    ])
 
-  with tab1:
-    render_carga(rol_actual, es_consolidado)
-  with tab2:
-    render_visor(df_mes, mes_sel_nombre, anho_sel, saldos_fin)
-  with tab3:
-    render_edicion(df_completo, rol_actual, es_consolidado)
-  with tab4:
-    render_historico(df_completo, rol_actual)
+    with tab1:
+        render_carga(rol_actual, es_consolidado)
+    with tab2:
+        render_visor(df_mes, mes_sel_nombre, anho_sel, saldos_fin)
+    with tab3:
+        render_edicion(df_completo, rol_actual, es_consolidado)
+    with tab4:
+        render_historico(df_completo, rol_actual)
 
 elif modulo_activo == "📊 Presupuestos (Servicios al Cliente)":
-  st.markdown("### 📊 Panel General de Presupuestos")
-  tab1, tab2, tab3 = st.tabs(
-      ["📝 Creación y Carga", "🔄 Gestión y Aprobación", "📚 Plantillas e Histórico"]
-  )
-  with tab1:
-    render_creacion_presupuestos(rol_actual)
-  with tab2:
-    render_gestion_presupuestos(rol_actual)
-  with tab3:
-    render_historico_presupuestos(rol_actual)
+    st.markdown("### 📊 Panel General de Presupuestos")
+    tab1, tab2, tab3 = st.tabs(
+        ["📝 Creación y Carga", "🔄 Gestión y Aprobación", "📚 Plantillas e Histórico"]
+    )
+    with tab1:
+        render_creacion_presupuestos(rol_actual)
+    with tab2:
+        render_gestion_presupuestos(rol_actual)
+    with tab3:
+        render_historico_presupuestos(rol_actual)
 
 elif modulo_activo == "📊 Facturación":
-  st.markdown("### 📊 Panel General de Facturación")
-  st.info("Módulo de generación de facturas fiscales por servicios al cliente.")
+    st.markdown("### 📊 Panel General de Facturación")
+    st.info("Módulo de generación de facturas fiscales por servicios al cliente.")
 
 elif modulo_activo == "📊 Administración":
-  st.markdown("### 📊 Panel General de Administración")
-  st.info(
-      "Módulo de bancos, compras, ventas, cuentas por pagar y cuentas por"
-      " cobrar."
-  )
+    st.markdown("### 📊 Panel General de Administración")
+    st.info(
+        "Módulo de bancos, compras, ventas, cuentas por pagar y cuentas por"
+        " cobrar."
+    )
 
 elif modulo_activo == "⚙️ Soporte Técnico":
-  st.markdown("### ⚙️ Configuración y Auditorías Técnicas")
-  st.info(
-      "Módulo de infraestructura con visualización exclusiva del histórico"
-      " transaccional del sistema y respaldos de BD."
-  )
+    st.markdown("### ⚙️ Configuración y Auditorías Técnicas")
+    st.info(
+        "Módulo de infraestructura con visualización exclusiva del histórico"
+        " transaccional del sistema y respaldos de BD."
+    )
+
+# ===================================================
+# 🏁 CIERRE VISUAL GLOBAL AL PIE DE TODA LA APP
+# ===================================================
+st.markdown(
+    """
+    <div style='text-align: center; margin-top: 40px; margin-bottom: 10px; color: #94a3b8; font-size: 12px; font-weight: bold; letter-spacing: 1px;'>
+        --- FIN DE LA VISTA ---
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
