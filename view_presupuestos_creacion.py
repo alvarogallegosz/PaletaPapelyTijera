@@ -26,7 +26,6 @@ def a_flotante(val) -> float:
         return 0.0
         
     try:
-        # Formato LATAM con punto en miles y coma en decimales (ej: 1.250,50)
         if ',' in s and '.' in s:
             if s.rfind(',') > s.rfind('.'):
                 s = s.replace('.', '').replace(',', '.')
@@ -84,6 +83,24 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
             "items": items_list
         })
 
+    # TRUCO DE PERSISTENCIA: Inyectar metadata del descuento en el JSONB de secciones
+    descuento_activado = meta.get("descuento_activado", False)
+    descuento_porcentaje = float(meta.get("descuento_porcentaje", 0.0))
+    
+    secciones_exportar.append({
+        "id": "meta_config_adicional",
+        "titulo": "META_CONFIG",
+        "items": [],
+        "descuento_activado": descuento_activado,
+        "descuento_porcentaje": descuento_porcentaje
+    })
+
+    if descuento_activado and descuento_porcentaje > 0:
+        monto_descuento = monto_total_calculado * (descuento_porcentaje / 100)
+        total_final = monto_total_calculado - monto_descuento
+    else:
+        total_final = monto_total_calculado
+
     f_evt = meta.get("fecha_evento")
     fecha_evt_db = f_evt.strftime("%Y-%m-%d") if isinstance(f_evt, (datetime.date, datetime.datetime)) else str(f_evt or "")
 
@@ -94,7 +111,7 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
         "lugar_evento": meta.get("lugar", "").strip(),
         "fecha_emision": datetime.date.today().strftime("%Y-%m-%d"),
         "tipo_presupuesto": meta.get("tipo_presupuesto", "Decoración"),
-        "monto_total": round(monto_total_calculado, 2),
+        "monto_total": round(total_final, 2), # Se guarda el total ya con descuento
         "clausulas": clausulas_txt,
         "secciones": secciones_exportar,
         "estado": "Borrador",
@@ -103,7 +120,7 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
 
 
 def cargar_presupuesto_en_session_state(id_presupuesto: int):
-    """Lee la fila desde Supabase y reconstruye los dataframes interactivos."""
+    """Lee la fila desde Supabase y reconstruye los dataframes interactivos y los descuentos."""
     data = obtener_presupuesto_por_id_db(id_presupuesto)
     if not data:
         return False
@@ -122,8 +139,11 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
         "fecha_evento": fecha_obj,
         "lugar": data.get("lugar_evento", ""),
         "fecha_larga": data.get("fecha_emision", ""),
-        "tipo_presupuesto": data.get("tipo_presupuesto", "Decoración")
+        "tipo_presupuesto": data.get("tipo_presupuesto", "Decoración"),
+        "descuento_activado": False,
+        "descuento_porcentaje": 0.0
     }
+    
     st.session_state.clausulas_presupuesto = data.get("clausulas", "")
     st.session_state.presupuesto_id_activo = data.get("id")
 
@@ -135,6 +155,13 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
 
     for sec in secciones_guardadas:
         sec_id = sec.get("id")
+        
+        # Rescatar la configuración del descuento oculta en el JSON
+        if sec_id == "meta_config_adicional":
+            st.session_state.meta_presupuesto["descuento_activado"] = sec.get("descuento_activado", False)
+            st.session_state.meta_presupuesto["descuento_porcentaje"] = float(sec.get("descuento_porcentaje", 0.0))
+            continue
+            
         sec_titulo = sec.get("titulo")
         items_list = sec.get("items", [])
 
@@ -160,7 +187,9 @@ def resetear_formulario_presupuesto():
             "nombre": "", 
             "fecha_evento": datetime.date.today(), 
             "lugar": "", 
-            "fecha_larga": ""
+            "fecha_larga": "",
+            "descuento_activado": False,
+            "descuento_porcentaje": 0.0
         })
         st.session_state.presupuesto_id_activo = None
     else:
@@ -170,7 +199,9 @@ def resetear_formulario_presupuesto():
             "fecha_evento": datetime.date.today(), 
             "lugar": "", 
             "fecha_larga": "",
-            "tipo_presupuesto": "Decoración"
+            "tipo_presupuesto": "Decoración",
+            "descuento_activado": False,
+            "descuento_porcentaje": 0.0
         }
         
         if "presupuesto_id_activo" in st.session_state:
@@ -215,9 +246,28 @@ def calcular_subtotal_df(df_input):
 
 
 def render_creacion_presupuestos(rol_actual):
-    # --- 🎨 CONTROL DE INYECCIÓN CSS ---
+    # --- 🎨 CONTROL DE INYECCIÓN CSS (INCLUYE SOLUCIÓN DE SCROLLBAR) ---
     st.markdown("""
         <style>
+            /* 🚀 FORZAR BARRAS DE DESPLAZAMIENTO VISIBLES Y GRUESAS */
+            ::-webkit-scrollbar {
+                -webkit-appearance: none;
+                width: 16px !important;
+                height: 16px !important;
+            }
+            ::-webkit-scrollbar-thumb {
+                background-color: #94a3b8 !important;
+                border-radius: 8px !important;
+                border: 3px solid #ffffff !important;
+            }
+            ::-webkit-scrollbar-track {
+                background-color: #f1f5f9 !important;
+                border-radius: 8px !important;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                background-color: #64748b !important;
+            }
+
             @page {
                 size: letter;
                 margin-top: 1.3cm;
@@ -343,35 +393,6 @@ def render_creacion_presupuestos(rol_actual):
                 font-weight: bold;
                 font-size: 12px;
                 margin-bottom: 3px;
-            }
-
-            div[data-testid="stMarkdownContainer"] h2,
-            div[data-testid="stMarkdownContainer"] h3,
-            div[data-testid="stMarkdownContainer"] h4 {
-                margin-top: 2px !important;
-                margin-bottom: 4px !important;
-                padding-top: 0px !important;
-                padding-bottom: 0px !important;
-            }
-            
-            div[data-testid="stTabs"] {
-                margin-bottom: -10px !important;
-            }
-            
-            div[data-testid="stToggle"] {
-                margin-top: -6px !important;
-                margin-bottom: -6px !important;
-                padding-top: 0px !important;
-                padding-bottom: 0px !important;
-            }
-            
-            div[data-testid="stVerticalBlock"] {
-                gap: 0.5rem !important;
-            }
-            
-            hr {
-                margin-top: 8px !important;
-                margin-bottom: 12px !important;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -578,16 +599,61 @@ def render_creacion_presupuestos(rol_actual):
                         """,
                         unsafe_allow_html=True
                     )
+        
+        # --- 🏷️ MÓDULO DE DESCUENTOS ---
+        st.markdown("---")
+        st.markdown("### 🏷️ Opciones de Descuento")
+        col_d1, col_d2 = st.columns([1, 2])
+        
+        with col_d1:
+            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+            st.session_state.meta_presupuesto["descuento_activado"] = st.toggle(
+                "Aplicar descuento al Total", 
+                value=st.session_state.meta_presupuesto.get("descuento_activado", False)
+            )
+            
+        with col_d2:
+            if st.session_state.meta_presupuesto["descuento_activado"]:
+                st.session_state.meta_presupuesto["descuento_porcentaje"] = st.number_input(
+                    "Porcentaje a descontar (%)", 
+                    min_value=0.0, 
+                    max_value=100.0, 
+                    value=float(st.session_state.meta_presupuesto.get("descuento_porcentaje", 0.0)),
+                    step=1.0,
+                    format="%.2f"
+                )
+            else:
+                st.session_state.meta_presupuesto["descuento_porcentaje"] = 0.0
 
-        st.markdown(
-            f"""
+        # --- 💵 RENDERIZADO DEL TOTAL GENERAL (CON O SIN DESCUENTO) ---
+        descuento_activado = st.session_state.meta_presupuesto.get("descuento_activado", False)
+        descuento_porcentaje = float(st.session_state.meta_presupuesto.get("descuento_porcentaje", 0.0))
+
+        if descuento_activado and descuento_porcentaje > 0:
+            monto_descuento = total_acumulado_presupuesto * (descuento_porcentaje / 100)
+            total_final = total_acumulado_presupuesto - monto_descuento
+            
+            st.markdown(f"""
+            <div style="background-color: #f8fafc; padding: 10px 18px; border-radius: 6px; margin-top: 15px; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #cbd5e1;">
+                <span style="font-size: 14px; font-weight: bold; color: #64748b;">SUBTOTAL ANTES DE DESCUENTO</span>
+                <span style="font-size: 16px; font-weight: bold; color: #64748b;">${total_acumulado_presupuesto:,.2f}</span>
+            </div>
+            <div style="background-color: #fee2e2; padding: 10px 18px; border-radius: 6px; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #fca5a5;">
+                <span style="font-size: 14px; font-weight: bold; color: #b91c1c;">DESCUENTO APLICADO ({descuento_porcentaje:,.2f}%)</span>
+                <span style="font-size: 16px; font-weight: bold; color: #b91c1c;">- ${monto_descuento:,.2f}</span>
+            </div>
+            <div style="background-color: #b8d7a3; padding: 10px 18px; border-radius: 6px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #86efac;">
+                <span style="font-size: 16px; font-weight: bold; color: #000000;">TOTAL GENERAL ESTIMADO</span>
+                <span style="font-size: 22px; font-weight: bold; color: #000000;">${total_final:,.2f}</span>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
             <div style="background-color: #b8d7a3; padding: 10px 18px; border-radius: 6px; margin-top: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #86efac;">
                 <span style="font-size: 16px; font-weight: bold; color: #000000;">TOTAL GENERAL ESTIMADO</span>
                 <span style="font-size: 22px; font-weight: bold; color: #000000;">${total_acumulado_presupuesto:,.2f}</span>
             </div>
-            """,
-            unsafe_allow_html=True
-        )
+            """, unsafe_allow_html=True)
 
         with st.container(border=True):
             st.markdown("## 📜 Términos y Cláusulas")
@@ -730,7 +796,7 @@ def render_creacion_presupuestos(rol_actual):
             <div class="banner-verde-principal">PRESUPUESTO DETALLADO</div>
         """
 
-        total_general = 0.0
+        total_general_pre_descuento = 0.0
         
         for idx_sec, sec in enumerate(secciones_activas):
             sec_id = sec.get('id', '')
@@ -816,15 +882,36 @@ def render_creacion_presupuestos(rol_actual):
                 <span>${subtotal_seccion:,.2f}</span>
             </div>
             """
-            total_general += subtotal_seccion
+            total_general_pre_descuento += subtotal_seccion
             
         clausulas_html = str(clausulas_txt or '').replace("\n", "<br/>")
 
+        descuento_activado = meta.get("descuento_activado", False)
+        descuento_porcentaje = float(meta.get("descuento_porcentaje", 0.0))
+
+        if descuento_activado and descuento_porcentaje > 0:
+            monto_descuento_pdf = total_general_pre_descuento * (descuento_porcentaje / 100)
+            total_final_pdf = total_general_pre_descuento - monto_descuento_pdf
+            
+            html_cuerpo += f"""
+                <div style="background-color: #fee2e2; color: #b91c1c; font-weight: bold; font-size: 14px; text-align: right; padding: 6px 15px; margin-top: 10px; border-bottom: 1px solid #fca5a5;">
+                    SUBTOTAL BASE: ${total_general_pre_descuento:,.2f} <br>
+                    DESCUENTO ({descuento_porcentaje:,.2f}%): - ${monto_descuento_pdf:,.2f}
+                </div>
+                <div class="banner-total-general">
+                    <span>TOTAL A CANCELAR</span>
+                    <span>${total_final_pdf:,.2f}</span>
+                </div>
+            """
+        else:
+            html_cuerpo += f"""
+                <div class="banner-total-general">
+                    <span>TOTAL A CANCELAR</span>
+                    <span>${total_general_pre_descuento:,.2f}</span>
+                </div>
+            """
+
         html_cuerpo += f"""
-            <div class="banner-total-general">
-                <span>TOTAL A CANCELAR</span>
-                <span>${total_general:,.2f}</span>
-            </div>
             <div class="clausulas-container">
                 <div class="clausulas-header">CLAUSULAS:</div>
                 <div style="font-weight: normal;">{clausulas_html}</div>
