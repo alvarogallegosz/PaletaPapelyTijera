@@ -60,7 +60,7 @@ def _calcular_saldos_globales(df):
 
 
 def render_banner_saldos(saldos_dict):
-    """Renderiza el bloque HTML superior con la disponibilidad de las 5 cuentas con idéntica estética."""
+    """Renderiza el bloque HTML superior con la disponibilidad de las 5 cuentas."""
     val_bs = float(saldos_dict.get('Bs', 0.0))
     val_ze = float(saldos_dict.get('Ze', 0.0))
     val_ch = float(saldos_dict.get('Ch', 0.0))
@@ -89,7 +89,6 @@ def _formatear_monto_callback():
         return
 
     try:
-        # Limpieza inteligente para lectura flexible durante la escritura
         if "," in val_str and "." not in val_str:
             val_limpio = val_str.replace(",", ".")
         elif "," in val_str and "." in val_str:
@@ -101,14 +100,10 @@ def _formatear_monto_callback():
             val_limpio = val_str
 
         monto_flt = float(val_limpio)
-
-        # 1. Guardamos el número flotante puro para insertar en Base de Datos
         st.session_state["monto_real_float"] = abs(monto_flt)
 
-        # 2. Formato visual LATAM: 18.500,50 (puntos para miles, coma para decimales)
-        s_aux = f"{abs(monto_flt):,.2f}"  # Genera base US temporal: "18,500.50"
+        s_aux = f"{abs(monto_flt):,.2f}"
         s_latam = s_aux.replace(",", "X").replace(".", ",").replace("X", ".")
-        
         st.session_state["carga_monto_texto"] = s_latam
 
     except ValueError:
@@ -116,29 +111,97 @@ def _formatear_monto_callback():
         st.session_state["carga_monto_texto"] = "0,00"
 
 
+def _procesar_registro_callback(rol_actual):
+    """
+    Callback que se ejecuta ANTES de redibujar la pantalla.
+    Aquí es 100% seguro guardar en BD y limpiar las variables de sesión.
+    """
+    fecha_val = st.session_state.get("carga_fecha", datetime.date.today())
+    categoria_val = str(st.session_state.get("carga_categoria", "")).strip()
+    detalle_val = str(st.session_state.get("carga_detalle", "")).strip()
+    tipo_val = st.session_state.get("carga_tipo", "IN-Bs")
+    tasa_val = float(st.session_state.get("carga_tasa", 1.0))
+    comentarios_val = str(st.session_state.get("carga_comentarios", "")).strip()
+    monto_real = float(st.session_state.get("monto_real_float", 0.0))
+
+    # Validaciones de campos
+    errores = []
+    if not categoria_val:
+        errores.append("La **Categoría** es obligatoria.")
+    if not detalle_val:
+        errores.append("La **Descripción / Detalle** es obligatoria.")
+    if monto_real <= 0:
+        errores.append("El **Monto** debe ser mayor a 0,00.")
+    if "Bs" in tipo_val and tasa_val <= 0:
+        errores.append("La **Tasa Monitor** debe ser mayor a 0.")
+
+    if errores:
+        st.session_state["msg_carga"] = ("warning", errores)
+        return
+
+    # Validaciones contra Base de Datos
+    df_fresco = obtener_movimientos_locales()
+    ym_input = pd.to_datetime(fecha_val).strftime("%Y-%m")
+    meses_cerrados_real = _obtener_meses_cerrados(df_fresco)
+
+    if ym_input in meses_cerrados_real:
+        st.session_state["msg_carga"] = ("error", ["❌ **BLOQUEO:** El mes seleccionado se encuentra consolidado."])
+        return
+    if _es_mes_anterior_al_inicio(df_fresco, ym_input):
+        st.session_state["msg_carga"] = ("error", ["❌ **BLOQUEO:** El mes seleccionado es anterior al inicio histórico."])
+        return
+
+    # Inserción en Base de Datos
+    nuevo_asiento = {
+        "fecha": fecha_val.strftime("%Y-%m-%d"),
+        "categoria": categoria_val.upper(),
+        "detalle": detalle_val,
+        "tipo": tipo_val,
+        "monto": monto_real,
+        "tasa": tasa_val if tasa_val > 0 else 1.0,
+        "comentarios": comentarios_val,
+        "activo": True,
+        "consolidado": False,
+        "creado_por": str(rol_actual),
+    }
+
+    exito, mensaje = insertar_movimiento_db(nuevo_asiento)
+
+    if exito:
+        st.session_state["df_movimientos"] = obtener_movimientos_locales()
+        
+        # 🧹 LIMPIEZA 100% SEGURA DENTRO DEL CALLBACK
+        st.session_state["carga_monto_texto"] = ""
+        st.session_state["monto_real_float"] = 0.0
+        st.session_state["carga_categoria"] = ""
+        st.session_state["carga_detalle"] = ""
+        st.session_state["carga_comentarios"] = ""
+
+        st.session_state["msg_carga"] = ("success", [f"🎉 {mensaje}"])
+    else:
+        st.session_state["msg_carga"] = ("error", [f"❌ FALLO EN BASE DE DATOS: {mensaje}"])
+
+
 def render_carga(rol_actual, es_consolidado=False):
-# --- INICIALIZACIÓN DE VARIABLES DE ESTADO ---
+    # --- INICIALIZACIÓN DE VARIABLES DE ESTADO ---
     if "carga_monto_texto" not in st.session_state:
         st.session_state["carga_monto_texto"] = ""
     if "monto_real_float" not in st.session_state:
         st.session_state["monto_real_float"] = 0.0
 
-    # 🧹 Limpieza segura antes de que se renderice cualquier widget
-    if st.session_state.get("debe_limpiar_formulario", False):
-        st.session_state["carga_monto_texto"] = ""
-        st.session_state["monto_real_float"] = 0.0
-        st.session_state["debe_limpiar_formulario"] = False
-
     # --- SISTEMA DE NOTIFICACIONES POST-RECARGA ---
     if "msg_carga" in st.session_state:
-        tipo, texto = st.session_state["msg_carga"]
-        if tipo == "success":
-            st.success(texto)
-        elif tipo == "error":
-            st.error(texto)
+        tipo, lista_mensajes = st.session_state["msg_carga"]
+        for msg in lista_mensajes:
+            if tipo == "success":
+                st.success(msg)
+            elif tipo == "warning":
+                st.warning(f"⚠️ {msg}")
+            elif tipo == "error":
+                st.error(msg)
         del st.session_state["msg_carga"]
 
-    # --- OBTENCIÓN Y RENDERIZADO DEL BANNER DE SALDOS EN EL TOPE ---
+    # --- BANNER DE SALDOS ---
     df_actual = st.session_state.get("df_movimientos", pd.DataFrame())
     if df_actual.empty:
         df_actual = obtener_movimientos_locales()
@@ -151,25 +214,25 @@ def render_carga(rol_actual, es_consolidado=False):
     col1, col2 = st.columns(2)
 
     with col1:
-        fecha_input = st.date_input(
+        st.date_input(
             "Fecha de la transacción:",
             value=datetime.date.today(),
             help="Puedes seleccionar cualquier fecha de cualquier mes/año.",
             key="carga_fecha",
         )
-        categoria_input = st.text_input(
+        st.text_input(
             "Categoría (*):",
             placeholder="Ej: IMPRENTA, VENTA, ALQUILER...",
             key="carga_categoria",
         )
-        detalle_input = st.text_input(
+        st.text_input(
             "Descripción / Detalle (*):",
             placeholder="Ej: Pago de franelas cliente Marivet",
             key="carga_detalle",
         )
 
     with col2:
-        tipo_input = st.selectbox(
+        st.selectbox(
             "Tipo de Cuenta (*):",
             options=[
                 "IN-Bs", "EG-Bs", "IN-$Ze", "EG-$Ze", "IN-$Ch",
@@ -177,8 +240,6 @@ def render_carga(rol_actual, es_consolidado=False):
             ],
             key="carga_tipo",
         )
-        
-        # 🟢 CAMBIO PRINCIPAL: Campo de texto dinámico con callback al dar Enter/Tab
         st.text_input(
             "Monto (*):",
             key="carga_monto_texto",
@@ -186,21 +247,20 @@ def render_carga(rol_actual, es_consolidado=False):
             placeholder="0.00",
             help="Escribe el monto. Al presionar Enter o Tab se agregará el formato de miles.",
         )
-        
-        tasa_input = st.number_input(
+        st.number_input(
             "Tasa de Cambio Monitor:", min_value=0.0, value=1.0, step=0.01, format="%.2f", key="carga_tasa",
         )
 
-    comentarios_input = st.text_area(
+    st.text_area(
         "Comentarios adicionales (Opcional):", key="carga_comentarios"
     )
 
     st.divider()
 
-    # --- VALIDACIÓN VISUAL PREVIA ---
+    # --- VALIDACIÓN VISUAL PREVIA DE MESES ---
+    fecha_sel = st.session_state.get("carga_fecha", datetime.date.today())
     meses_cerrados = _obtener_meses_cerrados(df_actual)
-    ym_input = pd.to_datetime(fecha_input).strftime("%Y-%m")
-    
+    ym_input = pd.to_datetime(fecha_sel).strftime("%Y-%m")
     es_anterior = _es_mes_anterior_al_inicio(df_actual, ym_input)
 
     if ym_input in meses_cerrados:
@@ -214,68 +274,11 @@ def render_carga(rol_actual, es_consolidado=False):
             "operaciones registrado. Se encuentra cerrado predeterminadamente."
         )
     else:
-        btn_registrar = st.button(
+        # 🟢 EL BOTÓN INVOCA AL CALLBACK ANTES DE CUALQUIER REDIBUJADO DE LA PÁGINA
+        st.button(
             "💾 Registrar Transacción en Base de Datos",
             type="primary",
             use_container_width=True,
+            on_click=_procesar_registro_callback,
+            args=(rol_actual,),
         )
-
-        if btn_registrar:
-            # --- CANDADO ESTRICTO CONTRA LA BASE DE DATOS EN TIEMPO REAL ---
-            with st.spinner("Validando auditoría en tiempo real..."):
-                df_fresco = obtener_movimientos_locales()
-                meses_cerrados_real = _obtener_meses_cerrados(df_fresco)
-                
-                if ym_input in meses_cerrados_real:
-                    st.error("❌ **BLOQUEO:** El mes seleccionado acaba de ser bloqueado por otro administrador.")
-                    return
-                if _es_mes_anterior_al_inicio(df_fresco, ym_input):
-                    st.error("❌ **BLOQUEO:** El mes seleccionado es anterior al inicio histórico de operaciones.")
-                    return
-
-            # Obtenemos el monto numérico limpio procesado por el callback
-            monto_real = st.session_state.get("monto_real_float", 0.0)
-
-            # Validaciones de formulario
-            errores_validacion = []
-            if not categoria_input.strip():
-                errores_validacion.append("La **Categoría** es obligatoria.")
-            if not detalle_input.strip():
-                errores_validacion.append("La **Descripción / Detalle** es obligatoria.")
-            if monto_real <= 0:
-                errores_validacion.append("El **Monto** debe ser mayor a 0,00.")
-            if "Bs" in tipo_input and tasa_input <= 0:
-                errores_validacion.append("La **Tasa Monitor** debe ser mayor a 0.")
-
-            if errores_validacion:
-                for err in errores_validacion:
-                    st.warning(f"⚠️ {err}")
-                return
-
-            nuevo_asiento = {
-                "fecha": fecha_input.strftime("%Y-%m-%d"),
-                "categoria": categoria_input.strip().upper(),
-                "detalle": detalle_input.strip(),
-                "tipo": tipo_input,
-                "monto": float(monto_real),
-                "tasa": float(tasa_input) if tasa_input > 0 else 1.0,
-                "comentarios": comentarios_input.strip(),
-                "activo": True,
-                "consolidado": False,
-                "creado_por": str(rol_actual),
-            }
-
-            exito, mensaje = insertar_movimiento_db(nuevo_asiento)
-
-            if exito:
-                st.session_state["df_movimientos"] = obtener_movimientos_locales()
-                
-                # ✅ SOLUCIÓN: Activamos tu bandera de limpieza segura en lugar de borrar directo
-                st.session_state["debe_limpiar_formulario"] = True
-                
-                # Guardamos el mensaje en memoria para que sobreviva al rerun
-                st.session_state["msg_carga"] = ("success", f"🎉 {mensaje}")
-                st.rerun()
-            else:
-                st.session_state["msg_carga"] = ("error", f"❌ FALLO EN BASE DE DATOS: {mensaje}")
-                st.rerun()
