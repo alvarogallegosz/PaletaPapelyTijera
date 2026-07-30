@@ -269,9 +269,9 @@ def render_carga(rol_actual, es_consolidado=False):
 
             if exito:
                 st.session_state["df_movimientos"] = obtener_movimientos_locales()
-                # Reseteamos los campos de monto para la siguiente carga
-                st.session_state["carga_monto_texto"] = ""
-                st.session_state["monto_real_float"] = 0.0
+                
+                # ✅ SOLUCIÓN: Activamos tu bandera de limpieza segura en lugar de borrar directo
+                st.session_state["debe_limpiar_formulario"] = True
                 
                 # Guardamos el mensaje en memoria para que sobreviva al rerun
                 st.session_state["msg_carga"] = ("success", f"🎉 {mensaje}")
