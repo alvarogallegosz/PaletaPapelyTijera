@@ -677,7 +677,24 @@ def render_creacion_presupuestos(rol_actual):
 
         with st.container(border=True):
             st.markdown("## 📜 Términos y Cláusulas")
-            st.session_state.clausulas_presupuesto = st.text_area("Modifique cláusulas si es necesario:", value=st.session_state.clausulas_presupuesto, height=150)
+        
+            # 1. Fallback: Si no hay nada cargado en memoria, asignar cláusulas base
+            if "clausulas_presupuesto" not in st.session_state or not str(st.session_state.clausulas_presupuesto).strip():
+                st.session_state.clausulas_presupuesto = CLAUSULAS_POR_DEFECTO
+        
+            # 2. Alerta en tiempo real si el usuario borra el contenido
+            if not str(st.session_state.get("clausulas_presupuesto", "")).strip():
+                st.error("🚨 **¡Atención!** El presupuesto no puede quedarse sin cláusulas.")
+                if st.button("🔄 Cargar Cláusulas por Defecto", key="btn_restaurar_clausulas"):
+                    st.session_state.clausulas_presupuesto = CLAUSULAS_POR_DEFECTO
+                    st.rerun()
+        
+            # 3. Widget de texto vinculado mediante 'key'
+            st.text_area(
+                "Modifique cláusulas si es necesario:",
+                key="clausulas_presupuesto",
+                height=150
+            )
 
         tiempo_actual = time.time()
         if tiempo_actual - st.session_state.ultimo_guardado >= 300:
