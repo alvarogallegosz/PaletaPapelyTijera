@@ -42,13 +42,11 @@ def a_flotante(val) -> float:
 # 📦 FUNCIONES DE PERSISTENCIA Y REHIDRATACIÓN JSONB
 # ===================================================
 CLAUSULAS_POR_DEFECTO = """Las condiciones generales de nuestra oferta son las siguientes:
-* Precios se entienden en: Dólares netos. El costo debe ser pagado el 50% a la aceptación del contrato y el otro 50% 2 días antes del
-evento.
+* Precios se entienden en: Dólares netos. El costo debe ser pagado el 50% a la aceptación del contrato y el otro 50% 2 días antes del evento.
 * Si el pago lo realizará en bs la tasa que manejamos es Euro indicado por el Banco Central de Venezuela.
 * Validez de la Oferta: 3 días contínuos.
 * Si el cliente cancela el servicio (es decir no va a querer el servicio) 2 días antes del evento le será devuelto un 30% del monto pagado.
-* Si el cliente cancela el servicio (es decir no va a querer el servicio) 1 día antes ó el día del evento no se le devolverá nada del monto
-pagado.
+* Si el cliente cancela el servicio (es decir no va a querer el servicio) 1 día antes ó el día del evento no se le devolverá nada del monto pagado.
 * El cliente es enteramente responsable de todo el material suministrado para el evento y cancelara cualquier daño al mismo.
 Sin más a que hacer referencia, a la espera de vuestra consideración, nos despedimos de Ud.,
 Atentamente,
@@ -57,7 +55,7 @@ Paletapapelytijera"""
 def empaquetar_presupuesto_para_bd(usuario_activo: str):
     """Convierte el estado de la sesión en el diccionario adaptado a las columnas exactas de Supabase."""
     meta = st.session_state.get("meta_presupuesto", {})
-    clausulas_txt = st.session_state.get("clausulas_presupuesto", "")
+    clausulas_txt = st.session_state.get("clausulas_presupuesto", CLAUSULAS_POR_DEFECTO)
     secciones_activas = st.session_state.get("lista_secciones", [])
 
     secciones_exportar = []
@@ -123,7 +121,7 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
         "lugar_evento": meta.get("lugar", "").strip(),
         "fecha_emision": datetime.date.today().strftime("%Y-%m-%d"),
         "tipo_presupuesto": meta.get("tipo_presupuesto", "Decoración"),
-        "monto_total": round(total_final, 2), # Se guarda el total ya con descuento
+        "monto_total": round(total_final, 2),
         "clausulas": clausulas_txt,
         "secciones": secciones_exportar,
         "estado": "Borrador",
@@ -156,14 +154,16 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
         "descuento_porcentaje": 0.0
     }
     
-    # 🛠️ FIX: Sanitizar cláusulas contra valores NULL (None) de la Base de Datos
+    # 🧹 Liberar clave de sesión para evitar excepción con st.text_area
+    st.session_state.pop("clausulas_presupuesto", None)
+
+    # 📜 Recarga limpia: si traía cláusulas se respetan; si venía NULL o vacío, usa las por defecto
     raw_clausulas = data.get("clausulas")
-    if not raw_clausulas or not str(raw_clausulas).strip():
-        # Si venía NULL o vacío de la BD, asignamos la base e informamos
-        st.session_state.clausulas_presupuesto = CLAUSULAS_POR_DEFECTO
-        st.toast("⚠️ Presupuesto sin cláusulas registradas. Se cargaron las cláusulas base por defecto.", icon="🔔")
-    else:
+    if raw_clausulas and str(raw_clausulas).strip():
         st.session_state.clausulas_presupuesto = str(raw_clausulas)
+    else:
+        st.session_state.clausulas_presupuesto = CLAUSULAS_POR_DEFECTO
+        st.toast("⚠️ Presupuesto sin cláusulas registradas en BD. Se asignaron las cláusulas base.", icon="🔔")
     
     st.session_state.presupuesto_id_activo = data.get("id")
 
@@ -243,7 +243,8 @@ def resetear_formulario_presupuesto():
             columns=["descripción", "detalles", "dias", "cantidad", "precio_unitario"]
         )
 
-        st.session_state.clausulas_presupuesto = ""
+        st.session_state.pop("clausulas_presupuesto", None)
+        st.session_state.clausulas_presupuesto = CLAUSULAS_POR_DEFECTO
 
 def calcular_subtotal_df(df_input):
     """
@@ -427,7 +428,7 @@ def render_creacion_presupuestos(rol_actual):
         resetear_formulario_presupuesto()
 
     if "clausulas_presupuesto" not in st.session_state:
-        st.session_state.clausulas_presupuesto = ""
+        st.session_state.clausulas_presupuesto = CLAUSULAS_POR_DEFECTO
 
     if "lista_secciones" not in st.session_state:
         st.session_state.lista_secciones = [
@@ -487,7 +488,6 @@ def render_creacion_presupuestos(rol_actual):
                     format="DD/MM/YYYY"
                 )
                 st.session_state.meta_presupuesto["fecha_evento"] = fecha_sel
-                
 
                 st.session_state.meta_presupuesto["lugar"] = st.text_input(
                     "Lugar del Evento:", 
@@ -675,21 +675,13 @@ def render_creacion_presupuestos(rol_actual):
             </div>
             """, unsafe_allow_html=True)
 
+        # --- 📜 SECCIÓN DE CLÁUSULAS LIMPIA Y SIN PARCHES ---
         with st.container(border=True):
             st.markdown("## 📜 Términos y Cláusulas")
         
-            # 1. Fallback: Si no hay nada cargado en memoria, asignar cláusulas base
-            if "clausulas_presupuesto" not in st.session_state or not str(st.session_state.clausulas_presupuesto).strip():
-                st.session_state.clausulas_presupuesto = CLAUSULAS_POR_DEFECTO
-        
-            # 2. Alerta en tiempo real si el usuario borra el contenido
             if not str(st.session_state.get("clausulas_presupuesto", "")).strip():
-                st.error("🚨 **¡Atención!** El presupuesto no puede quedarse sin cláusulas.")
-                if st.button("🔄 Cargar Cláusulas por Defecto", key="btn_restaurar_clausulas"):
-                    st.session_state.clausulas_presupuesto = CLAUSULAS_POR_DEFECTO
-                    st.rerun()
-        
-            # 3. Widget de texto vinculado mediante 'key'
+                st.warning("⚠️ El presupuesto actualmente no tiene cláusulas redactadas.")
+
             st.text_area(
                 "Modifique cláusulas si es necesario:",
                 key="clausulas_presupuesto",
@@ -721,7 +713,7 @@ def render_creacion_presupuestos(rol_actual):
     # ===================================================
     else:
         meta = st.session_state.get("meta_presupuesto", {})
-        clausulas_txt = st.session_state.get("clausulas_presupuesto", "")
+        clausulas_txt = st.session_state.get("clausulas_presupuesto", CLAUSULAS_POR_DEFECTO)
         secciones_activas = st.session_state.get("lista_secciones", [])
 
         for sec in secciones_activas:
