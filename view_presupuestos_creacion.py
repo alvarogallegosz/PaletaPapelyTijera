@@ -126,7 +126,7 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
             "fecha_evento": fecha_evt_db,
             "lugar_evento": meta.get("lugar", "").strip(),
             "fecha_emision": datetime.date.today().strftime("%Y-%m-%d"),
-            "tipo_presupuest": meta.get("tipo_presupuesto", "Decoración"),
+            "tipo_presupuesto": meta.get("tipo_presupuesto", "Decoración"),
             "monto_total": round(total_final, 2),
             "clausulas": clausulas_txt,
             "secciones": secciones_exportar,
