@@ -74,18 +74,15 @@ def render_tarjeta_presupuesto(p: dict, rol_actual: str = "administrador", idx="
         # Fila de Acciones
         b_col1, b_col2, b_col3, b_col4 = st.columns(4)
 
-        # 1. Cargar en Editor
+        # ✅ CÓDIGO CORREGIDO EN HISTÓRICO:
         with b_col1:
-            if st.button(
-                "✏️ Cargar en Editor", key=f"btn_edit_{id_p}_{idx}", use_container_width=True
-            ):
-                # ✅ CORRECCIÓN: Invocar la función de carga real en session_state
-                if cargar_presupuesto_en_session_state(id_p):
-                    st.success(
-                        f"Presupuesto #{id_p} cargado. Puedes pasar a la pestaña de"
-                        " Maquetación."
-                    )
-                    st.rerun()
+            st.button(
+                "✏️ Cargar en Editor",
+                key=f"btn_edit_{id_p}_{idx}",
+                on_click=cargar_presupuesto_en_session_state,
+                args=(id_p,),
+                use_container_width=True
+            )
 
         # 2. Clonar / Replicar
         with b_col2:
