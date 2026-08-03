@@ -41,6 +41,18 @@ def a_flotante(val) -> float:
 # ===================================================
 # 📦 FUNCIONES DE PERSISTENCIA Y REHIDRATACIÓN JSONB
 # ===================================================
+CLAUSULAS_POR_DEFECTO = """Las condiciones generales de nuestra oferta son las siguientes:
+* Precios se entienden en: Dólares netos. El costo debe ser pagado el 50% a la aceptación del contrato y el otro 50% 2 días antes del
+evento.
+* Si el pago lo realizará en bs la tasa que manejamos es Euro indicado por el Banco Central de Venezuela.
+* Validez de la Oferta: 3 días contínuos.
+* Si el cliente cancela el servicio (es decir no va a querer el servicio) 2 días antes del evento le será devuelto un 30% del monto pagado.
+* Si el cliente cancela el servicio (es decir no va a querer el servicio) 1 día antes ó el día del evento no se le devolverá nada del monto
+pagado.
+* El cliente es enteramente responsable de todo el material suministrado para el evento y cancelara cualquier daño al mismo.
+Sin más a que hacer referencia, a la espera de vuestra consideración, nos despedimos de Ud.,
+Atentamente,
+Paletapapelytijera"""
 
 def empaquetar_presupuesto_para_bd(usuario_activo: str):
     """Convierte el estado de la sesión en el diccionario adaptado a las columnas exactas de Supabase."""
@@ -146,7 +158,12 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
     
     # 🛠️ FIX: Sanitizar cláusulas contra valores NULL (None) de la Base de Datos
     raw_clausulas = data.get("clausulas")
-    st.session_state.clausulas_presupuesto = str(raw_clausulas) if raw_clausulas is not None else ""
+    if not raw_clausulas or not str(raw_clausulas).strip():
+        # Si venía NULL o vacío de la BD, asignamos la base e informamos
+        st.session_state.clausulas_presupuesto = CLAUSULAS_POR_DEFECTO
+        st.toast("⚠️ Presupuesto sin cláusulas registradas. Se cargaron las cláusulas base por defecto.", icon="🔔")
+    else:
+        st.session_state.clausulas_presupuesto = str(raw_clausulas)
     
     st.session_state.presupuesto_id_activo = data.get("id")
 
