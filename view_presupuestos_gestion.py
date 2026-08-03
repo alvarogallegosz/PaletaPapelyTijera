@@ -230,10 +230,14 @@ def render_gestion_presupuestos(rol_simulado: str):
                 col_b1, col_b2 = st.columns(2)
 
                 with col_b1:
-                    if st.button("✏️ Editar", key=f"btn_edit_{p_id}", use_container_width=True, help="Carga este presupuesto en el editor para modificarlo"):
-                        if cargar_presupuesto_en_session_state(p_id):
-                            st.toast(f"📥 Presupuesto #{p_id} cargado en el Editor.", icon="📝")
-                            st.rerun()
+                    st.button(
+                        "✏️ Editar", 
+                        key=f"btn_edit_{p_id}", 
+                        on_click=cargar_presupuesto_en_session_state,
+                        args=(p_id,),
+                        use_container_width=True, 
+                        help="Carga este presupuesto en el editor para modificarlo"
+    )
 
                 with col_b2:
                     puede_eliminar = rol_simulado == "administrador"
