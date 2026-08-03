@@ -120,7 +120,7 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
 
 
 def cargar_presupuesto_en_session_state(id_presupuesto: int):
-    """Lee la fila desde Supabase y reconstruye los dataframes interactivos y los descuentos."""
+    """Lee la fila desde Supabase y reconstruye los dataframes interactivos, descuentos y cláusulas."""
     data = obtener_presupuesto_por_id_db(id_presupuesto)
     if not data:
         return False
@@ -144,7 +144,10 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
         "descuento_porcentaje": 0.0
     }
     
-    st.session_state.clausulas_presupuesto = data.get("clausulas", "")
+    # 🛠️ FIX: Sanitizar cláusulas contra valores NULL (None) de la Base de Datos
+    raw_clausulas = data.get("clausulas")
+    st.session_state.clausulas_presupuesto = str(raw_clausulas) if raw_clausulas is not None else ""
+    
     st.session_state.presupuesto_id_activo = data.get("id")
 
     secciones_guardadas = data.get("secciones", [])
@@ -176,7 +179,7 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
 
     st.session_state.modo_vista = "edicion"
     return True
-
+    
 def resetear_formulario_presupuesto():
     """Carga la plantilla fija ID=1 si existe; si no, realiza el reseteo limpio en memoria."""
     cargado = cargar_presupuesto_en_session_state(1)
