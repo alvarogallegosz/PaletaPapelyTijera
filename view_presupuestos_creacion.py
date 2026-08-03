@@ -1,10 +1,10 @@
-import streamlit as st
-import pandas as pd
+import datetime
 import os
 import time
 import base64
 import re
-import datetime
+import pandas as pd
+import streamlit as st
 
 from print_pdf_utility import generar_pdf_presupuesto_nativo
 from db_connection import guardar_presupuesto_db, obtener_presupuesto_por_id_db
@@ -55,9 +55,15 @@ Paletapapelytijera"""
 def empaquetar_presupuesto_para_bd(usuario_activo: str):
     """Convierte el estado de la sesión en el diccionario adaptado a las columnas exactas de Supabase."""
     meta = st.session_state.get("meta_presupuesto", {})
-    clausulas_txt = st.session_state.get("clausulas_presupuesto", CLAUSULAS_POR_DEFECTO)
-    secciones_activas = st.session_state.get("lista_secciones", [])
+    
+    # 🛡️ TRIPLE PROTECCIÓN DE CLÁUSULAS: Garantizar que NUNCA viajen vacías a la BD
+    clausulas_txt = st.session_state.get("clausulas_presupuesto")
+    if not clausulas_txt or not str(clausulas_txt).strip():
+        clausulas_txt = st.session_state.get("input_widget_clausulas")
+    if not clausulas_txt or not str(clausulas_txt).strip():
+        clausulas_txt = CLAUSULAS_POR_DEFECTO
 
+    secciones_activas = st.session_state.get("lista_secciones", [])
     secciones_exportar = []
     monto_total_calculado = 0.0
 
@@ -93,7 +99,7 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
             "items": items_list
         })
 
-    # TRUCO DE PERSISTENCIA: Inyectar metadata del descuento en el JSONB de secciones
+    # Inyectar metadata del descuento en el JSONB de secciones
     descuento_activado = meta.get("descuento_activado", False)
     descuento_porcentaje = float(meta.get("descuento_porcentaje", 0.0))
     
@@ -125,12 +131,13 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
         "clausulas": clausulas_txt,
         "secciones": secciones_exportar,
         "estado": "Borrador",
-        "es_plantilla": False
+        "es_plantilla": False,
+        "creado_por": usuario_activo
     }
 
 
 def cargar_presupuesto_en_session_state(id_presupuesto: int):
-    """Lee la fila desde Supabase y reconstruye los dataframes interactivos, descuentos y cláusulas."""
+    """Lee la fila desde Supabase y reconstruye los dataframes interactivos, descuentos y cláusulas sin truncamiento."""
     data = obtener_presupuesto_por_id_db(id_presupuesto)
     if not data:
         return False
@@ -154,17 +161,15 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
         "descuento_porcentaje": 0.0
     }
     
-    # 🧹 Liberar clave de sesión para evitar excepción con st.text_area
-    st.session_state.pop("clausulas_presupuesto", None)
-
-    # 📜 Recarga limpia: si traía cláusulas se respetan; si venía NULL o vacío, usa las por defecto
     raw_clausulas = data.get("clausulas")
-    if raw_clausulas and str(raw_clausulas).strip():
-        st.session_state.clausulas_presupuesto = str(raw_clausulas)
-    else:
+    if not raw_clausulas or not str(raw_clausulas).strip():
         st.session_state.clausulas_presupuesto = CLAUSULAS_POR_DEFECTO
-        st.toast("⚠️ Presupuesto sin cláusulas registradas en BD. Se asignaron las cláusulas base.", icon="🔔")
+        st.toast("⚠️ Presupuesto sin cláusulas registradas. Se cargaron las cláusulas base por defecto.", icon="🔔")
+    else:
+        st.session_state.clausulas_presupuesto = str(raw_clausulas)
     
+    # Purgar el widget en memoria para que fuerce la relectura de 'clausulas_presupuesto'
+    st.session_state.pop("input_widget_clausulas", None)
     st.session_state.presupuesto_id_activo = data.get("id")
 
     secciones_guardadas = data.get("secciones", [])
@@ -176,7 +181,6 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
     for sec in secciones_guardadas:
         sec_id = sec.get("id")
         
-        # Rescatar la configuración del descuento oculta en el JSON
         if sec_id == "meta_config_adicional":
             st.session_state.meta_presupuesto["descuento_activado"] = sec.get("descuento_activado", False)
             st.session_state.meta_presupuesto["descuento_porcentaje"] = float(sec.get("descuento_porcentaje", 0.0))
@@ -193,64 +197,48 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
             df_sec = pd.DataFrame(columns=["descripción", "detalles", "dias", "cantidad", "precio_unitario"])
                     
         st.session_state[f"df_{sec_id}"] = df_sec
+        st.session_state[f"res_{sec_id}"] = df_sec
 
     st.session_state.modo_vista = "edicion"
     return True
+
     
 def resetear_formulario_presupuesto():
-    """Carga la plantilla fija ID=1 si existe; si no, realiza el reseteo limpio en memoria."""
-    cargado = cargar_presupuesto_en_session_state(1)
+    """Restablece los campos a cero e inyecta las cláusulas por defecto."""
+    st.session_state.meta_presupuesto = {
+        "cliente": "", 
+        "nombre": "", 
+        "fecha_evento": datetime.date.today(), 
+        "lugar": "", 
+        "fecha_larga": "",
+        "tipo_presupuesto": "Decoración",
+        "descuento_activado": False,
+        "descuento_porcentaje": 0.0
+    }
     
-    if cargado:
-        st.session_state.meta_presupuesto.update({
-            "cliente": "", 
-            "nombre": "", 
-            "fecha_evento": datetime.date.today(), 
-            "lugar": "", 
-            "fecha_larga": "",
-            "descuento_activado": False,
-            "descuento_porcentaje": 0.0
-        })
-        st.session_state.presupuesto_id_activo = None
-    else:
-        st.session_state.meta_presupuesto = {
-            "cliente": "", 
-            "nombre": "", 
-            "fecha_evento": datetime.date.today(), 
-            "lugar": "", 
-            "fecha_larga": "",
-            "tipo_presupuesto": "Decoración",
-            "descuento_activado": False,
-            "descuento_porcentaje": 0.0
-        }
-        
-        if "presupuesto_id_activo" in st.session_state:
-            st.session_state.presupuesto_id_activo = None
+    st.session_state.presupuesto_id_activo = None
+    st.session_state.clausulas_presupuesto = CLAUSULAS_POR_DEFECTO
+    st.session_state.pop("input_widget_clausulas", None)
 
-        secciones_actuales = st.session_state.get("lista_secciones", [])
-        for sec in secciones_actuales:
-            sec_id = sec.get("id")
-            st.session_state.pop(f"df_{sec_id}", None)
-            st.session_state.pop(f"res_{sec_id}", None)
-            st.session_state.pop(f"editor_widget_{sec_id}", None)
-            st.session_state.pop(f"tit_input_{sec_id}", None)
+    secciones_actuales = st.session_state.get("lista_secciones", [])
+    for sec in secciones_actuales:
+        sec_id = sec.get("id")
+        st.session_state.pop(f"df_{sec_id}", None)
+        st.session_state.pop(f"res_{sec_id}", None)
+        st.session_state.pop(f"editor_widget_{sec_id}", None)
+        st.session_state.pop(f"tit_input_{sec_id}", None)
 
-        nuevo_id = f"sec_{int(time.time() * 1000)}"
-        st.session_state.lista_secciones = [
-            {"id": nuevo_id, "titulo": "DECORACIÓN PRINCIPAL"}
-        ]
-        st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(
-            columns=["descripción", "detalles", "dias", "cantidad", "precio_unitario"]
-        )
+    nuevo_id = f"sec_{int(time.time() * 1000)}"
+    st.session_state.lista_secciones = [
+        {"id": nuevo_id, "titulo": "DECORACIÓN PRINCIPAL"}
+    ]
+    st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(
+        columns=["descripción", "detalles", "dias", "cantidad", "precio_unitario"]
+    )
 
-        st.session_state.pop("clausulas_presupuesto", None)
-        st.session_state.clausulas_presupuesto = CLAUSULAS_POR_DEFECTO
 
 def calcular_subtotal_df(df_input):
-    """
-    Calcula el subtotal dinámico (Días * Cantidad * PU) para los
-    indicadores de pantalla sin alterar la estructura del data_editor.
-    """
+    """Calcula el subtotal dinámico para los indicadores de pantalla."""
     if df_input is None or df_input.empty:
         return 0.0
 
@@ -267,10 +255,8 @@ def calcular_subtotal_df(df_input):
 
 
 def render_creacion_presupuestos(rol_actual):
-    # --- 🎨 CONTROL DE INYECCIÓN CSS (INCLUYE SOLUCIÓN DE SCROLLBAR) ---
     st.markdown("""
         <style>
-            /* 🚀 FORZAR BARRAS DE DESPLAZAMIENTO VISIBLES Y GRUESAS */
             ::-webkit-scrollbar {
                 -webkit-appearance: none;
                 width: 16px !important;
@@ -427,7 +413,7 @@ def render_creacion_presupuestos(rol_actual):
     if "meta_presupuesto" not in st.session_state:
         resetear_formulario_presupuesto()
 
-    if "clausulas_presupuesto" not in st.session_state:
+    if "clausulas_presupuesto" not in st.session_state or not str(st.session_state.clausulas_presupuesto).strip():
         st.session_state.clausulas_presupuesto = CLAUSULAS_POR_DEFECTO
 
     if "lista_secciones" not in st.session_state:
@@ -645,7 +631,7 @@ def render_creacion_presupuestos(rol_actual):
             else:
                 st.session_state.meta_presupuesto["descuento_porcentaje"] = 0.0
 
-        # --- 💵 RENDERIZADO DEL TOTAL GENERAL (CON O SIN DESCUENTO) ---
+        # --- 💵 RENDERIZADO DEL TOTAL GENERAL ---
         descuento_activado = st.session_state.meta_presupuesto.get("descuento_activado", False)
         descuento_porcentaje = float(st.session_state.meta_presupuesto.get("descuento_porcentaje", 0.0))
 
@@ -675,19 +661,23 @@ def render_creacion_presupuestos(rol_actual):
             </div>
             """, unsafe_allow_html=True)
 
-        # --- 📜 SECCIÓN DE CLÁUSULAS LIMPIA Y SIN PARCHES ---
+        # --- 📜 TÉRMINOS Y CLÁUSULAS CON CLAVE DESACOPLADA ---
         with st.container(border=True):
             st.markdown("## 📜 Términos y Cláusulas")
         
-            if not str(st.session_state.get("clausulas_presupuesto", "")).strip():
-                st.warning("⚠️ El presupuesto actualmente no tiene cláusulas redactadas.")
-
-            st.text_area(
+            if "clausulas_presupuesto" not in st.session_state or not str(st.session_state.clausulas_presupuesto).strip():
+                st.session_state.clausulas_presupuesto = CLAUSULAS_POR_DEFECTO
+        
+            val_clausulas = st.text_area(
                 "Modifique cláusulas si es necesario:",
-                key="clausulas_presupuesto",
+                value=st.session_state.clausulas_presupuesto,
+                key="input_widget_clausulas",
                 height=150
             )
+            # 🔑 Sincronización continua en la clave no-widget independiente
+            st.session_state.clausulas_presupuesto = val_clausulas
 
+        # Guardado Automático de Borrador
         tiempo_actual = time.time()
         if tiempo_actual - st.session_state.ultimo_guardado >= 300:
             usuario_activo = st.session_state.get("usuario_logueado", "Usuario")
@@ -713,7 +703,9 @@ def render_creacion_presupuestos(rol_actual):
     # ===================================================
     else:
         meta = st.session_state.get("meta_presupuesto", {})
-        clausulas_txt = st.session_state.get("clausulas_presupuesto", CLAUSULAS_POR_DEFECTO)
+        
+        # 🔑 Rescatar cláusulas persistentes
+        clausulas_txt = st.session_state.get("clausulas_presupuesto") or CLAUSULAS_POR_DEFECTO
         secciones_activas = st.session_state.get("lista_secciones", [])
 
         for sec in secciones_activas:
@@ -766,7 +758,8 @@ def render_creacion_presupuestos(rol_actual):
                 
                 exito, msj = guardar_presupuesto_db(datos_payload, id_presupuesto=id_edicion)
                 if exito:
-                    st.success(f"🎉 {msj}")
+                    st.toast(f"🎉 {msj}", icon="💾")
+                    st.rerun()
                 else:
                     st.error(f"❌ {msj}")
         
