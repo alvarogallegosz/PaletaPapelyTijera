@@ -8,6 +8,7 @@ from db_connection import (
     guardar_presupuesto_db,
     obtener_presupuestos_db,
 )
+from view_presupuestos_creacion import cargar_presupuesto_en_session_state
 
 def render_tarjeta_presupuesto(p: dict, rol_actual: str = "administrador", idx="0"):
     """Renderiza la tarjeta expandible para un presupuesto individual."""
@@ -75,20 +76,19 @@ def render_tarjeta_presupuesto(p: dict, rol_actual: str = "administrador", idx="
 
         # 1. Cargar en Editor
         with b_col1:
-            # ✅ FIX: idx agregado a la key
             if st.button(
                 "✏️ Cargar en Editor", key=f"btn_edit_{id_p}_{idx}", use_container_width=True
             ):
-                st.session_state["presupuesto_id_activo"] = id_p
-                st.success(
-                    f"Presupuesto #{id_p} cargado. Puedes pasar a la pestaña de"
-                    " Maquetación."
-                )
-                st.rerun()
+                # ✅ CORRECCIÓN: Invocar la función de carga real en session_state
+                if cargar_presupuesto_en_session_state(id_p):
+                    st.success(
+                        f"Presupuesto #{id_p} cargado. Puedes pasar a la pestaña de"
+                        " Maquetación."
+                    )
+                    st.rerun()
 
         # 2. Clonar / Replicar
         with b_col2:
-            # ✅ FIX: idx agregado a la key
             if st.button(
                 "📋 Clonar / Replicar",
                 key=f"btn_clonar_{id_p}_{idx}",
@@ -101,6 +101,8 @@ def render_tarjeta_presupuesto(p: dict, rol_actual: str = "administrador", idx="
                     "lugar_evento": p.get("lugar_evento"),
                     "tipo_presupuesto": tipo,
                     "monto_total": monto,
+                    # ✅ CORRECCIÓN: Incluir explícitamente las cláusulas
+                    "clausulas": p.get("clausulas", "") or "", 
                     "estado": "Borrador",
                     "es_plantilla": False,
                     "secciones": p.get("secciones", []),
