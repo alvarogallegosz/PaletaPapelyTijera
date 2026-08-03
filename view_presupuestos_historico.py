@@ -8,7 +8,7 @@ from db_connection import (
     guardar_presupuesto_db,
     obtener_presupuestos_db,
 )
-from view_presupuestos_creacion import cargar_presupuesto_en_session_state
+from view_presupuestos_creacion import cargar_presupuesto_en_session_state,CLAUSULAS_POR_DEFECTO
 
 def render_tarjeta_presupuesto(p: dict, rol_actual: str = "administrador", idx="0"):
     """Renderiza la tarjeta expandible para un presupuesto individual."""
