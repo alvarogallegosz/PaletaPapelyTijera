@@ -62,28 +62,37 @@ CSS_GESTION = """
 # 🖥️ RENDER PRINCIPAL: GESTIÓN Y APROBACIÓN
 # ===================================================
 
-def render_gestion_presupuestos(rol_simulado: str):
+def render_gestion_presupuestos(rol_simulado: str = "usuario"):
     st.markdown(CSS_GESTION, unsafe_allow_html=True)
     st.markdown("## 🔄 Gestión y Aprobación de Presupuestos")
 
-    # --- 1. OBTENCIÓN DE DATOS DESDE BASE DE DATOS ---
+    # Determinar privilegios según el rol activo
+    rol_actual = str(rol_simulado or "usuario").lower().strip()
+    puede_aprobar = rol_actual in ["administrador", "gerente"]
+    puede_eliminar = rol_actual == "administrador"
+
+    # --- 1. OBTENCIÓN Y SANITIZACIÓN DE DATOS ---
     with st.spinner("Sincronizando presupuestos con la base de datos..."):
         lista_presupuestos = obtener_presupuestos_db()
 
     if not lista_presupuestos:
-        st.info("ℹ️ No hay presupuestos registrados aún en la base de datos. Crea uno nuevo en la pestaña de Creación y Carga.")
+        st.info("ℹ️ No hay presupuestos registrados aún en la base de datos. Crea uno nuevo en la pestaña de Creación.")
         return
 
     df_presupuestos = pd.DataFrame(lista_presupuestos)
 
-    # Validar columnas mínimas requeridas para evitar errores de ejecución
+    # Validar columnas mínimas requeridas para evitar errores KeyError
     columnas_esperadas = ["id", "nombre", "cliente", "monto_total", "estado", "tipo_presupuesto", "creado_por", "created_at"]
     for col in columnas_esperadas:
         if col not in df_presupuestos.columns:
             df_presupuestos[col] = "N/A" if col != "monto_total" else 0.0
 
-    # Asegurar formato numérico
+    # Normalización segura de tipos de datos
     df_presupuestos["monto_total"] = pd.to_numeric(df_presupuestos["monto_total"], errors="coerce").fillna(0.0)
+    df_presupuestos["estado"] = df_presupuestos["estado"].fillna("Borrador").astype(str).str.strip().str.capitalize()
+    df_presupuestos["tipo_presupuesto"] = df_presupuestos["tipo_presupuesto"].fillna("Decoración").astype(str).str.strip()
+    df_presupuestos["nombre"] = df_presupuestos["nombre"].fillna("SIN NOMBRE").astype(str).str.strip()
+    df_presupuestos["cliente"] = df_presupuestos["cliente"].fillna("CLIENTE").astype(str).str.strip()
 
     # --- 2. PANEL DE MÉTRICAS RÁPIDAS (KPIs) ---
     total_registros = len(df_presupuestos)
@@ -142,23 +151,24 @@ def render_gestion_presupuestos(rol_simulado: str):
         estados_disponibles = ["Todos", "Borrador", "Enviado", "Aprobado", "Rechazado"]
         filtro_estado = st.selectbox("📌 Filtrar por Estado:", options=estados_disponibles, index=0)
     with f3:
-        tipos_disponibles = ["Todos"] + list(df_presupuestos["tipo_presupuesto"].dropna().unique())
+        tipos_unicos = sorted(list(df_presupuestos["tipo_presupuesto"].unique()))
+        tipos_disponibles = ["Todos"] + tipos_unicos
         filtro_tipo = st.selectbox("📂 Tipo de Presupuesto:", options=tipos_disponibles, index=0)
 
-    # Aplicar Filtros sobre el DataFrame
+    # Aplicar Filtros dinámicos sobre el DataFrame
     df_filtrado = df_presupuestos.copy()
 
     if busqueda_texto.strip():
         txt = busqueda_texto.strip().lower()
-        cond_cliente = df_filtrado["cliente"].astype(str).str.lower().str.contains(txt)
-        cond_nombre = df_filtrado["nombre"].astype(str).str.lower().str.contains(txt)
+        cond_cliente = df_filtrado["cliente"].str.lower().str.contains(txt, na=False)
+        cond_nombre = df_filtrado["nombre"].str.lower().str.contains(txt, na=False)
         df_filtrado = df_filtrado[cond_cliente | cond_nombre]
 
     if filtro_estado != "Todos":
-        df_filtrado = df_filtrado[df_filtrado["estado"].astype(str).str.lower() == filtro_estado.lower()]
+        df_filtrado = df_filtrado[df_filtrado["estado"].str.lower() == filtro_estado.lower()]
 
     if filtro_tipo != "Todos":
-        df_filtrado = df_filtrado[df_filtrado["tipo_presupuesto"].astype(str) == filtro_tipo]
+        df_filtrado = df_filtrado[df_filtrado["tipo_presupuesto"] == filtro_tipo]
 
     st.markdown(f"**Registros encontrados:** {len(df_filtrado)}")
 
@@ -167,17 +177,17 @@ def render_gestion_presupuestos(rol_simulado: str):
         st.warning("⚠️ No se encontraron presupuestos que coincidan con los criterios de búsqueda.")
         return
 
-    # Renderizar cada presupuesto en un contenedor limpio
+    # Renderizar cada presupuesto en un contenedor aislado
     for idx, row in df_filtrado.iterrows():
-        p_id = row["id"]
-        p_nombre = str(row.get("nombre", "SIN NOMBRE")).upper()
-        p_cliente = str(row.get("cliente", "CLIENTE")).upper()
-        p_monto = float(row.get("monto_total", 0.0))
-        p_estado = str(row.get("estado", "Borrador")).capitalize()
-        p_tipo = str(row.get("tipo_presupuesto", "Decoración"))
+        p_id = int(row["id"])
+        p_nombre = str(row["nombre"]).upper()
+        p_cliente = str(row["cliente"]).upper()
+        p_monto = float(row["monto_total"])
+        p_estado = str(row["estado"]).capitalize()
+        p_tipo = str(row["tipo_presupuesto"])
         p_creador = str(row.get("creado_por", "N/A"))
 
-        # Determinar clase CSS para la etiqueta de estado
+        # Clase CSS correspondiente al estado
         clase_badge = f"badge-{p_estado.lower()}" if p_estado.lower() in ["borrador", "enviado", "aprobado", "rechazado"] else "badge-borrador"
 
         with st.container(border=True):
@@ -198,7 +208,7 @@ def render_gestion_presupuestos(rol_simulado: str):
                     unsafe_allow_html=True
                 )
 
-            # Columna 2: Cambio de Estado Dinámico
+            # Columna 2: Cambio de Estado Controlado por Rol
             with c_cambio:
                 st.markdown("<span style='font-size: 12px; font-weight: bold; color: #64748b;'>Cambiar Estado:</span>", unsafe_allow_html=True)
                 opciones_estado = ["Borrador", "Enviado", "Aprobado", "Rechazado"]
@@ -209,42 +219,46 @@ def render_gestion_presupuestos(rol_simulado: str):
                     options=opciones_estado,
                     index=idx_actual,
                     key=f"sel_est_{p_id}",
-                    label_visibility="collapsed"
+                    label_visibility="collapsed",
+                    disabled=not puede_aprobar,
+                    help="Requiere permisos de Gerente o Administrador" if not puede_aprobar else "Seleccione para actualizar el estado inmediatamente"
                 )
 
-                if nuevo_estado_sel != p_estado:
-                    puede_cambiar = rol_simulado in ["administrador", "gerente"]
-                    if puede_cambiar:
-                        exito, msj = actualizar_estado_presupuesto_db(p_id, nuevo_estado_sel)
-                        if exito:
-                            st.toast(f"✅ Estado de #{p_id} actualizado a '{nuevo_estado_sel}'", icon="🎉")
-                            st.rerun()
-                        else:
-                            st.error(f"❌ {msj}")
+                # Si el usuario con permisos cambia el estado en el selector
+                if puede_aprobar and nuevo_estado_sel != p_estado:
+                    exito, msj = actualizar_estado_presupuesto_db(p_id, nuevo_estado_sel)
+                    if exito:
+                        st.toast(f"✅ Estado de #{p_id} actualizado a '{nuevo_estado_sel}'", icon="🎉")
+                        st.rerun()
                     else:
-                        st.error("⛔ Requiere rol de Gerente o Administrador.")
+                        st.error(f"❌ {msj}")
 
-            # Columna 3: Botones de Acción
+            # Columna 3: Botones de Acción (Editar y Eliminar Seguro)
             with c_acciones:
                 st.markdown("<span style='font-size: 12px; font-weight: bold; color: #64748b;'>Acciones:</span>", unsafe_allow_html=True)
                 col_b1, col_b2 = st.columns(2)
 
                 with col_b1:
-                    st.button(
-                        "✏️ Editar", 
-                        key=f"btn_edit_{p_id}", 
-                        on_click=cargar_presupuesto_en_session_state,
-                        args=(p_id,),
-                        use_container_width=True, 
-                        help="Carga este presupuesto en el editor para modificarlo"
-    )
-
-                with col_b2:
-                    puede_eliminar = rol_simulado == "administrador"
-                    if st.button("🗑️ Borrar", key=f"btn_del_{p_id}", disabled=not puede_eliminar, use_container_width=True, help="Elimina permanentemente el registro (Solo Administrador)"):
-                        exito, msj = eliminar_presupuesto_db(p_id)
-                        if exito:
-                            st.toast(f"🗑️ Presupuesto #{p_id} eliminado.", icon="✅")
+                    if st.button("✏️ Editar", key=f"btn_edit_{p_id}", use_container_width=True, help="Carga este presupuesto en el editor para modificarlo"):
+                        if cargar_presupuesto_en_session_state(p_id):
+                            st.session_state["pestaña_activa"] = "Creación"
+                            st.session_state["modo_vista"] = "edicion"
+                            st.toast(f"📥 Presupuesto #{p_id} cargado en el Editor.", icon="📝")
                             st.rerun()
                         else:
-                            st.error(f"❌ {msj}")
+                            st.error("❌ No se pudo cargar el presupuesto desde la base de datos.")
+
+                with col_b2:
+                    if puede_eliminar:
+                        with st.popover("🗑️ Borrar", use_container_width=True):
+                            st.markdown(f"**¿Eliminar #{p_id}?**")
+                            st.caption("Esta acción no se puede deshacer.")
+                            if st.button("Sí, eliminar", key=f"confirm_del_{p_id}", type="primary", use_container_width=True):
+                                exito, msj = eliminar_presupuesto_db(p_id)
+                                if exito:
+                                    st.toast(f"🗑️ Presupuesto #{p_id} eliminado con éxito.", icon="✅")
+                                    st.rerun()
+                                else:
+                                    st.error(f"❌ {msj}")
+                    else:
+                        st.button("🗑️ Borrar", key=f"btn_del_dis_{p_id}", disabled=True, use_container_width=True, help="Solo el Administrador puede eliminar presupuestos.")
