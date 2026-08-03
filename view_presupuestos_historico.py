@@ -89,11 +89,15 @@ def render_tarjeta_presupuesto(p: dict, rol_actual: str = "administrador", idx="
 
         # 2. Clonar / Replicar
         with b_col2:
-            if st.button(
-                "📋 Clonar / Replicar",
-                key=f"btn_clonar_{id_p}_{idx}",
-                use_container_width=True,
-            ):
+            if st.button("📋 Clonar / Replicar", key=f"btn_clonar_{id_p}_{idx}", use_container_width=True):
+                
+                # Rescatar cláusulas o fallback a las hardcoded
+                clausulas_origen = p.get("clausulas")
+                if not clausulas_origen or not str(clausulas_origen).strip():
+                    clausulas_a_guardar = CLAUSULAS_POR_DEFECTO
+                else:
+                    clausulas_a_guardar = clausulas_origen
+
                 payload_clon = {
                     "nombre": f"COPIA - {nombre}",
                     "cliente": f"{cliente} (Copia)",
@@ -101,12 +105,12 @@ def render_tarjeta_presupuesto(p: dict, rol_actual: str = "administrador", idx="
                     "lugar_evento": p.get("lugar_evento"),
                     "tipo_presupuesto": tipo,
                     "monto_total": monto,
-                    # ✅ CORRECCIÓN: Incluir explícitamente las cláusulas
-                    "clausulas": p.get("clausulas", "") or "", 
+                    "clausulas": clausulas_a_guardar, # 👈 Siempre lleva contenido válido
                     "estado": "Borrador",
                     "es_plantilla": False,
                     "secciones": p.get("secciones", []),
                 }
+                
                 exito, msg = guardar_presupuesto_db(payload_clon)
                 if exito:
                     st.success("¡Presupuesto clonado con éxito!")
