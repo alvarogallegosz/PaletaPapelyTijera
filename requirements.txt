@@ -3,4 +3,4 @@ pandas>=2.0.0
 supabase>=2.4.0
 st-theme>=1.0.0
 reportlab
-starlette>=0.27.0,<0.38.0
+
