@@ -56,7 +56,6 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
     """Convierte el estado de la sesión en el diccionario adaptado a las columnas exactas de Supabase."""
     meta = st.session_state.get("meta_presupuesto", {})
     
-    # 🛡️ TRIPLE PROTECCIÓN DE CLÁUSULAS: Garantizar que NUNCA viajen vacías a la BD
     clausulas_txt = st.session_state.get("clausulas_presupuesto")
     if not clausulas_txt or not str(clausulas_txt).strip():
         clausulas_txt = st.session_state.get("input_widget_clausulas")
@@ -99,7 +98,6 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
             "items": items_list
         })
 
-    # Inyectar metadata del descuento en el JSONB de secciones
     descuento_activado = meta.get("descuento_activado", False)
     descuento_porcentaje = float(meta.get("descuento_porcentaje", 0.0))
     
@@ -117,22 +115,24 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
     else:
         total_final = monto_total_calculado
 
-    f_evt = meta.get("fecha_evento")
-    fecha_evt_db = f_evt.strftime("%Y-%m-%d") if isinstance(f_evt, (datetime.date, datetime.datetime)) else str(f_evt or "")
+    f_evt = meta.get("fecha_evento", "")
+    f_emision = meta.get("fecha_emision")
+    
+    fecha_emision_db = f_emision.strftime("%Y-%m-%d") if isinstance(f_emision, (datetime.date, datetime.datetime)) else datetime.date.today().strftime("%Y-%m-%d")
 
     return {
-            "nombre": meta.get("nombre", "PRESUPUESTO SIN NOMBRE").strip().upper(),
-            "cliente": meta.get("cliente", "CLIENTE").strip().upper(),
-            "fecha_evento": fecha_evt_db,
-            "lugar_evento": meta.get("lugar", "").strip(),
-            "fecha_emision": datetime.date.today().strftime("%Y-%m-%d"),
-            "tipo_presupuesto": meta.get("tipo_presupuesto", "Decoración"),
-            "monto_total": round(total_final, 2),
-            "clausulas": clausulas_txt,
-            "secciones": secciones_exportar,
-            "estado": "Borrador",
-            "es_plantilla": False,
-        }
+        "nombre": meta.get("nombre", "PRESUPUESTO SIN NOMBRE").strip().upper(),
+        "cliente": meta.get("cliente", "CLIENTE").strip().upper(),
+        "fecha_evento": str(f_evt or "").strip(),
+        "lugar_evento": meta.get("lugar", "").strip(),
+        "fecha_emision": fecha_emision_db,
+        "tipo_presupuesto": meta.get("tipo_presupuesto", "Decoración"),
+        "monto_total": round(total_final, 2),
+        "clausulas": clausulas_txt,
+        "secciones": secciones_exportar,
+        "estado": "Borrador",
+        "es_plantilla": False,
+    }
 
 
 def cargar_presupuesto_en_session_state(id_presupuesto: int):
@@ -141,20 +141,20 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
     if not data:
         return False
 
-    raw_fecha = data.get("fecha_evento", "")
-    fecha_obj = datetime.date.today()
-    if raw_fecha:
+    raw_fecha_emision = data.get("fecha_emision", "")
+    fecha_emision_obj = datetime.date.today()
+    if raw_fecha_emision:
         try:
-            fecha_obj = datetime.datetime.strptime(str(raw_fecha), "%Y-%m-%d").date()
+            fecha_emision_obj = datetime.datetime.strptime(str(raw_fecha_emision), "%Y-%m-%d").date()
         except ValueError:
             pass
 
     st.session_state.meta_presupuesto = {
         "nombre": data.get("nombre", ""),
         "cliente": data.get("cliente", ""),
-        "fecha_evento": fecha_obj,
+        "fecha_evento": str(data.get("fecha_evento", "") or ""),
         "lugar": data.get("lugar_evento", ""),
-        "fecha_larga": data.get("fecha_emision", ""),
+        "fecha_emision": fecha_emision_obj,
         "tipo_presupuesto": data.get("tipo_presupuesto", "Decoración"),
         "descuento_activado": False,
         "descuento_porcentaje": 0.0
@@ -167,7 +167,6 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
     else:
         st.session_state.clausulas_presupuesto = str(raw_clausulas)
     
-    # Purgar el widget en memoria para que fuerce la relectura de 'clausulas_presupuesto'
     st.session_state.pop("input_widget_clausulas", None)
     st.session_state.presupuesto_id_activo = data.get("id")
 
@@ -207,9 +206,9 @@ def resetear_formulario_presupuesto():
     st.session_state.meta_presupuesto = {
         "cliente": "", 
         "nombre": "", 
-        "fecha_evento": datetime.date.today(), 
+        "fecha_evento": "", 
         "lugar": "", 
-        "fecha_larga": "",
+        "fecha_emision": datetime.date.today(),
         "tipo_presupuesto": "Decoración",
         "descuento_activado": False,
         "descuento_porcentaje": 0.0
@@ -463,16 +462,12 @@ def render_creacion_presupuestos(rol_actual):
                     placeholder="Ej: Sra. María Pérez"
                 )
             with c2:
-                val_fecha = st.session_state.meta_presupuesto.get("fecha_evento")
-                if not isinstance(val_fecha, (datetime.date, datetime.datetime)):
-                    val_fecha = datetime.date.today()
-
-                fecha_sel = st.date_input(
-                    "Fecha del Evento:", 
-                    value=val_fecha,
-                    format="DD/MM/YYYY"
+                # FECHA DEL EVENTO: Fecha Larga en campo de texto (no predeterminada a hoy)
+                st.session_state.meta_presupuesto["fecha_evento"] = st.text_input(
+                    "Fecha del Evento (Fecha Larga):", 
+                    value=st.session_state.meta_presupuesto.get("fecha_evento", ""),
+                    placeholder="Ej: Sábado, 17 de julio de 2026"
                 )
-                st.session_state.meta_presupuesto["fecha_evento"] = fecha_sel
 
                 st.session_state.meta_presupuesto["lugar"] = st.text_input(
                     "Lugar del Evento:", 
@@ -480,11 +475,18 @@ def render_creacion_presupuestos(rol_actual):
                     placeholder="Ej: REST. LA CASONA, LECHERÍA"
                 )
             with c3:
-                st.session_state.meta_presupuesto["fecha_larga"] = st.text_input(
+                # FECHA DE EMISIÓN: Predeterminada a hoy() en formato DD/MM/YYYY
+                val_emision = st.session_state.meta_presupuesto.get("fecha_emision")
+                if not isinstance(val_emision, (datetime.date, datetime.datetime)):
+                    val_emision = datetime.date.today()
+
+                fecha_emision_sel = st.date_input(
                     "Fecha de Emisión:", 
-                    value=st.session_state.meta_presupuesto.get("fecha_larga", ""),
-                    placeholder="Ej: 17 de julio de 2026"
+                    value=val_emision,
+                    format="DD/MM/YYYY"
                 )
+                st.session_state.meta_presupuesto["fecha_emision"] = fecha_emision_sel
+
                 opciones_tipo = ["Decoración", "Alquiler", "Fiesta", "Cajas", "Otros"]
                 idx_sel = opciones_tipo.index(st.session_state.meta_presupuesto.get("tipo_presupuesto", "Decoración")) if st.session_state.meta_presupuesto.get("tipo_presupuesto") in opciones_tipo else 0
                 st.session_state.meta_presupuesto["tipo_presupuesto"] = st.selectbox(
@@ -673,7 +675,6 @@ def render_creacion_presupuestos(rol_actual):
                 key="input_widget_clausulas",
                 height=150
             )
-            # 🔑 Sincronización continua en la clave no-widget independiente
             st.session_state.clausulas_presupuesto = val_clausulas
 
         # Guardado Automático de Borrador
@@ -703,7 +704,6 @@ def render_creacion_presupuestos(rol_actual):
     else:
         meta = st.session_state.get("meta_presupuesto", {})
         
-        # 🔑 Rescatar cláusulas persistentes
         clausulas_txt = st.session_state.get("clausulas_presupuesto") or CLAUSULAS_POR_DEFECTO
         secciones_activas = st.session_state.get("lista_secciones", [])
 
@@ -725,10 +725,10 @@ def render_creacion_presupuestos(rol_actual):
         pdf_bytes = generar_pdf_presupuesto_nativo(incluir_precios=incluir_precios_pdf)
         
         p_nombre = str(meta.get("nombre", "PRESUPUESTO")).strip().upper() or "PRESUPUESTO"
-        p_fecha_larga = fecha_a_larga(meta.get("fecha_evento"))
+        f_evt_clean = str(meta.get("fecha_evento", "")).strip() or "SIN_FECHA"
 
         nombre_clean = re.sub(r'[^\w\s-]', '', p_nombre).strip().replace(" ", "_")
-        fecha_clean = re.sub(r'[^\w\s-]', '', p_fecha_larga).strip().replace(" ", "_")
+        fecha_clean = re.sub(r'[^\w\s-]', '', f_evt_clean).strip().replace(" ", "_")
 
         nombre_archivo_pdf = f"Presupuesto_{nombre_clean}_{fecha_clean}.pdf"
         
@@ -796,10 +796,15 @@ def render_creacion_presupuestos(rol_actual):
             """
         
         p_nombre = str(meta.get('nombre', '') or '').upper() or 'PRESUPUESTO'
-        p_fecha_evt = fecha_a_larga(meta.get('fecha_evento'))
+        p_fecha_evt = str(meta.get('fecha_evento', '') or '').upper() or 'N/A'
         p_cliente = str(meta.get('cliente', '') or '').upper() or 'N/A'
         p_lugar = str(meta.get('lugar', '') or '').upper() or 'N/A'
-        p_emision = str(meta.get('fecha_larga', '') or '').upper() or 'N/A'
+        
+        f_emision_val = meta.get('fecha_emision')
+        if isinstance(f_emision_val, (datetime.date, datetime.datetime)):
+            p_emision = f_emision_val.strftime("%d/%m/%Y")
+        else:
+            p_emision = str(f_emision_val or '').upper() or datetime.date.today().strftime("%d/%m/%Y")
 
         html_cuerpo = f"""
         <div class="documento-hoja">
