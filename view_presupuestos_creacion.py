@@ -462,12 +462,21 @@ def render_creacion_presupuestos(rol_actual):
                     placeholder="Ej: Sra. María Pérez"
                 )
             with c2:
-                # FECHA DEL EVENTO: Fecha Larga en campo de texto (no predeterminada a hoy)
-                st.session_state.meta_presupuesto["fecha_evento"] = st.text_input(
-                    "Fecha del Evento (Fecha Larga):", 
+                # Captura el texto ingresado por el usuario
+                raw_fecha_evt = st.text_input(
+                    "Fecha del Evento:", 
                     value=st.session_state.meta_presupuesto.get("fecha_evento", ""),
-                    placeholder="Ej: Sábado, 17 de julio de 2026"
+                    placeholder="Ej: 17/08/2026 o Sábado, 17 de agosto de 2026"
                 )
+
+                # Conversión inmediata al ingresar/modificar el valor
+                if raw_fecha_evt.strip():
+                    try:
+                        st.session_state.meta_presupuesto["fecha_evento"] = fecha_a_larga(raw_fecha_evt)
+                    except Exception:
+                        st.session_state.meta_presupuesto["fecha_evento"] = raw_fecha_evt
+                else:
+                    st.session_state.meta_presupuesto["fecha_evento"] = ""
 
                 st.session_state.meta_presupuesto["lugar"] = st.text_input(
                     "Lugar del Evento:", 
