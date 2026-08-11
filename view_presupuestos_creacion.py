@@ -529,13 +529,23 @@ def render_creacion_presupuestos(rol_actual):
             nuevo_id = f"sec_{int(time.time() * 1000)}"
             idx_nuevo = len(st.session_state.lista_secciones)
             sug_titulo = sugerencias_titulos[idx_nuevo] if idx_nuevo < len(sugerencias_titulos) else f"NUEVA ZONA {idx_nuevo + 1}"
-            
+
             st.session_state.lista_secciones.append({
                 "id": nuevo_id,
                 "titulo": sug_titulo
             })
             st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(columns=COLUMNAS_ORDENADAS)
             st.rerun()
+
+        # 🟢 INTERRUPTOR DISCRETO: Controla si la columna "días" se muestra en la vista de edición
+        mostrar_columna_dias = st.toggle("⏱️ Mostrar columna de Días en la vista de edición", value=False)
+        
+        # Definimos dinámicamente las columnas visibles según el interruptor
+        if mostrar_columna_dias:
+            columnas_visibles_actuales = COLUMNAS_ORDENADAS # Tu lista original con "dias"
+        else:
+            # Excluimos "dias" de la vista, pero se mantiene en el fondo para los cálculos y el PDF
+            columnas_visibles_actuales = [c for c in COLUMNAS_ORDENADAS if c != "dias"]
 
         total_acumulado_presupuesto = 0.0
 
@@ -565,20 +575,20 @@ def render_creacion_presupuestos(rol_actual):
                         st.session_state.pop(res_key, None)
                         st.rerun()
 
-                # --- TABLA DINÁMICA CON ORDEN RÍGIDO ---
+                # --- TABLA DINÁMICA CON ORDEN RÍGIDO Y COLUMNAS CONDICIONALES ---
                 df_vivo = st.data_editor(
                     st.session_state[df_key],
                     key=f"editor_widget_{sec_id}",
                     num_rows="dynamic",
                     width="stretch",
                     hide_index=True,
-                    column_order=COLUMNAS_ORDENADAS,
+                    column_order=columnas_visibles_actuales, # 🟢 Aquí aplicamos el filtro dinámico
                     column_config={
                         "descripción": st.column_config.TextColumn("Descripción (80 ch)"),
                         "detalles": st.column_config.TextColumn("Detalles (40 ch)"),
-                        "dias": st.column_config.NumberColumn("Días (11 ch)", min_value=1),
-                        "cantidad": st.column_config.NumberColumn("Cantidad (8 ch)", min_value=1, default=1),
-                        "precio_unitario": st.column_config.NumberColumn("Precio ($)", min_value=0.0, format="$%.2f")
+                        "dias": st.column_config.NumberColumn("Días (11 ch)", min_value=0, step=0.5),
+                        "cantidad": st.column_config.NumberColumn("Cantidad (8 ch)", min_value=0, step=0.1, default=1.0),
+                        "precio_unitario": st.column_config.NumberColumn("Precio ($)", min_value=0.0, step=0.01, format="$%.2f") # 🟢 Corregida la coma faltante del step
                     }
                 )
 
