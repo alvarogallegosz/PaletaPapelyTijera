@@ -534,85 +534,90 @@ def render_creacion_presupuestos(rol_actual):
 
         total_acumulado_presupuesto = 0.0
 
-        for idx, sec in enumerate(st.session_state.lista_secciones):
-            sec_id = sec.get("id")
-            df_key = f"df_{sec_id}"
-            res_key = f"res_{sec_id}"
-            sug_placeholder = f"Sección {idx+1}"
-    
-            with st.container(border=True):
-                col_t1, col_t2 = st.columns([5, 1])
-                with col_t1:
-                    tit_sec = st.text_input(
-                        f"Título de la Sección {idx+1}:", 
-                        value=sec["titulo"], 
-                        placeholder=f"Ej: {sug_placeholder}",
-                        key=f"tit_input_{sec_id}"
-                    )
-                    st.session_state.lista_secciones[idx]["titulo"] = tit_sec.upper() if tit_sec else f"SECCIÓN {idx+1}"
-                
-                with col_t2:
-                    st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-                    if st.button("🗑️", key=f"del_{sec_id}", use_container_width=True) and len(st.session_state.lista_secciones) > 1:
-                        st.session_state.lista_secciones.pop(idx)
-                        st.session_state.pop(df_key, None)
-                        st.session_state.pop(res_key, None)
-                        st.rerun()
-    
-                # --- TABLA DINÁMICA CON ORDEN RÍGIDO DE COLUMNAS ---
-                df_vivo = st.data_editor(
-                    st.session_state[df_key],
-                    key=f"editor_widget_{sec_id}",
-                    num_rows="dynamic",
-                    width="stretch",
-                    hide_index=True,
-                    column_order=["descripción", "detalles", "dias", "cantidad", "precio_unitario"],
-                    column_config={
-                        "descripción": st.column_config.TextColumn("Descripción (80 ch)"),
-                        "detalles": st.column_config.TextColumn("Detalles (40 ch)"),
-                        "dias": st.column_config.NumberColumn("Días (11 ch)", min_value=1),
-                        "cantidad": st.column_config.NumberColumn("Cantidad (8 ch)", min_value=1, default=1),
-                        "precio_unitario": st.column_config.NumberColumn("Precio ($)", min_value=0.0, format="$%.2f")
-                    }
+
+    for idx, sec in enumerate(st.session_state.lista_secciones):
+        sec_id = sec.get("id")
+        df_key = f"df_{sec_id}"
+        res_key = f"res_{sec_id}"
+        sug_placeholder = f"Sección {idx+1}"
+
+        # 3. Bloque contenedor (8 espacios)
+        with st.container(border=True):
+            col_t1, col_t2 = st.columns([5, 1])
+            
+            # 4. Contenido de col_t1 (12 espacios)
+            with col_t1:
+                tit_sec = st.text_input(
+                    f"Título de la Sección {idx+1}:", 
+                    value=sec["titulo"], 
+                    placeholder=f"Ej: {sug_placeholder}",
+                    key=f"tit_input_{sec_id}"
                 )
-    
-                registros_vivos = df_vivo.to_dict("records")
-                duplicados_encontrados = False
-                vistos = set()
-                
-                for r in registros_vivos:
-                    clave = (
-                        str(r.get("descripción", "")).strip().lower(),
-                        str(r.get("detalles", "")).strip().lower(),
-                        a_flotante(r.get("dias")),
-                        a_flotante(r.get("cantidad")),
-                        a_flotante(r.get("precio_unitario"))
-                    )
-                    if not any(clave):
-                        continue
-                    if clave in vistos:
-                        duplicados_encontrados = True
-                        break
-                    vistos.add(clave)
-    
-                key_dup_confirm = f"confirmar_dup_{sec_id}"
-                if duplicados_encontrados and not st.session_state.get(key_dup_confirm, False):
-                    st.warning("⚠️ Se han detectado asientos idénticos con los mismos datos exactos en esta sección.")
-                    if st.button("Confirmar y aceptar asientos idénticos", key=f"btn_conf_dup_{sec_id}", type="secondary"):
-                        st.session_state[key_dup_confirm] = True
-                        st.rerun()
-                    else:
-                        st.stop()
-                elif not duplicados_encontrados:
-                    st.session_state[key_dup_confirm] = False
-                    
-                if len(df_vivo) > max_filas:
-                    st.error(f"⚠️ Sección {idx+1} limitada a {max_filas} líneas máximas.")
-                    df_guardar = df_vivo.head(max_filas)
+                st.session_state.lista_secciones[idx]["titulo"] = tit_sec.upper() if tit_sec else f"SECCIÓN {idx+1}"
+            
+            # 4. Contenido de col_t2 (12 espacios)
+            with col_t2:
+                st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+                if st.button("🗑️", key=f"del_{sec_id}", use_container_width=True) and len(st.session_state.lista_secciones) > 1:
+                    st.session_state.lista_secciones.pop(idx)
+                    st.session_state.pop(df_key, None)
+                    st.session_state.pop(res_key, None)
+                    st.rerun()
+
+            # --- TABLA DINÁMICA CON ORDEN RÍGIDO (8 espacios) ---
+            df_vivo = st.data_editor(
+                st.session_state[df_key],
+                key=f"editor_widget_{sec_id}",
+                num_rows="dynamic",
+                width="stretch",
+                hide_index=True,
+                column_order=["descripción", "detalles", "dias", "cantidad", "precio_unitario"],
+                column_config={
+                    "descripción": st.column_config.TextColumn("Descripción (80 ch)"),
+                    "detalles": st.column_config.TextColumn("Detalles (40 ch)"),
+                    "dias": st.column_config.NumberColumn("Días (11 ch)", min_value=1),
+                    "cantidad": st.column_config.NumberColumn("Cantidad (8 ch)", min_value=1, default=1),
+                    "precio_unitario": st.column_config.NumberColumn("Precio ($)", min_value=0.0, format="$%.2f")
+                }
+            )
+
+            registros_vivos = df_vivo.to_dict("records")
+            duplicados_encontrados = False
+            vistos = set()
+            
+            for r in registros_vivos:
+                clave = (
+                    str(r.get("descripción", "")).strip().lower(),
+                    str(r.get("detalles", "")).strip().lower(),
+                    a_flotante(r.get("dias")),
+                    a_flotante(r.get("cantidad")),
+                    a_flotante(r.get("precio_unitario"))
+                )
+                if not any(clave):
+                    continue
+                if clave in vistos:
+                    duplicados_encontrados = True
+                    break
+                vistos.add(clave)
+
+            key_dup_confirm = f"confirmar_dup_{sec_id}"
+            if duplicados_encontrados and not st.session_state.get(key_dup_confirm, False):
+                st.warning("⚠️ Se han detectado asientos idénticos con los mismos datos exactos en esta sección.")
+                if st.button("Confirmar y aceptar asientos idénticos", key=f"btn_conf_dup_{sec_id}", type="secondary"):
+                    st.session_state[key_dup_confirm] = True
+                    st.rerun()
                 else:
-                    df_guardar = df_vivo
-    
-                st.session_state[res_key] = df_guardar
+                    st.stop()
+            elif not duplicados_encontrados:
+                st.session_state[key_dup_confirm] = False
+                
+            if len(df_vivo) > max_filas:
+                st.error(f"⚠️ Sección {idx+1} limitada a {max_filas} líneas máximas.")
+                df_guardar = df_vivo.head(max_filas)
+            else:
+                df_guardar = df_vivo
+
+            st.session_state[res_key] = df_guardar
 
                 subtotal_seccion = calcular_subtotal_df(df_guardar)
                 total_acumulado_presupuesto += subtotal_seccion
