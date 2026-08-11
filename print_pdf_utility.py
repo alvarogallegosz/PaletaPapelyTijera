@@ -4,7 +4,7 @@ import pandas as pd
 import streamlit as st
 import datetime
 
-from PIL import Image as PILImage  # 🟢 Importado para calcular la proporción real del logo
+from PIL import Image as PILImage
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -38,14 +38,11 @@ class NumberedCanvas(canvas.Canvas):
         self.setFont("Helvetica", 8)
         self.setFillColor(colors.HexColor('#64748b'))
         
-        # Pie de página: 'Página X de Y' alineado a la derecha
         texto_pagina = f"Página {self._pageNumber} de {page_count}"
         self.drawRightString(612 - 36, 20, texto_pagina)
         
-        # Identificador institucional a la izquierda
         self.drawString(36, 20, "Paletapapelytijera • Presupuesto Detallado")
         
-        # Línea separadora decorativa de pie
         self.setStrokeColor(colors.HexColor('#e2e8f0'))
         self.setLineWidth(0.5)
         self.line(36, 30, 612 - 36, 30)
@@ -56,7 +53,6 @@ class NumberedCanvas(canvas.Canvas):
 def generar_pdf_presupuesto_nativo(incluir_precios=False):
     buffer = io.BytesIO()
     
-    # Configuración de página Carta física (612 x 792 pt) con márgenes de 0.5 in (36 pt)
     doc = SimpleDocTemplate(
         buffer,
         pagesize=letter,
@@ -68,7 +64,6 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
     
     styles = getSampleStyleSheet()
     
-    # --- 🎨 ESTILOS TIPOGRÁFICOS ---
     style_normal = ParagraphStyle(
         'DocNormal',
         parent=styles['Normal'],
@@ -85,7 +80,7 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
         fontSize=9,
         leading=11,
         textColor=colors.HexColor('#000000'),
-        alignment=1 # Centrado
+        alignment=1
     )
     
     style_header_left = ParagraphStyle(
@@ -97,6 +92,16 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
         textColor=colors.HexColor('#000000')
     )
 
+    style_header_right = ParagraphStyle(
+        'DocHeaderRight',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=9,
+        leading=11,
+        textColor=colors.HexColor('#000000'),
+        alignment=2
+    )
+
     story = []
     
     # --- 🖼️ ENCABEZADO Y LOGO ---
@@ -106,15 +111,13 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
     ruta_final = ruta_script if os.path.exists(ruta_script) else (ruta_raiz if os.path.exists(ruta_raiz) else None)
     
     if ruta_final:
-        ancho_pdf = 432  # 80% de 540 pt (ancho imprimible de la página)
-        
-        # 🟢 CÁLCULO PROPORCIONAL AUTOMÁTICO DE LA ALTURA
+        ancho_pdf = 432
         try:
             with PILImage.open(ruta_final) as img_pil:
                 orig_w, orig_h = img_pil.size
             altura_pdf = ancho_pdf * (orig_h / orig_w)
         except Exception:
-            altura_pdf = 76  # Fallback por seguridad
+            altura_pdf = 76
             
         story.append(Image(ruta_final, width=ancho_pdf, height=altura_pdf, hAlign='CENTER'))
         story.append(Spacer(1, 10))        
@@ -158,15 +161,18 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
     secciones_activas = st.session_state.get("lista_secciones", [])
     total_general = 0.0
     
+    # Ajuste de anchos para sumar exactamente 540
     if incluir_precios:
-        anchos_columnas = [35, 225, 120, 65, 40, 55]  # 6 columnas
+        # 7 Columnas: ITEM(30) + DESC(200) + DETALLES(110) + DIAS(35) + CANT(45) + P.UNIT(60) + TOTAL(60) = 540
+        anchos_columnas = [30, 200, 110, 35, 45, 60, 60] 
     else:
-        anchos_columnas = [35, 260, 140, 65, 40]      # 5 columnas
+        # 5 Columnas: ITEM(35) + DESC(260) + DETALLES(140) + DIAS(65) + CANT(40) = 540
+        anchos_columnas = [35, 260, 140, 65, 40]      
     
     for idx_sec, sec in enumerate(secciones_activas):
         sec_id = sec.get('id', '')
         sec_titulo = sec.get('titulo', f'SECCIÓN {idx_sec+1}').upper()
-        df_sec = st.session_state.get(f"df_{sec_id}", pd.DataFrame())
+        df_sec = st.session_state.get(f"res_{sec_id}", st.session_state.get(f"df_{sec_id}", pd.DataFrame()))
         
         if incluir_precios:
             tabla_datos = [[
@@ -175,7 +181,8 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
                 Paragraph("<b>DETALLES</b>", style_header_left),
                 Paragraph("<b>DÍAS</b>", style_header_center),
                 Paragraph("<b>CANT.</b>", style_header_center),
-                Paragraph("<b>PRECIO</b>", style_header_center)
+                Paragraph("<b>P. UNIT.</b>", style_header_right),
+                Paragraph("<b>TOTAL</b>", style_header_right)
             ]]
         else:
             tabla_datos = [[
@@ -210,6 +217,7 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
                     pu_val = 0.0
 
                 if desc or med or jk_val or cant_val or pu_val:
+                    # Lógica matemática: Si días está vacío o es 0, no multiplica.
                     total_fila = (jk_val * cant_val * pu_val) if jk_val > 0 else (cant_val * pu_val)
                     subtotal_seccion += total_fila
                     
@@ -217,14 +225,17 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
                     cant_str = f"{int(cant_val) if cant_val.is_integer() else cant_val}" if cant_val > 0 else ""
                     
                     if incluir_precios:
-                        precio_str = f"{total_fila:,.2f}"
+                        precio_unit_str = f"{pu_val:,.2f}"
+                        precio_total_str = f"<b>{total_fila:,.2f}</b>"
+                        
                         tabla_datos.append([
                             Paragraph(str(item_numeral), style_header_center),
                             Paragraph(desc, style_normal),
                             Paragraph(med, style_normal),
                             Paragraph(jk_str, style_header_center),
                             Paragraph(cant_str, style_header_center),
-                            Paragraph(precio_str, ParagraphStyle('P', parent=style_normal, alignment=2))
+                            Paragraph(precio_unit_str, ParagraphStyle('PU', parent=style_normal, alignment=2)),
+                            Paragraph(precio_total_str, ParagraphStyle('PT', parent=style_normal, alignment=2))
                         ])
                     else:
                         tabla_datos.append([
@@ -237,7 +248,7 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
                     item_numeral += 1
         
         if item_numeral == 1:
-            colspan_val = 6 if incluir_precios else 5
+            colspan_val = 7 if incluir_precios else 5
             tabla_datos.append([Paragraph("Sección sin registros activos", style_header_center)] + [""] * (colspan_val - 1))
             
         t = Table(tabla_datos, colWidths=anchos_columnas, repeatRows=1)
@@ -250,7 +261,7 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
             ('LINEBELOW', (0,0), (-1,0), 1, colors.HexColor('#cbd5e1')),
         ]
         if item_numeral == 1:
-            span_limit = 5 if incluir_precios else 4
+            span_limit = 6 if incluir_precios else 4
             t_style.append(('SPAN', (0,1), (span_limit, 1)))
             
         t.setStyle(TableStyle(t_style))
@@ -269,19 +280,57 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
         
         total_general += subtotal_seccion
         
-    # --- 🟢 BANNER DE TOTAL GENERAL ---
-    tot_izq = Paragraph("TOTAL A CANCELAR", ParagraphStyle('TL', fontName='Helvetica-Bold', fontSize=13))
-    tot_der = Paragraph(f"${total_general:,.2f}", ParagraphStyle('TR', fontName='Helvetica-Bold', fontSize=13, alignment=2))
-    
-    total_tabla = Table([[tot_izq, tot_der]], colWidths=[270, 270])
-    total_tabla.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#b8d7a3')),
-        ('TOPPADDING', (0,0), (-1,-1), 6),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-    ]))
+    # --- 🟢 BLOQUE DE DESCUENTOS Y TOTAL GENERAL ---
+    meta = st.session_state.get("meta_presupuesto", {})
+    descuento_activado = meta.get("descuento_activado", False)
+    descuento_porcentaje = float(meta.get("descuento_porcentaje", 0.0))
+
+    if descuento_activado and descuento_porcentaje > 0:
+        monto_descuento_pdf = total_general * (descuento_porcentaje / 100)
+        total_final_pdf = total_general - monto_descuento_pdf
+        
+        # Fila de Subtotal antes de descuento
+        sub_izq = Paragraph("SUBTOTAL BASE", ParagraphStyle('SL', fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#64748b')))
+        sub_der = Paragraph(f"${total_general:,.2f}", ParagraphStyle('SR', fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#64748b'), alignment=2))
+        
+        # Fila de Descuento
+        desc_izq = Paragraph(f"DESCUENTO ({descuento_porcentaje:,.2f}%)", ParagraphStyle('DL', fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#b91c1c')))
+        desc_der = Paragraph(f"- ${monto_descuento_pdf:,.2f}", ParagraphStyle('DR', fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#b91c1c'), alignment=2))
+        
+        # Fila Total
+        tot_izq = Paragraph("TOTAL A CANCELAR", ParagraphStyle('TL', fontName='Helvetica-Bold', fontSize=13))
+        tot_der = Paragraph(f"${total_final_pdf:,.2f}", ParagraphStyle('TR', fontName='Helvetica-Bold', fontSize=13, alignment=2))
+        
+        tabla_totales = Table([
+            [sub_izq, sub_der],
+            [desc_izq, desc_der],
+            [tot_izq, tot_der]
+        ], colWidths=[270, 270])
+        
+        tabla_totales.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#f8fafc')),
+            ('BACKGROUND', (0,1), (-1,1), colors.HexColor('#fee2e2')),
+            ('BACKGROUND', (0,2), (-1,2), colors.HexColor('#b8d7a3')),
+            ('TOPPADDING', (0,0), (-1,-1), 6),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('LINEBELOW', (0,0), (-1,0), 1, colors.HexColor('#e2e8f0')),
+            ('LINEBELOW', (0,1), (-1,1), 1, colors.HexColor('#fca5a5')),
+        ]))
+    else:
+        tot_izq = Paragraph("TOTAL A CANCELAR", ParagraphStyle('TL', fontName='Helvetica-Bold', fontSize=13))
+        tot_der = Paragraph(f"${total_general:,.2f}", ParagraphStyle('TR', fontName='Helvetica-Bold', fontSize=13, alignment=2))
+        
+        tabla_totales = Table([[tot_izq, tot_der]], colWidths=[270, 270])
+        tabla_totales.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#b8d7a3')),
+            ('TOPPADDING', (0,0), (-1,-1), 6),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ]))
+
     story.append(Spacer(1, 5))
-    story.append(total_tabla)
+    story.append(tabla_totales)
     story.append(Spacer(1, 14))
     
     # --- 📝 CLÁUSULAS ---
@@ -292,7 +341,6 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False):
     story.append(Spacer(1, 4))
     story.append(Paragraph(clausulas_html, ParagraphStyle('CB', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#1a202c'), leading=12)))
     
-    # Construcción con canvasmaker personalizado para contador 'Página X de Y'
     doc.build(story, canvasmaker=NumberedCanvas)
     buffer.seek(0)
     return buffer.getvalue()
