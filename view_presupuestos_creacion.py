@@ -18,7 +18,8 @@ def a_flotante(val) -> float:
     """Convierte de forma segura cualquier valor (int, float, str con formato ES/EN) a float."""
     if pd.isna(val) or val is None:
         return 0.0
- for idx, sec in enumerate   if isinstance(val, (int, float)):
+    
+    if isinstance(val, (int, float)):
         return float(val)
     
     s = str(val).strip()
@@ -52,6 +53,8 @@ Sin más a que hacer referencia, a la espera de vuestra consideración, nos desp
 Atentamente,
 Paletapapelytijera"""
 
+COLUMNAS_ORDENADAS = ["descripción", "detalles", "dias", "cantidad", "precio_unitario"]
+
 def empaquetar_presupuesto_para_bd(usuario_activo: str):
     """Convierte el estado de la sesión en el diccionario adaptado a las columnas exactas de Supabase."""
     meta = st.session_state.get("meta_presupuesto", {})
@@ -69,7 +72,7 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
     for sec in secciones_activas:
         sec_id = sec.get("id", "")
         sec_titulo = sec.get("titulo", "")
-        df_sec = st.session_state.get(f"res_{sec_id}", st.session_state.get(f"df_{sec_id}", pd.DataFrame()))
+        df_sec = st.session_state.get(f"res_{sec_id}", st.session_state.get(f"df_{sec_id}", pd.DataFrame(columns=COLUMNAS_ORDENADAS)))
 
         items_list = []
         if not df_sec.empty:
@@ -135,10 +138,8 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
     }
 
 
-COLUMNAS_ORDENADAS = ["descripción", "detalles", "dias", "cantidad", "precio_unitario"]
-
 def cargar_presupuesto_en_session_state(id_presupuesto: int):
-    """Lee la fila desde Supabase y reconstruye los dataframes interactivos, descuentos y cláusulas sin truncamiento."""
+    """Lee la fila desde Supabase y reconstruye los dataframes interactivos, previniendo errores de columnas."""
     data = obtener_presupuesto_por_id_db(id_presupuesto)
     if not data:
         return False
@@ -202,9 +203,13 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
 
         st.session_state.lista_secciones.append({"id": sec_id, "titulo": sec_titulo})
 
-        # 2. Reorganización rígida de columnas de izquierda a derecha
+        # 2. Reorganización rígida de columnas para evitar fallos en data_editor
         if items_list:
-            df_sec = pd.DataFrame(items_list).reindex(columns=COLUMNAS_ORDENADAS)
+            df_sec = pd.DataFrame(items_list, columns=COLUMNAS_ORDENADAS)
+            df_sec["dias"] = df_sec["dias"].fillna(1)
+            df_sec["cantidad"] = df_sec["cantidad"].fillna(1)
+            df_sec["precio_unitario"] = df_sec["precio_unitario"].fillna(0.0)
+            df_sec = df_sec.fillna("")
         else:
             df_sec = pd.DataFrame(columns=COLUMNAS_ORDENADAS)
                     
@@ -244,9 +249,7 @@ def resetear_formulario_presupuesto():
     st.session_state.lista_secciones = [
         {"id": nuevo_id, "titulo": "DECORACIÓN PRINCIPAL"}
     ]
-    st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(
-        columns=["descripción", "detalles", "dias", "cantidad", "precio_unitario"]
-    )
+    st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(columns=COLUMNAS_ORDENADAS)
 
 
 def calcular_subtotal_df(df_input):
@@ -267,6 +270,8 @@ def calcular_subtotal_df(df_input):
 
 
 def render_creacion_presupuestos(rol_actual):
+    max_filas = 50
+
     st.markdown("""
         <style>
             ::-webkit-scrollbar {
@@ -529,95 +534,91 @@ def render_creacion_presupuestos(rol_actual):
                 "id": nuevo_id,
                 "titulo": sug_titulo
             })
-            st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(columns=["descripción", "detalles", "dias", "cantidad", "precio_unitario"])
+            st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(columns=COLUMNAS_ORDENADAS)
             st.rerun()
 
         total_acumulado_presupuesto = 0.0
 
+        for idx, sec in enumerate(st.session_state.lista_secciones):
+            sec_id = sec.get("id")
+            df_key = f"df_{sec_id}"
+            res_key = f"res_{sec_id}"
+            sug_placeholder = f"Sección {idx+1}"
 
-    for idx, sec in enumerate(st.session_state.lista_secciones):
-        sec_id = sec.get("id")
-        df_key = f"df_{sec_id}"
-        res_key = f"res_{sec_id}"
-        sug_placeholder = f"Sección {idx+1}"
-
-        # 3. Bloque contenedor (8 espacios)
-        with st.container(border=True):
-            col_t1, col_t2 = st.columns([5, 1])
-            
-            # 4. Contenido de col_t1 (12 espacios)
-            with col_t1:
-                tit_sec = st.text_input(
-                    f"Título de la Sección {idx+1}:", 
-                    value=sec["titulo"], 
-                    placeholder=f"Ej: {sug_placeholder}",
-                    key=f"tit_input_{sec_id}"
-                )
-                st.session_state.lista_secciones[idx]["titulo"] = tit_sec.upper() if tit_sec else f"SECCIÓN {idx+1}"
-            
-            # 4. Contenido de col_t2 (12 espacios)
-            with col_t2:
-                st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-                if st.button("🗑️", key=f"del_{sec_id}", use_container_width=True) and len(st.session_state.lista_secciones) > 1:
-                    st.session_state.lista_secciones.pop(idx)
-                    st.session_state.pop(df_key, None)
-                    st.session_state.pop(res_key, None)
-                    st.rerun()
-
-            # --- TABLA DINÁMICA CON ORDEN RÍGIDO (8 espacios) ---
-            df_vivo = st.data_editor(
-                st.session_state[df_key],
-                key=f"editor_widget_{sec_id}",
-                num_rows="dynamic",
-                width="stretch",
-                hide_index=True,
-                column_order=["descripción", "detalles", "dias", "cantidad", "precio_unitario"],
-                column_config={
-                    "descripción": st.column_config.TextColumn("Descripción (80 ch)"),
-                    "detalles": st.column_config.TextColumn("Detalles (40 ch)"),
-                    "dias": st.column_config.NumberColumn("Días (11 ch)", min_value=1),
-                    "cantidad": st.column_config.NumberColumn("Cantidad (8 ch)", min_value=1, default=1),
-                    "precio_unitario": st.column_config.NumberColumn("Precio ($)", min_value=0.0, format="$%.2f")
-                }
-            )
-
-            registros_vivos = df_vivo.to_dict("records")
-            duplicados_encontrados = False
-            vistos = set()
-            
-            for r in registros_vivos:
-                clave = (
-                    str(r.get("descripción", "")).strip().lower(),
-                    str(r.get("detalles", "")).strip().lower(),
-                    a_flotante(r.get("dias")),
-                    a_flotante(r.get("cantidad")),
-                    a_flotante(r.get("precio_unitario"))
-                )
-                if not any(clave):
-                    continue
-                if clave in vistos:
-                    duplicados_encontrados = True
-                    break
-                vistos.add(clave)
-
-            key_dup_confirm = f"confirmar_dup_{sec_id}"
-            if duplicados_encontrados and not st.session_state.get(key_dup_confirm, False):
-                st.warning("⚠️ Se han detectado asientos idénticos con los mismos datos exactos en esta sección.")
-                if st.button("Confirmar y aceptar asientos idénticos", key=f"btn_conf_dup_{sec_id}", type="secondary"):
-                    st.session_state[key_dup_confirm] = True
-                    st.rerun()
-                else:
-                    st.stop()
-            elif not duplicados_encontrados:
-                st.session_state[key_dup_confirm] = False
+            with st.container(border=True):
+                col_t1, col_t2 = st.columns([5, 1])
                 
-            if len(df_vivo) > max_filas:
-                st.error(f"⚠️ Sección {idx+1} limitada a {max_filas} líneas máximas.")
-                df_guardar = df_vivo.head(max_filas)
-            else:
-                df_guardar = df_vivo
+                with col_t1:
+                    tit_sec = st.text_input(
+                        f"Título de la Sección {idx+1}:", 
+                        value=sec["titulo"], 
+                        placeholder=f"Ej: {sug_placeholder}",
+                        key=f"tit_input_{sec_id}"
+                    )
+                    st.session_state.lista_secciones[idx]["titulo"] = tit_sec.upper() if tit_sec else f"SECCIÓN {idx+1}"
+                
+                with col_t2:
+                    st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+                    if st.button("🗑️", key=f"del_{sec_id}", use_container_width=True) and len(st.session_state.lista_secciones) > 1:
+                        st.session_state.lista_secciones.pop(idx)
+                        st.session_state.pop(df_key, None)
+                        st.session_state.pop(res_key, None)
+                        st.rerun()
 
-            st.session_state[res_key] = df_guardar
+                # --- TABLA DINÁMICA CON ORDEN RÍGIDO ---
+                df_vivo = st.data_editor(
+                    st.session_state[df_key],
+                    key=f"editor_widget_{sec_id}",
+                    num_rows="dynamic",
+                    width="stretch",
+                    hide_index=True,
+                    column_order=COLUMNAS_ORDENADAS,
+                    column_config={
+                        "descripción": st.column_config.TextColumn("Descripción (80 ch)"),
+                        "detalles": st.column_config.TextColumn("Detalles (40 ch)"),
+                        "dias": st.column_config.NumberColumn("Días (11 ch)", min_value=1),
+                        "cantidad": st.column_config.NumberColumn("Cantidad (8 ch)", min_value=1, default=1),
+                        "precio_unitario": st.column_config.NumberColumn("Precio ($)", min_value=0.0, format="$%.2f")
+                    }
+                )
+
+                registros_vivos = df_vivo.to_dict("records")
+                duplicados_encontrados = False
+                vistos = set()
+                
+                for r in registros_vivos:
+                    clave = (
+                        str(r.get("descripción", "")).strip().lower(),
+                        str(r.get("detalles", "")).strip().lower(),
+                        a_flotante(r.get("dias")),
+                        a_flotante(r.get("cantidad")),
+                        a_flotante(r.get("precio_unitario"))
+                    )
+                    if not any(clave):
+                        continue
+                    if clave in vistos:
+                        duplicados_encontrados = True
+                        break
+                    vistos.add(clave)
+
+                key_dup_confirm = f"confirmar_dup_{sec_id}"
+                if duplicados_encontrados and not st.session_state.get(key_dup_confirm, False):
+                    st.warning("⚠️ Se han detectado asientos idénticos con los mismos datos exactos en esta sección.")
+                    if st.button("Confirmar y aceptar asientos idénticos", key=f"btn_conf_dup_{sec_id}", type="secondary"):
+                        st.session_state[key_dup_confirm] = True
+                        st.rerun()
+                    else:
+                        st.stop()
+                elif not duplicados_encontrados:
+                    st.session_state[key_dup_confirm] = False
+                    
+                if len(df_vivo) > max_filas:
+                    st.error(f"⚠️ Sección {idx+1} limitada a {max_filas} líneas máximas.")
+                    df_guardar = df_vivo.head(max_filas)
+                else:
+                    df_guardar = df_vivo
+
+                st.session_state[res_key] = df_guardar
 
                 subtotal_seccion = calcular_subtotal_df(df_guardar)
                 total_acumulado_presupuesto += subtotal_seccion
@@ -745,7 +746,7 @@ def render_creacion_presupuestos(rol_actual):
         incluir_precios_pdf = st.toggle(
             "📊 Incluir columna de Precios Unitarios en el PDF y Vista Previa", 
             value=False,
-            help="Activa para mostrar el precio individual de cada ítem, o desactiva para mostrar solo los subtotales."
+            help="Activa para mostrar el precio individual y total de cada ítem, o desactiva para mostrar solo los ítems y subtotales por sección."
         )
         
         pdf_bytes = generar_pdf_presupuesto_nativo(incluir_precios=incluir_precios_pdf)
@@ -857,12 +858,13 @@ def render_creacion_presupuestos(rol_actual):
             
             if incluir_precios_pdf:
                 th_cols = f"""
-                    <th style="width: 8%; text-align: center; white-space: nowrap;">ITEM</th>
-                    <th style="width: 44%; text-align: left;">{sec_titulo}</th>
-                    <th style="width: 20%; text-align: left;">DETALLES</th>
-                    <th style="width: 9%; text-align: center;">DÍAS</th>
-                    <th style="width: 8%; text-align: center; white-space: nowrap;">CANT.</th>
-                    <th style="width: 11%; text-align: right; white-space: nowrap;">PRECIO</th>
+                    <th style="width: 6%; text-align: center; white-space: nowrap;">ITEM</th>
+                    <th style="width: 40%; text-align: left;">{sec_titulo}</th>
+                    <th style="width: 18%; text-align: left;">DETALLES</th>
+                    <th style="width: 7%; text-align: center;">DÍAS</th>
+                    <th style="width: 7%; text-align: center; white-space: nowrap;">CANT.</th>
+                    <th style="width: 10%; text-align: right; white-space: nowrap;">P. UNIT.</th>
+                    <th style="width: 12%; text-align: right; white-space: nowrap;">TOTAL</th>
                 """
             else:
                 th_cols = f"""
@@ -901,14 +903,16 @@ def render_creacion_presupuestos(rol_actual):
                         cant_str = f"{int(cant_val) if cant_val.is_integer() else cant_val}" if cant_val > 0 else ""
                         
                         if incluir_precios_pdf:
-                            precio_str = f"{total_fila:,.2f}"
+                            precio_unit_str = f"{pu_val:,.2f}"
+                            precio_total_str = f"{total_fila:,.2f}"
                             td_cols = f"""
                                 <td style="text-align: center;">{item_numeral}</td>
                                 <td style="text-align: left;">{desc}</td>
                                 <td style="text-align: left;">{det}</td>
                                 <td style="text-align: center;">{jk_str}</td>
                                 <td style="text-align: center;">{cant_str}</td>
-                                <td style="text-align: right;">{precio_str}</td>
+                                <td style="text-align: right;">{precio_unit_str}</td>
+                                <td style="text-align: right; font-weight: bold;">{precio_total_str}</td>
                             """
                         else:
                             td_cols = f"""
@@ -923,7 +927,7 @@ def render_creacion_presupuestos(rol_actual):
                         item_numeral += 1
             
             if item_numeral == 1:
-                colspan_val = 6 if incluir_precios_pdf else 5
+                colspan_val = 7 if incluir_precios_pdf else 5
                 html_cuerpo += f'<tr><td colspan="{colspan_val}" style="text-align: center; color: #a0aec0; padding: 8px;">Sección sin registros activos</td></tr>'
                 
             html_cuerpo += f"""
