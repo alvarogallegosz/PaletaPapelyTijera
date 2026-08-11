@@ -135,6 +135,8 @@ def empaquetar_presupuesto_para_bd(usuario_activo: str):
     }
 
 
+COLUMNAS_ORDENADAS = ["descripción", "detalles", "dias", "cantidad", "precio_unitario"]
+
 def cargar_presupuesto_en_session_state(id_presupuesto: int):
     """Lee la fila desde Supabase y reconstruye los dataframes interactivos, descuentos y cláusulas sin truncamiento."""
     data = obtener_presupuesto_por_id_db(id_presupuesto)
@@ -149,10 +151,20 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
         except ValueError:
             pass
 
+    # 1. Formateo de Fecha de Evento a versión larga al rehidratar
+    raw_f_evt = str(data.get("fecha_evento", "") or "").strip()
+    if raw_f_evt:
+        try:
+            fecha_evento_fmt = fecha_a_larga(raw_f_evt)
+        except Exception:
+            fecha_evento_fmt = raw_f_evt
+    else:
+        fecha_evento_fmt = ""
+
     st.session_state.meta_presupuesto = {
         "nombre": data.get("nombre", ""),
         "cliente": data.get("cliente", ""),
-        "fecha_evento": str(data.get("fecha_evento", "") or ""),
+        "fecha_evento": fecha_evento_fmt,
         "lugar": data.get("lugar_evento", ""),
         "fecha_emision": fecha_emision_obj,
         "tipo_presupuesto": data.get("tipo_presupuesto", "Decoración"),
@@ -168,6 +180,7 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
         st.session_state.clausulas_presupuesto = str(raw_clausulas)
     
     st.session_state.pop("input_widget_clausulas", None)
+    st.session_state.pop("widget_fecha_evento", None)
     st.session_state.presupuesto_id_activo = data.get("id")
 
     secciones_guardadas = data.get("secciones", [])
@@ -189,10 +202,11 @@ def cargar_presupuesto_en_session_state(id_presupuesto: int):
 
         st.session_state.lista_secciones.append({"id": sec_id, "titulo": sec_titulo})
 
+        # 2. Reorganización rígida de columnas de izquierda a derecha
         if items_list:
-            df_sec = pd.DataFrame(items_list)
+            df_sec = pd.DataFrame(items_list).reindex(columns=COLUMNAS_ORDENADAS)
         else:
-            df_sec = pd.DataFrame(columns=["descripción", "detalles", "dias", "cantidad", "precio_unitario"])
+            df_sec = pd.DataFrame(columns=COLUMNAS_ORDENADAS)
                     
         st.session_state[f"df_{sec_id}"] = df_sec
         st.session_state[f"res_{sec_id}"] = df_sec
