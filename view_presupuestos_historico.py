@@ -147,8 +147,7 @@ def render_tarjeta_presupuesto(p: dict, rol_actual: str = "administrador", idx: 
                     "clausulas": clausulas_a_guardar,
                     "secciones": p.get("secciones", []),
                     "estado": "Borrador",
-                    "es_plantilla": False,
-                    "creado_por": st.session_state.get("usuario_logueado", "Sistema")
+                    "es_plantilla": False
                 }
                 
                 exito, msg = guardar_presupuesto_db(payload_clon)
