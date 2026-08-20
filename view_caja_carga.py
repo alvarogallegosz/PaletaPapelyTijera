@@ -30,6 +30,9 @@ def _calcular_saldos_globales(df):
     if df is None or df.empty:
         return saldos
     for _, row in df.iterrows():
+        if not row.get("activo", True):
+            continue
+            
         try:
             monto = float(row["monto"]) if pd.notnull(row["monto"]) else 0.0
         except (ValueError, TypeError):
