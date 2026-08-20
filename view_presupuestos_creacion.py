@@ -556,7 +556,7 @@ def render_creacion_presupuestos(rol_actual):
             sug_placeholder = f"Sección {idx+1}"
 
             with st.container(border=True):
-                col_t1, col_t2 = st.columns([5, 1])
+                col_t1, col_up, col_down, col_t2 = st.columns([5, 0.5, 0.5, 1])
                 
                 with col_t1:
                     tit_sec = st.text_input(
@@ -566,6 +566,24 @@ def render_creacion_presupuestos(rol_actual):
                         key=f"tit_input_{sec_id}"
                     )
                     st.session_state.lista_secciones[idx]["titulo"] = tit_sec.upper() if tit_sec else f"SECCIÓN {idx+1}"
+
+                # 🟢 NUEVO: Botón para subir la sección
+                with col_up:
+                    st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+                    # Deshabilitado si es la primera sección (idx == 0)
+                    if st.button("⬆️", key=f"up_{sec_id}", disabled=(idx == 0), help="Mover sección arriba"):
+                        st.session_state.lista_secciones[idx], st.session_state.lista_secciones[idx-1] = \
+                        st.session_state.lista_secciones[idx-1], st.session_state.lista_secciones[idx]
+                        st.rerun()
+
+                # 🟢 NUEVO: Botón para bajar la sección
+                with col_down:
+                    st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+                    # Deshabilitado si es la última sección
+                    if st.button("⬇️", key=f"down_{sec_id}", disabled=(idx == len(st.session_state.lista_secciones) - 1), help="Mover sección abajo"):
+                        st.session_state.lista_secciones[idx], st.session_state.lista_secciones[idx+1] = \
+                        st.session_state.lista_secciones[idx+1], st.session_state.lista_secciones[idx]
+                        st.rerun()
                 
                 with col_t2:
                     st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
@@ -767,7 +785,7 @@ def render_creacion_presupuestos(rol_actual):
         nombre_clean = re.sub(r'[^\w\s-]', '', p_nombre).strip().replace(" ", "_")
         fecha_clean = re.sub(r'[^\w\s-]', '', f_evt_clean).strip().replace(" ", "_")
 
-        nombre_archivo_pdf = f"PRESUPUESTO_{nombre_clean}_{fecha_clean}.pdf"
+        nombre_archivo_pdf = f"Presupuesto_{nombre_clean}_{fecha_clean}.pdf"
         
         col_pv1, col_pv2, col_pv3 = st.columns(3)
                 
