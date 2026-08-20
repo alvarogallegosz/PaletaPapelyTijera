@@ -767,7 +767,7 @@ def render_creacion_presupuestos(rol_actual):
         nombre_clean = re.sub(r'[^\w\s-]', '', p_nombre).strip().replace(" ", "_")
         fecha_clean = re.sub(r'[^\w\s-]', '', f_evt_clean).strip().replace(" ", "_")
 
-        nombre_archivo_pdf = f"Presupuesto_{nombre_clean}_{fecha_clean}.pdf"
+        nombre_archivo_pdf = f"PRESUPUESTO_{nombre_clean}_{fecha_clean}.pdf"
         
         col_pv1, col_pv2, col_pv3 = st.columns(3)
                 
