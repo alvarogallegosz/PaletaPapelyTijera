@@ -537,8 +537,12 @@ def render_creacion_presupuestos(rol_actual):
             st.session_state[f"df_{nuevo_id}"] = pd.DataFrame(columns=COLUMNAS_ORDENADAS)
             st.rerun()
 
-        # 🟢 INTERRUPTOR DISCRETO: Controla si la columna "días" se muestra en la vista de edición
-        mostrar_columna_dias = st.toggle("⏱️ Mostrar columna de Días en la vista de edición", value=False)
+        # 🟢 INTERRUPTOR PERSISTENTE: Controla la columna de Días en Edición, Previa y PDF
+        mostrar_columna_dias = st.toggle(
+            "⏱️ Mostrar columna de Días en el Presupuesto", 
+            value=st.session_state.get("mostrar_columna_dias", False),
+            key="mostrar_columna_dias"
+        )
         
         # Definimos dinámicamente las columnas visibles según el interruptor
         if mostrar_columna_dias:
@@ -777,7 +781,11 @@ def render_creacion_presupuestos(rol_actual):
             help="Activa para mostrar el precio individual y total de cada ítem, o desactiva para mostrar solo los ítems y subtotales por sección."
         )
         
-        pdf_bytes = generar_pdf_presupuesto_nativo(incluir_precios=incluir_precios_pdf)
+        mostrar_dias = st.session_state.get("mostrar_columna_dias", False)
+        pdf_bytes = generar_pdf_presupuesto_nativo(
+            incluir_precios=incluir_precios_pdf,
+            incluir_dias=mostrar_dias
+        )
         
         p_nombre = str(meta.get("nombre", "PRESUPUESTO")).strip().upper() or "PRESUPUESTO"
         f_evt_clean = str(meta.get("fecha_evento", "")).strip() or "SIN_FECHA"
