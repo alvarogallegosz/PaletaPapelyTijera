@@ -123,16 +123,16 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False, incluir_dias=False):
         story.append(Spacer(1, 10))        
 
     # --- 📄 BLOQUE METADATA ---
-        meta = st.session_state.get("meta_presupuesto", {})
-        
-        p_nombre = limpiar_texto_pdf(meta.get('nombre'), 'PRESUPUESTO')
-        p_fecha_evt = fecha_a_larga(meta.get("fecha_evento"))
-        p_cliente = limpiar_texto_pdf(meta.get('cliente'))
-        p_lugar = limpiar_texto_pdf(meta.get('lugar_evento') or meta.get('lugar'))
-        p_emision = datetime.date.today().strftime("%d/%m/%Y")
-        
-        meta_izq = f"<b>{p_nombre}</b><br/>FECHA DEL EVENTO: {p_fecha_evt}<br/>CLIENTE: {p_cliente} | LUGAR: {p_lugar}"
-        meta_der = f"<b>EMISIÓN: {p_emision}</b>"
+    meta = st.session_state.get("meta_presupuesto", {})
+    
+    p_nombre = limpiar_texto_pdf(meta.get('nombre'), 'PRESUPUESTO')
+    p_fecha_evt = fecha_a_larga(meta.get("fecha_evento"))
+    p_cliente = limpiar_texto_pdf(meta.get('cliente'))
+    p_lugar = limpiar_texto_pdf(meta.get('lugar_evento') or meta.get('lugar'))
+    p_emision = datetime.date.today().strftime("%d/%m/%Y")
+    
+    meta_izq = f"<b>{p_nombre}</b><br/>FECHA DEL EVENTO: {p_fecha_evt}<br/>CLIENTE: {p_cliente} | LUGAR: {p_lugar}"
+    meta_der = f"<b>EMISIÓN: {p_emision}</b>"
     
     meta_tabla = Table(
         [[Paragraph(meta_izq, style_normal), Paragraph(meta_der, ParagraphStyle('R', parent=style_normal, alignment=2))]], 
@@ -161,37 +161,45 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False, incluir_dias=False):
     secciones_activas = st.session_state.get("lista_secciones", [])
     total_general = 0.0
     
-    # Ajuste de anchos para sumar exactamente 540
+    # Ajuste dinámico de anchos de columna para sumar exactamente 540 pt
     if incluir_precios:
-        # 7 Columnas: ITEM(30) + DESC(200) + DETALLES(110) + DIAS(35) + CANT(45) + P.UNIT(60) + TOTAL(60) = 540
-        anchos_columnas = [30, 200, 110, 35, 45, 60, 60] 
+        if incluir_dias:
+            # 7 Columnas: ITEM(30) + DESC(200) + DETALLES(110) + DIAS(35) + CANT(45) + P.UNIT(60) + TOTAL(60) = 540
+            anchos_columnas = [30, 200, 110, 35, 45, 60, 60]
+        else:
+            # 6 Columnas: ITEM(30) + DESC(225) + DETALLES(120) + CANT(45) + P.UNIT(60) + TOTAL(60) = 540
+            anchos_columnas = [30, 225, 120, 45, 60, 60]
     else:
-        # 5 Columnas: ITEM(35) + DESC(260) + DETALLES(140) + DIAS(65) + CANT(40) = 540
-        anchos_columnas = [35, 260, 140, 65, 40]      
+        if incluir_dias:
+            # 5 Columnas: ITEM(35) + DESC(260) + DETALLES(140) + DIAS(65) + CANT(40) = 540
+            anchos_columnas = [35, 260, 140, 65, 40]
+        else:
+            # 4 Columnas: ITEM(35) + DESC(305) + DETALLES(160) + CANT(40) = 540
+            anchos_columnas = [35, 305, 160, 40]
     
+    num_columnas = len(anchos_columnas)
+
     for idx_sec, sec in enumerate(secciones_activas):
         sec_id = sec.get('id', '')
         sec_titulo = sec.get('titulo', f'SECCIÓN {idx_sec+1}').upper()
         df_sec = st.session_state.get(f"res_{sec_id}", st.session_state.get(f"df_{sec_id}", pd.DataFrame()))
         
+        # Construcción dinámica de encabezados de columna
+        encabezado_fila = [
+            Paragraph("<b>ITEM</b>", style_header_center),
+            Paragraph(f"<b>{sec_titulo}</b>", style_header_left),
+            Paragraph("<b>DETALLES</b>", style_header_left)
+        ]
+        if incluir_dias:
+            encabezado_fila.append(Paragraph("<b>DÍAS</b>", style_header_center))
+        
+        encabezado_fila.append(Paragraph("<b>CANT.</b>", style_header_center))
+        
         if incluir_precios:
-            tabla_datos = [[
-                Paragraph("<b>ITEM</b>", style_header_center),
-                Paragraph(f"<b>{sec_titulo}</b>", style_header_left),
-                Paragraph("<b>DETALLES</b>", style_header_left),
-                Paragraph("<b>DÍAS</b>", style_header_center),
-                Paragraph("<b>CANT.</b>", style_header_center),
-                Paragraph("<b>P. UNIT.</b>", style_header_right),
-                Paragraph("<b>TOTAL</b>", style_header_right)
-            ]]
-        else:
-            tabla_datos = [[
-                Paragraph("<b>ITEM</b>", style_header_center),
-                Paragraph(f"<b>{sec_titulo}</b>", style_header_left),
-                Paragraph("<b>DETALLES</b>", style_header_left),
-                Paragraph("<b>DÍAS</b>", style_header_center),
-                Paragraph("<b>CANT.</b>", style_header_center)
-            ]]
+            encabezado_fila.append(Paragraph("<b>P. UNIT.</b>", style_header_right))
+            encabezado_fila.append(Paragraph("<b>TOTAL</b>", style_header_right))
+
+        tabla_datos = [encabezado_fila]
         
         subtotal_seccion = 0.0
         item_numeral = 1
@@ -217,39 +225,34 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False, incluir_dias=False):
                     pu_val = 0.0
 
                 if desc or med or jk_val or cant_val or pu_val:
-                    # Lógica matemática: Si días está vacío o es 0, no multiplica.
                     total_fila = (jk_val * cant_val * pu_val) if jk_val > 0 else (cant_val * pu_val)
                     subtotal_seccion += total_fila
                     
                     jk_str = f"{int(jk_val) if jk_val.is_integer() else jk_val}" if jk_val > 0 else ""
                     cant_str = f"{int(cant_val) if cant_val.is_integer() else cant_val}" if cant_val > 0 else ""
                     
+                    fila_celdas = [
+                        Paragraph(str(item_numeral), style_header_center),
+                        Paragraph(desc, style_normal),
+                        Paragraph(med, style_normal)
+                    ]
+                    
+                    if incluir_dias:
+                        fila_celdas.append(Paragraph(jk_str, style_header_center))
+                        
+                    fila_celdas.append(Paragraph(cant_str, style_header_center))
+                    
                     if incluir_precios:
                         precio_unit_str = f"{pu_val:,.2f}"
                         precio_total_str = f"<b>{total_fila:,.2f}</b>"
-                        
-                        tabla_datos.append([
-                            Paragraph(str(item_numeral), style_header_center),
-                            Paragraph(desc, style_normal),
-                            Paragraph(med, style_normal),
-                            Paragraph(jk_str, style_header_center),
-                            Paragraph(cant_str, style_header_center),
-                            Paragraph(precio_unit_str, ParagraphStyle('PU', parent=style_normal, alignment=2)),
-                            Paragraph(precio_total_str, ParagraphStyle('PT', parent=style_normal, alignment=2))
-                        ])
-                    else:
-                        tabla_datos.append([
-                            Paragraph(str(item_numeral), style_header_center),
-                            Paragraph(desc, style_normal),
-                            Paragraph(med, style_normal),
-                            Paragraph(jk_str, style_header_center),
-                            Paragraph(cant_str, style_header_center)
-                        ])
+                        fila_celdas.append(Paragraph(precio_unit_str, ParagraphStyle('PU', parent=style_normal, alignment=2)))
+                        fila_celdas.append(Paragraph(precio_total_str, ParagraphStyle('PT', parent=style_normal, alignment=2)))
+
+                    tabla_datos.append(fila_celdas)
                     item_numeral += 1
         
         if item_numeral == 1:
-            colspan_val = 7 if incluir_precios else 5
-            tabla_datos.append([Paragraph("Sección sin registros activos", style_header_center)] + [""] * (colspan_val - 1))
+            tabla_datos.append([Paragraph("Sección sin registros activos", style_header_center)] + [""] * (num_columnas - 1))
             
         t = Table(tabla_datos, colWidths=anchos_columnas, repeatRows=1)
         t_style = [
@@ -261,8 +264,7 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False, incluir_dias=False):
             ('LINEBELOW', (0,0), (-1,0), 1, colors.HexColor('#cbd5e1')),
         ]
         if item_numeral == 1:
-            span_limit = 6 if incluir_precios else 4
-            t_style.append(('SPAN', (0,1), (span_limit, 1)))
+            t_style.append(('SPAN', (0,1), (num_columnas - 1, 1)))
             
         t.setStyle(TableStyle(t_style))
         story.append(t)
@@ -289,15 +291,12 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False, incluir_dias=False):
         monto_descuento_pdf = total_general * (descuento_porcentaje / 100)
         total_final_pdf = total_general - monto_descuento_pdf
         
-        # Fila de Subtotal antes de descuento
         sub_izq = Paragraph("SUBTOTAL BASE", ParagraphStyle('SL', fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#64748b')))
         sub_der = Paragraph(f"${total_general:,.2f}", ParagraphStyle('SR', fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#64748b'), alignment=2))
         
-        # Fila de Descuento
         desc_izq = Paragraph(f"DESCUENTO ({descuento_porcentaje:,.2f}%)", ParagraphStyle('DL', fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#b91c1c')))
         desc_der = Paragraph(f"- ${monto_descuento_pdf:,.2f}", ParagraphStyle('DR', fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#b91c1c'), alignment=2))
         
-        # Fila Total
         tot_izq = Paragraph("TOTAL A CANCELAR", ParagraphStyle('TL', fontName='Helvetica-Bold', fontSize=13))
         tot_der = Paragraph(f"${total_final_pdf:,.2f}", ParagraphStyle('TR', fontName='Helvetica-Bold', fontSize=13, alignment=2))
         
