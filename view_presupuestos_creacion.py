@@ -757,7 +757,7 @@ def render_creacion_presupuestos(rol_actual):
             st.session_state.modo_vista = "previa"
             st.rerun()
 
-    # ===================================================
+# ===================================================
     # 🖨️ MODO VISTA PREVIA
     # ===================================================
     else:
@@ -892,24 +892,19 @@ def render_creacion_presupuestos(rol_actual):
             sec_titulo = sec.get('titulo', f'SECCIÓN {idx_sec+1}').upper()
             df_sec = st.session_state.get(f"res_{sec_id}", st.session_state.get(f"df_{sec_id}", pd.DataFrame()))
             
+            # --- CONSTRUCCIÓN DINÁMICA DE ENCABEZADOS (TH) ---
+            th_cols = f'<th style="width: 6%; text-align: center; white-space: nowrap;">ITEM</th>'
+            th_cols += f'<th style="width: 40%; text-align: left;">{sec_titulo}</th>'
+            th_cols += f'<th style="width: 20%; text-align: left;">DETALLES</th>'
+            
+            if mostrar_dias:
+                th_cols += '<th style="width: 7%; text-align: center;">DÍAS</th>'
+                
+            th_cols += '<th style="width: 7%; text-align: center; white-space: nowrap;">CANT.</th>'
+            
             if incluir_precios_pdf:
-                th_cols = f"""
-                    <th style="width: 6%; text-align: center; white-space: nowrap;">ITEM</th>
-                    <th style="width: 40%; text-align: left;">{sec_titulo}</th>
-                    <th style="width: 18%; text-align: left;">DETALLES</th>
-                    <th style="width: 7%; text-align: center;">DÍAS</th>
-                    <th style="width: 7%; text-align: center; white-space: nowrap;">CANT.</th>
-                    <th style="width: 10%; text-align: right; white-space: nowrap;">P. UNIT.</th>
-                    <th style="width: 12%; text-align: right; white-space: nowrap;">TOTAL</th>
-                """
-            else:
-                th_cols = f"""
-                    <th style="width: 8%; text-align: center; white-space: nowrap;">ITEM</th>
-                    <th style="width: 52%; text-align: left;">{sec_titulo}</th>
-                    <th style="width: 23%; text-align: left;">DETALLES</th>
-                    <th style="width: 9%; text-align: center;">DÍAS</th>
-                    <th style="width: 8%; text-align: center; white-space: nowrap;">CANT.</th>
-                """
+                th_cols += '<th style="width: 10%; text-align: right; white-space: nowrap;">P. UNIT.</th>'
+                th_cols += '<th style="width: 10%; text-align: right; white-space: nowrap;">TOTAL</th>'
 
             html_cuerpo += f"""
             <table class="tabla-remastered">
@@ -938,32 +933,27 @@ def render_creacion_presupuestos(rol_actual):
                         jk_str = f"{int(jk_val) if jk_val.is_integer() else jk_val}" if jk_val > 0 else ""
                         cant_str = f"{int(cant_val) if cant_val.is_integer() else cant_val}" if cant_val > 0 else ""
                         
+                        # --- CONSTRUCCIÓN DINÁMICA DE CELDAS (TD) ---
+                        td_cols = f'<td style="text-align: center;">{item_numeral}</td>'
+                        td_cols += f'<td style="text-align: left;">{desc}</td>'
+                        td_cols += f'<td style="text-align: left;">{det}</td>'
+                        
+                        if mostrar_dias:
+                            td_cols += f'<td style="text-align: center;">{jk_str}</td>'
+                            
+                        td_cols += f'<td style="text-align: center;">{cant_str}</td>'
+                        
                         if incluir_precios_pdf:
                             precio_unit_str = f"{pu_val:,.2f}"
                             precio_total_str = f"{total_fila:,.2f}"
-                            td_cols = f"""
-                                <td style="text-align: center;">{item_numeral}</td>
-                                <td style="text-align: left;">{desc}</td>
-                                <td style="text-align: left;">{det}</td>
-                                <td style="text-align: center;">{jk_str}</td>
-                                <td style="text-align: center;">{cant_str}</td>
-                                <td style="text-align: right;">{precio_unit_str}</td>
-                                <td style="text-align: right; font-weight: bold;">{precio_total_str}</td>
-                            """
-                        else:
-                            td_cols = f"""
-                                <td style="text-align: center;">{item_numeral}</td>
-                                <td style="text-align: left;">{desc}</td>
-                                <td style="text-align: left;">{det}</td>
-                                <td style="text-align: center;">{jk_str}</td>
-                                <td style="text-align: center;">{cant_str}</td>
-                            """
+                            td_cols += f'<td style="text-align: right;">{precio_unit_str}</td>'
+                            td_cols += f'<td style="text-align: right; font-weight: bold;">{precio_total_str}</td>'
 
                         html_cuerpo += f"<tr>{td_cols}</tr>"
                         item_numeral += 1
             
             if item_numeral == 1:
-                colspan_val = 7 if incluir_precios_pdf else 5
+                colspan_val = 4 + (1 if mostrar_dias else 0) + (2 if incluir_precios_pdf else 0)
                 html_cuerpo += f'<tr><td colspan="{colspan_val}" style="text-align: center; color: #a0aec0; padding: 8px;">Sección sin registros activos</td></tr>'
                 
             html_cuerpo += f"""
