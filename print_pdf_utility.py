@@ -50,7 +50,7 @@ class NumberedCanvas(canvas.Canvas):
         self.restoreState()
 
 
-def generar_pdf_presupuesto_nativo(incluir_precios=False):
+def generar_pdf_presupuesto_nativo(incluir_precios=False, incluir_dias=False):
     buffer = io.BytesIO()
     
     doc = SimpleDocTemplate(
