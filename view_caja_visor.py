@@ -1,3 +1,4 @@
+#view_caja_visor.py
 import datetime
 import calendar
 import pandas as pd
@@ -7,9 +8,9 @@ from db_connection import obtener_movimientos_locales
 
 
 def preparar_columnas_monto(df):
-    """Desglosa la columna genérica 'monto' en 5 columnas visuales según el tipo de movimiento."""
+    """Desglosa la columna genérica 'monto' en 7 columnas visuales según el tipo de movimiento."""
     if df.empty:
-        for col in ["Monto Bs", "Monto $ Zelle", "Monto $ Cash", "Monto $ Ah-Ze", "Monto $ Ah-Ch"]:
+        for col in ["Monto Bs", "Monto $ Zelle", "Monto $ Cash", "Monto $ Ah-Ze", "Monto $ Ah-Ch", "Monto usDT", "Monto AhDT"]:
             df[col] = ""
         return df
 
@@ -28,17 +29,21 @@ def preparar_columnas_monto(df):
     df["Monto $ Cash"] = df.apply(lambda r: evaluar_monto(r, "$Ch"), axis=1)
     df["Monto $ Ah-Ze"] = df.apply(lambda r: evaluar_monto(r, "$AhZe"), axis=1)
     df["Monto $ Ah-Ch"] = df.apply(lambda r: evaluar_monto(r, "$AhCh"), axis=1)
+    df["Monto usDT"] = df.apply(lambda r: evaluar_monto(r, "usDT"), axis=1)
+    df["Monto AhDT"] = df.apply(lambda r: evaluar_monto(r, "AhDT"), axis=1)
     
     return df
 
 
 def render_banner_saldos(saldos_dict, fecha_hasta_str=None):
-    """Renderiza el bloque HTML superior con la disponibilidad acumulada hasta la fecha máxima."""
+    """Renderiza el bloque HTML superior con la disponibilidad acumulada hasta la fecha máxima para las 7 cuentas."""
     val_bs = float(saldos_dict.get('Bs', 0.0))
     val_ze = float(saldos_dict.get('Ze', 0.0))
     val_ch = float(saldos_dict.get('Ch', 0.0))
     val_ah_ze = float(saldos_dict.get('AhZe', 0.0))
     val_ah_ch = float(saldos_dict.get('AhCh', 0.0))
+    val_usdt = float(saldos_dict.get('usDT', 0.0))
+    val_ah_usdt = float(saldos_dict.get('AhDT', 0.0))
     
     texto_fecha = f" hasta el {fecha_hasta_str}" if fecha_hasta_str else ""
     
@@ -49,14 +54,19 @@ def render_banner_saldos(saldos_dict, fecha_hasta_str=None):
             <span style="color: #111827;">🔵 <b>Zelle Operativo:</b> ${val_ze:,.2f}</span> &nbsp;|&nbsp;
             <span style="color: #111827;">💵 <b>Cash Operativo:</b> ${val_ch:,.2f}</span> &nbsp;|&nbsp;
             <span style="color: #0d9488;">🏦 <b>Ahorro Zelle:</b> ${val_ah_ze:,.2f}</span> &nbsp;|&nbsp;
-            <span style="color: #0d9488;">🐷 <b>Ahorro Cash:</b> ${val_ah_ch:,.2f}</span>
+            <span style="color: #0d9488;">🐷 <b>Ahorro Cash:</b> ${val_ah_ch:,.2f}</span> &nbsp;|&nbsp;
+            <span style="color: #0284c7;">🪙 <b>usDT Operativo:</b> {val_usdt:,.2f}</span> &nbsp;|&nbsp;
+            <span style="color: #0284c7;">📈 <b>Ahorro usDT:</b> {val_ah_usdt:,.2f}</span>
         </div>
     """, unsafe_allow_html=True)
 
 
 def calcular_acumulados_filtrados(df):
-    """Calcula el flujo neto (Ingresos - Egresos) de las 5 cuentas sobre el conjunto de datos recibido."""
-    acumulados = {'Bs': 0.0, 'Ze': 0.0, 'Ch': 0.0, 'AhZe': 0.0, 'AhCh': 0.0}
+    """Calcula el flujo neto (Ingresos - Egresos) de las 7 cuentas sobre el conjunto de datos recibido."""
+    acumulados = {
+        'Bs': 0.0, 'Ze': 0.0, 'Ch': 0.0, 'AhZe': 0.0, 'AhCh': 0.0, 
+        'usDT': 0.0, 'AhDT': 0.0
+    }
     if df.empty:
         return acumulados
 
@@ -88,6 +98,14 @@ def calcular_acumulados_filtrados(df):
             acumulados['AhCh'] += monto_val
         elif tipo_str == "EG-$AhCh":
             acumulados['AhCh'] -= monto_val
+        elif tipo_str == "IN-usDT":
+            acumulados['usDT'] += monto_val
+        elif tipo_str == "EG-usDT":
+            acumulados['usDT'] -= monto_val
+        elif tipo_str == "IN-AhDT":
+            acumulados['AhDT'] += monto_val
+        elif tipo_str == "EG-AhDT":
+            acumulados['AhDT'] -= monto_val
             
     return acumulados
 
@@ -102,7 +120,9 @@ def render_banner_acumulados(df_filtrado):
             <span style="color: #14532d;">🔵 <b>Zelle Op:</b> ${ac['Ze']:,.2f}</span> &nbsp;|&nbsp;
             <span style="color: #14532d;">💵 <b>Cash Op:</b> ${ac['Ch']:,.2f}</span> &nbsp;|&nbsp;
             <span style="color: #166534;">🏦 <b>Ahorro Zelle:</b> ${ac['AhZe']:,.2f}</span> &nbsp;|&nbsp;
-            <span style="color: #166534;">🐷 <b>Ahorro Cash:</b> ${ac['AhCh']:,.2f}</span>
+            <span style="color: #166534;">🐷 <b>Ahorro Cash:</b> ${ac['AhCh']:,.2f}</span> &nbsp;|&nbsp;
+            <span style="color: #0369a1;">🪙 <b>usDT Op:</b> {ac['usDT']:,.2f}</span> &nbsp;|&nbsp;
+            <span style="color: #0369a1;">📈 <b>Ahorro usDT:</b> {ac['AhDT']:,.2f}</span>
         </div>
     """, unsafe_allow_html=True)
 
@@ -129,7 +149,7 @@ def render_visor(df_mes, mes_nombre, anho, saldos_fin, rol_actual=None):
     )
     es_soporte = (str(rol_detectado).strip().lower() == "soporte")
 
-    # --- OBTENCIÓN DEL HISTÓRICO COMPLETO (MISMO ESQUEMA QUE EN EDICIÓN) ---
+    # --- OBTENCIÓN DEL HISTÓRICO COMPLETO ---
     df_completo = st.session_state.get("df_movimientos")
     if df_completo is None or df_completo.empty:
         df_completo = obtener_movimientos_locales()
@@ -238,23 +258,26 @@ def render_visor(df_mes, mes_nombre, anho, saldos_fin, rol_actual=None):
         columnas_pantalla.append("Activos")
         
     columnas_pantalla.extend([
-        "Monto Bs", "Monto $ Zelle", "Monto $ Cash", "Monto $ Ah-Ze", "Monto $ Ah-Ch", "Comentario"
+        "Monto Bs", "Monto $ Zelle", "Monto $ Cash", "Monto $ Ah-Ze", "Monto $ Ah-Ch", 
+        "Monto usDT", "Monto AhDT", "Comentario"
     ])
     
     cols_existentes = [c for c in columnas_pantalla if c in df_visual.columns]
 
     config_cols = {
-        "Fecha Ext": st.column_config.TextColumn("Fecha", width=100),
-        "Descripción": st.column_config.TextColumn("Descripción", width=320),
-        "Categoría": st.column_config.TextColumn("Categoría", width=150),
-        "Tipo": st.column_config.TextColumn("Tipo", width=100),
-        "Activos": st.column_config.TextColumn("Activos", width=120),
-        "Monto Bs": st.column_config.TextColumn("Monto Bs", width=120),
-        "Monto $ Zelle": st.column_config.TextColumn("Monto $ Zelle", width=120),
-        "Monto $ Cash": st.column_config.TextColumn("Monto $ Cash", width=120),
-        "Monto $ Ah-Ze": st.column_config.TextColumn("Monto $ Ah-Ze", width=120),
-        "Monto $ Ah-Ch": st.column_config.TextColumn("Monto $ Ah-Ch", width=120),
-        "Comentario": st.column_config.TextColumn("Comentario", width=320),
+        "Fecha Ext": st.column_config.TextColumn("Fecha", width=85),
+        "Descripción": st.column_config.TextColumn("Descripción", width=280),
+        "Categoría": st.column_config.TextColumn("Categoría", width=140),
+        "Tipo": st.column_config.TextColumn("Tipo", width=85),
+        "Activos": st.column_config.TextColumn("Activos", width=100),
+        "Monto Bs": st.column_config.TextColumn("Monto Bs", width=125),
+        "Monto $ Zelle": st.column_config.TextColumn("Monto $ Zelle", width=90),
+        "Monto $ Cash": st.column_config.TextColumn("Monto $ Cash", width=90),
+        "Monto $ Ah-Ze": st.column_config.TextColumn("Monto $ Ah-Ze", width=90),
+        "Monto $ Ah-Ch": st.column_config.TextColumn("Monto $ Ah-Ch", width=90),
+        "Monto usDT": st.column_config.TextColumn("Monto usDT", width=90),
+        "Monto AhDT": st.column_config.TextColumn("Monto AhDT", width=90),
+        "Comentario": st.column_config.TextColumn("Comentario", width=260),
     }
 
     st.dataframe(
