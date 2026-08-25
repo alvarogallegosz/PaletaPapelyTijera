@@ -3,92 +3,116 @@ import pandas as pd
 import datetime
 import xml.sax.saxutils
 
-def obtener_saldo_inicial_mes(df_todos, anho, mes):
-    """Calcula vectorialmente el saldo acumulado de las 5 cajas antes del mes consultado."""
+def obtener_saldos_iniciales_dict(df_todos, anho, mes, lista_cuentas=None):
+    """
+    Calcula el saldo acumulado antes del mes consultado para todas las cuentas activas.
+    Devuelve un diccionario dinámico: {'Bs': 0.0, '$Ze': 0.0, '$Ch': 0.0, ...}
+    """
     if df_todos.empty:
-        return 0.0, 0.0, 0.0, 0.0, 0.0
+        return {}
         
     fecha_corte = datetime.date(anho, mes, 1)
     df_anterior = df_todos[(df_todos["fecha"] < fecha_corte) & (df_todos["activo"] == True)]
     
-    if df_anterior.empty:
-        return 0.0, 0.0, 0.0, 0.0, 0.0
-        
-    # Sumatorias vectoriales instantáneas por tipo de cuenta (5 cajas)
-    in_bs = df_anterior[df_anterior["tipo"] == "IN-Bs"]["monto"].sum()
-    eg_bs = df_anterior[df_anterior["tipo"] == "EG-Bs"]["monto"].sum()
-    
-    in_ze = df_anterior[df_anterior["tipo"] == "IN-$Ze"]["monto"].sum()
-    eg_ze = df_anterior[df_anterior["tipo"] == "EG-$Ze"]["monto"].sum()
-    
-    in_ch = df_anterior[df_anterior["tipo"] == "IN-$Ch"]["monto"].sum()
-    eg_ch = df_anterior[df_anterior["tipo"] == "EG-$Ch"]["monto"].sum()
-    
-    in_ah_ze = df_anterior[df_anterior["tipo"] == "IN-$AhZe"]["monto"].sum()
-    eg_ah_ze = df_anterior[df_anterior["tipo"] == "EG-$AhZe"]["monto"].sum()
-    
-    in_ah_ch = df_anterior[df_anterior["tipo"] == "IN-$AhCh"]["monto"].sum()
-    eg_ah_ch = df_anterior[df_anterior["tipo"] == "EG-$AhCh"]["monto"].sum()
-    
-    return (in_bs - eg_bs), (in_ze - eg_ze), (in_ch - eg_ch), (in_ah_ze - eg_ah_ze), (in_ah_ch - eg_ah_ch)
+    if lista_cuentas is None:
+        # Extraer dinámicamente las cuentas presentes en el dataset
+        tipos = df_todos["tipo"].dropna().unique()
+        cuentas_set = set()
+        for t in tipos:
+            if "-" in str(t):
+                pref, cta = str(t).split("-", 1)
+                if pref in ["IN", "EG"]:
+                    cuentas_set.add(cta)
+        lista_cuentas = sorted(list(cuentas_set))
 
-def procesar_mes_aislado(df_todos, anho, mes):
-    """Genera la línea de tiempo financiera de saldos para las 5 cuentas únicamente en el mes seleccionado."""
-    s_bs, s_ze, s_ch, s_ah_ze, s_ah_ch = obtener_saldo_inicial_mes(df_todos, anho, mes)
-    saldos_iniciales = {
-        "Bs": s_bs, 
-        "Ze": s_ze, 
-        "Ch": s_ch, 
-        "AhZe": s_ah_ze, 
-        "AhCh": s_ah_ch
-    }
+    saldos = {}
+    for cta in lista_cuentas:
+        if df_anterior.empty:
+            saldos[cta] = 0.0
+        else:
+            in_monto = df_anterior[df_anterior["tipo"] == f"IN-{cta}"]["monto"].sum()
+            eg_monto = df_anterior[df_anterior["tipo"] == f"EG-{cta}"]["monto"].sum()
+            saldos[cta] = float(in_monto - eg_monto)
+
+    return saldos
+
+
+def obtener_saldo_inicial_mes(df_todos, anho, mes):
+    """
+    Wrapper compatible con código heredado que devuelve los saldos iniciales como diccionario de claves estándar.
+    """
+    saldos = obtener_saldos_iniciales_dict(df_todos, anho, mes)
     
+    # Normalización de claves comunes para vistas
+    return (
+        saldos.get("Bs", 0.0),
+        saldos.get("$Ze", saldos.get("Ze", 0.0)),
+        saldos.get("$Ch", saldos.get("Ch", 0.0)),
+        saldos.get("usDT", saldos.get("usDT", 0.0)),
+        saldos.get("$AhZe", saldos.get("AhZe", 0.0)),
+        saldos.get("$AhCh", saldos.get("AhCh", 0.0)),
+        saldos.get("AhDT", saldos.get("AhDT", 0.0))
+    )
+
+
+def procesar_mes_aislado(df_todos, anho, mes, cuentas_ordenadas=None):
+    """
+    Genera la línea de tiempo financiera de saldos para todas las cuentas activas en el mes seleccionado.
+    Construye dinámicamente las columnas de saldos para la tabla.
+    """
     df_filtro = df_todos.copy()
-    df_filtro["fecha_dt"] = pd.to_datetime(df_filtro["fecha"])
-    mascara = (df_filtro["fecha_dt"].dt.year == anho) & (df_filtro["fecha_dt"].dt.month == mes) & (df_filtro["activo"] == True)
     
-    df_mes = df_filtro[mascara].drop(columns=["fecha_dt"]).sort_values(by=["fecha", "id"]).copy()
-    
+    # Detectar todas las cuentas en el dataset si no se especifican
+    if cuentas_ordenadas is None:
+        tipos_unicos = df_filtro["tipo"].dropna().unique() if not df_filtro.empty else []
+        cuentas_set = set()
+        for t in tipos_unicos:
+            if "-" in str(t):
+                pref, cta = str(t).split("-", 1)
+                if pref in ["IN", "EG"]:
+                    cuentas_set.add(cta)
+        cuentas_ordenadas = sorted(list(cuentas_set)) if cuentas_set else ["Bs", "$Ze", "$Ch", "$AhZe", "$AhCh"]
+
+    # Diccionario de saldos iniciales
+    saldos_iniciales = obtener_saldos_iniciales_dict(df_filtro, anho, mes, lista_cuentas=cuentas_ordenadas)
+    saldos_corrientes = saldos_iniciales.copy()
+
+    # Filtrar registros del mes
+    if not df_filtro.empty:
+        df_filtro["fecha_dt"] = pd.to_datetime(df_filtro["fecha"])
+        mascara = (df_filtro["fecha_dt"].dt.year == anho) & (df_filtro["fecha_dt"].dt.month == mes) & (df_filtro["activo"] == True)
+        df_mes = df_filtro[mascara].drop(columns=["fecha_dt"]).sort_values(by=["fecha", "id"]).copy()
+    else:
+        df_mes = pd.DataFrame()
+
     if df_mes.empty:
         return df_mes, saldos_iniciales, saldos_iniciales
-        
-    lista_bs, lista_ze, lista_ch, lista_ah_ze, lista_ah_ch = [], [], [], [], []
-    
+
+    # Seguimiento acumulativo fila a fila
+    historial_saldos = {cta: [] for cta in cuentas_ordenadas}
+
     for _, row in df_mes.iterrows():
-        tipo = row["tipo"]
+        tipo = str(row["tipo"])
         monto = float(row["monto"]) if pd.notnull(row["monto"]) else 0.0
-        
-        if tipo == "IN-Bs": s_bs += monto
-        elif tipo == "EG-Bs": s_bs -= monto
-        elif tipo == "IN-$Ze": s_ze += monto
-        elif tipo == "EG-$Ze": s_ze -= monto
-        elif tipo == "IN-$Ch": s_ch += monto
-        elif tipo == "EG-$Ch": s_ch -= monto
-        elif tipo == "IN-$AhZe": s_ah_ze += monto
-        elif tipo == "EG-$AhZe": s_ah_ze -= monto
-        elif tipo == "IN-$AhCh": s_ah_ch += monto
-        elif tipo == "EG-$AhCh": s_ah_ch -= monto
-            
-        lista_bs.append(s_bs)
-        lista_ze.append(s_ze)
-        lista_ch.append(s_ch)
-        lista_ah_ze.append(s_ah_ze)
-        lista_ah_ch.append(s_ah_ch)
-        
-    df_mes["Saldo Bs"] = lista_bs
-    df_mes["Saldo Zelle ($)"] = lista_ze
-    df_mes["Saldo Cash ($)"] = lista_ch
-    df_mes["Saldo Ah-Zelle ($)"] = lista_ah_ze
-    df_mes["Saldo Ah-Cash ($)"] = lista_ah_ch
-    
-    saldos_finales = {
-        "Bs": s_bs, 
-        "Ze": s_ze, 
-        "Ch": s_ch, 
-        "AhZe": s_ah_ze, 
-        "AhCh": s_ah_ch
-    }
+
+        if "-" in tipo:
+            prefijo, cta = tipo.split("-", 1)
+            if cta in saldos_corrientes:
+                if prefijo == "IN":
+                    saldos_corrientes[cta] += monto
+                elif prefijo == "EG":
+                    saldos_corrientes[cta] -= monto
+
+        for cta in cuentas_ordenadas:
+            historial_saldos[cta].append(saldos_corrientes[cta])
+
+    # Asignación de columnas dinámicas de saldo
+    for cta in cuentas_ordenadas:
+        df_mes[f"Saldo {cta}"] = historial_saldos[cta]
+
+    saldos_finales = saldos_corrientes.copy()
     return df_mes, saldos_iniciales, saldos_finales
+
 
 # ===================================================
 # 🗓️ HELPER DE FORMATO DE FECHA EN ESPAÑOL
@@ -99,7 +123,7 @@ DIAS_ES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Dom
 def fecha_a_larga(f):
     """Convierte una fecha en texto largo en español de forma segura."""
     if not f:
-        return datetime.date.today().strftime("%Y-%m-%d") # Respaldo seguro por defecto
+        return datetime.date.today().strftime("%Y-%m-%d")
     if isinstance(f, str):
         try:
             f = datetime.datetime.strptime(f, "%Y-%m-%d").date()
