@@ -20,7 +20,6 @@ def _obtener_meses_cerrados(df_datos) -> set:
 
 def render_edicion(df_completo, rol_actual, es_consolidado=False):
     # ↔️ CSS INYECTADO PARA FORZAR SCROLLBAR HORIZONTAL EN EL DATA_EDITOR
-    # Permite scrollbar horizontal DINÁMICO (solo aparece si el contenido sobrepasa la pantalla)
     st.markdown("""
         <style>
             div[data-testid="stDataEditor"] {
@@ -96,7 +95,6 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
     ]
     
     with col_mes:
-        # Por defecto selecciona el número de mes actual (Índice 1 = Enero, 2 = Febrero, etc.)
         idx_mes_defecto = mes_actual_num if mes_actual_num < len(meses_nombres) else 0
         mes_sel = st.selectbox("Mes:", options=meses_nombres, index=idx_mes_defecto)
 
@@ -170,7 +168,7 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
 
     columnas_base = ["id", "fecha", "categoria", "detalle", "tipo", "monto", "tasa", "comentarios"]
     
-    # Configuración base de columnas. Si el modo borrado está activo, se bloquea la edición de campos.
+    # Configuración base de columnas con los 14 tipos de movimiento activos
     column_config_base = {
         "id": st.column_config.NumberColumn("ID", width=60, disabled=True),
         "fecha": st.column_config.DateColumn("Fecha", width=100, format="DD/MM/YYYY", disabled=modo_borrado),
@@ -178,7 +176,15 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
         "detalle": st.column_config.TextColumn("Descripción", width=340, disabled=modo_borrado),
         "tipo": st.column_config.SelectboxColumn(
             "Tipo Cuenta", width=120, disabled=modo_borrado,
-            options=["IN-Bs", "EG-Bs", "IN-$Ze", "EG-$Ze", "IN-$Ch", "EG-$Ch", "IN-$AhZe", "EG-$AhZe", "IN-$AhCh", "EG-$AhCh"],
+            options=[
+                "IN-Bs", "EG-Bs", 
+                "IN-$Ze", "EG-$Ze", 
+                "IN-$Ch", "EG-$Ch", 
+                "IN-$AhZe", "EG-$AhZe", 
+                "IN-$AhCh", "EG-$AhCh",
+                "IN-usDT", "EG-usDT",
+                "IN-AhDT", "EG-AhDT"
+            ],
         ),
         "monto": st.column_config.NumberColumn("Monto Base", width=130, min_value=0.0, format="%.2f", disabled=modo_borrado),
         "tasa": st.column_config.NumberColumn("Tasa Monitor", width=110, min_value=0.0, format="%.2f", disabled=modo_borrado),
@@ -209,7 +215,7 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
                 
         if st.session_state.confirmar_borrado_caja:
             cantidad_borrar = len(asientos_marcados)
-            st.error(f"⚠️ **¿Está seguro de borrar definitivamente estos asientos?**")
+            st.error("⚠️ **¿Está seguro de borrar definitivamente estos asientos?**")
             st.caption(f"Se anularán de la vista **{cantidad_borrar}** registro(s).")
             
             col_conf1, col_conf2 = st.columns(2)
@@ -217,7 +223,6 @@ def render_edicion(df_completo, rol_actual, es_consolidado=False):
                 if st.button("✔️ Sí, borrar definitivamente", use_container_width=True):
                     ids_a_borrar = asientos_marcados["id"].tolist()
                     for id_reg in ids_a_borrar:
-                        # Se cambia el estado en base de datos directamente
                         actualizar_movimiento_db(int(id_reg), {"activo": False, "modificado_por": rol_actual})
                     
                     st.session_state.confirmar_borrado_caja = False
