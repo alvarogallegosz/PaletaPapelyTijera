@@ -25,8 +25,16 @@ def _es_mes_anterior_al_inicio(df_datos, ym_evaluar) -> bool:
 
 
 def _calcular_saldos_globales(df):
-    """Calcula la disponibilidad neta global de las 5 cuentas en todo el histórico."""
-    saldos = {'Bs': 0.0, 'Ze': 0.0, 'Ch': 0.0, 'AhZe': 0.0, 'AhCh': 0.0}
+    """Calcula la disponibilidad neta global de las 7 cuentas en todo el histórico."""
+    saldos = {
+        'Bs': 0.0, 
+        'Ze': 0.0, 
+        'Ch': 0.0, 
+        'usDT': 0.0, 
+        'AhZe': 0.0, 
+        'AhCh': 0.0, 
+        'AhDT': 0.0
+    }
     if df is None or df.empty:
         return saldos
     for _, row in df.iterrows():
@@ -51,6 +59,10 @@ def _calcular_saldos_globales(df):
             saldos['Ch'] += monto
         elif tipo == "EG-$Ch":
             saldos['Ch'] -= monto
+        elif tipo == "IN-usDT":
+            saldos['usDT'] += monto
+        elif tipo == "EG-usDT":
+            saldos['usDT'] -= monto
         elif tipo == "IN-$AhZe":
             saldos['AhZe'] += monto
         elif tipo == "EG-$AhZe":
@@ -59,16 +71,23 @@ def _calcular_saldos_globales(df):
             saldos['AhCh'] += monto
         elif tipo == "EG-$AhCh":
             saldos['AhCh'] -= monto
+        elif tipo == "IN-AhDT":
+            saldos['AhDT'] += monto
+        elif tipo == "EG-AhDT":
+            saldos['AhDT'] -= monto
+            
     return saldos
 
 
 def render_banner_saldos(saldos_dict):
-    """Renderiza el bloque HTML superior con la disponibilidad de las 5 cuentas."""
+    """Renderiza el bloque HTML superior con la disponibilidad de las 7 cuentas."""
     val_bs = float(saldos_dict.get('Bs', 0.0))
     val_ze = float(saldos_dict.get('Ze', 0.0))
     val_ch = float(saldos_dict.get('Ch', 0.0))
+    val_usdt = float(saldos_dict.get('usDT', 0.0))
     val_ah_ze = float(saldos_dict.get('AhZe', 0.0))
     val_ah_ch = float(saldos_dict.get('AhCh', 0.0))
+    val_ah_usdt = float(saldos_dict.get('AhDT', 0.0))
     
     st.markdown(f"""
         <div style="font-size: 12px; background-color: #f8f9fa; padding: 10px 14px; border-radius: 6px; border-left: 4px solid #3b82f6; margin-top: 5px; margin-bottom: 12px; line-height: 1.8;">
@@ -76,8 +95,10 @@ def render_banner_saldos(saldos_dict):
             <span style="color: #111827;">🟢 <b>Bs:</b> {val_bs:,.2f}</span> &nbsp;|&nbsp;
             <span style="color: #111827;">🔵 <b>Zelle Operativo:</b> ${val_ze:,.2f}</span> &nbsp;|&nbsp;
             <span style="color: #111827;">💵 <b>Cash Operativo:</b> ${val_ch:,.2f}</span> &nbsp;|&nbsp;
+            <span style="color: #111827;">🪙 <b>USDT Operativo:</b> ${val_usdt:,.2f}</span> &nbsp;|&nbsp;
             <span style="color: #0d9488;">🏦 <b>Ahorro Zelle:</b> ${val_ah_ze:,.2f}</span> &nbsp;|&nbsp;
-            <span style="color: #0d9488;">🐷 <b>Ahorro Cash:</b> ${val_ah_ch:,.2f}</span>
+            <span style="color: #0d9488;">🐷 <b>Ahorro Cash:</b> ${val_ah_ch:,.2f}</span> &nbsp;|&nbsp;
+            <span style="color: #0d9488;">🔒 <b>Ahorro USDT:</b> ${val_ah_usdt:,.2f}</span>
         </div>
     """, unsafe_allow_html=True)
 
@@ -238,8 +259,13 @@ def render_carga(rol_actual, es_consolidado=False):
         st.selectbox(
             "Tipo de Cuenta (*):",
             options=[
-                "IN-Bs", "EG-Bs", "IN-$Ze", "EG-$Ze", "IN-$Ch",
-                "EG-$Ch", "IN-$AhZe", "EG-$AhZe", "IN-$AhCh", "EG-$AhCh",
+                "IN-Bs", "EG-Bs", 
+                "IN-$Ze", "EG-$Ze", 
+                "IN-$Ch", "EG-$Ch", 
+                "IN-usDT", "EG-usDT",
+                "IN-$AhZe", "EG-$AhZe", 
+                "IN-$AhCh", "EG-$AhCh",
+                "IN-AhDT", "EG-AhDT",
             ],
             key="carga_tipo",
         )
