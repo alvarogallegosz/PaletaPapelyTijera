@@ -525,7 +525,7 @@ def render_creacion_presupuestos(rol_actual):
 
         st.markdown("## 📦 Bloques de Catálogo")
         
-        if st.button("➕ Añadir Nueva Sección Física", disabled=len(st.session_state.lista_secciones) >= 11):
+        if st.button("➕ Añadir Nueva Sección Física", disabled=len(st.session_state.lista_secciones) >= 15):
             nuevo_id = f"sec_{int(time.time() * 1000)}"
             idx_nuevo = len(st.session_state.lista_secciones)
             sug_titulo = sugerencias_titulos[idx_nuevo] if idx_nuevo < len(sugerencias_titulos) else f"NUEVA ZONA {idx_nuevo + 1}"
