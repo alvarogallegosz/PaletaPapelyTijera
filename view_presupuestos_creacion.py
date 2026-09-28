@@ -43,7 +43,7 @@ def a_flotante(val) -> float:
 # 📦 FUNCIONES DE PERSISTENCIA Y REHIDRATACIÓN JSONB
 # ===================================================
 CLAUSULAS_POR_DEFECTO = """Las condiciones generales de nuestra oferta son las siguientes:
-* Precios se entienden en: Dólares netos. El costo debe ser pagado el 50% a la aceptación del contrato y el otro 50% 2 días antes del evento.
+* Precios se entienden en: Dólares netos. El costo debe ser pagado el 50% a la aceptación del contrato y el otro 50% 3 días antes del evento.
 * Si el pago lo realizará en bs la tasa que manejamos es Euro indicado por el Banco Central de Venezuela.
 * Validez de la Oferta: 3 días contínuos.
 * Si el cliente cancela el servicio (es decir no va a querer el servicio) 2 días antes del evento le será devuelto un 30% del monto pagado.
