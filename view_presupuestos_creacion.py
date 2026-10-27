@@ -827,7 +827,7 @@ def render_creacion_presupuestos(rol_actual):
         
         st.markdown("---")
 
-        ancho_logo_deseado = "80%"
+        ancho_logo_deseado = "100%"
         logo_nombre = "encabezado_paleta.png"
         ruta_script = os.path.join(os.path.dirname(__file__), logo_nombre)
         ruta_raiz = os.path.join(os.getcwd(), logo_nombre)
