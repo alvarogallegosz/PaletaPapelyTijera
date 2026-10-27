@@ -58,7 +58,7 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False, incluir_dias=False):
         pagesize=letter,
         leftMargin=36,
         rightMargin=36,
-        topMargin=36,
+        topMargin=2,
         bottomMargin=45
     )
     
