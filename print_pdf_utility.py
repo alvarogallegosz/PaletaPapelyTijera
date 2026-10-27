@@ -111,7 +111,7 @@ def generar_pdf_presupuesto_nativo(incluir_precios=False, incluir_dias=False):
     ruta_final = ruta_script if os.path.exists(ruta_script) else (ruta_raiz if os.path.exists(ruta_raiz) else None)
     
     if ruta_final:
-        ancho_pdf = 432
+        ancho_pdf = 612
         try:
             with PILImage.open(ruta_final) as img_pil:
                 orig_w, orig_h = img_pil.size
