@@ -1,7 +1,7 @@
 # run_app.py
 import datetime
 from core_finance_engine import procesar_mes_aislado
-from db_connection import obtener_movimientos_locales
+from db_connection import obtener_movimientos_locales, generar_respaldo_completo_zip
 import streamlit as st
 
 from view_auth import render_modulo_autenticacion
@@ -219,10 +219,53 @@ elif modulo_activo == "📊 Administración":
 
 elif modulo_activo == "⚙️ Soporte Técnico":
     st.markdown("### ⚙️ Configuración y Auditorías Técnicas")
-    st.info(
-        "Módulo de infraestructura con visualización exclusiva del histórico"
-        " transaccional del sistema y respaldos de BD."
-    )
+    
+    rol_limpio = str(rol_actual).strip().lower()
+    if rol_limpio not in ["administrador", "gerente", "soporte"]:
+        st.error("🔒 Acceso denegado. Solo personal autorizado puede acceder a las herramientas de soporte y respaldo.")
+    else:
+        tab_resp, tab_aud = st.tabs(["🗄️ Respaldos de Base de Datos", "🔍 Auditoría Técnica"])
+        
+        with tab_resp:
+            st.info(
+                "Genera un paquete `.zip` en memoria con el volcado completo de Supabase:\n"
+                "- **Archivos `.json`:** Respaldo estructural exacto (preserva campos JSONB y tipos de datos).\n"
+                "- **Libro `.xlsx`:** Reporte tabular multi-hoja listo para revisión en Excel."
+            )
+
+            tablas_disponibles = ["movimientos", "presupuestos", "usuarios"]
+            tablas_sel = st.multiselect(
+                "Seleccione las tablas a respaldar:",
+                options=tablas_disponibles,
+                default=tablas_disponibles,
+                key="sel_tablas_respaldo"
+            )
+
+            col_b1, col_b2 = st.columns([1, 2])
+            with col_b1:
+                if st.button("⚙️ Generar Paquete de Respaldo", type="primary", disabled=not tablas_sel, use_container_width=True):
+                    with st.spinner("Extrayendo tablas de Supabase..."):
+                        try:
+                            zip_bytes = generar_respaldo_completo_zip(tablas=tablas_sel)
+                            st.session_state["backup_zip_listo"] = zip_bytes
+                            st.session_state["backup_timestamp"] = datetime.datetime.now().strftime("%Y%m%d_%H%M")
+                            st.success("✅ Paquete listo para descargar.")
+                        except Exception as e:
+                            st.error(f"❌ Error al generar el respaldo: {e}")
+
+            if "backup_zip_listo" in st.session_state:
+                nombre_zip = f"Respaldo_BD_Paleta_{st.session_state['backup_timestamp']}.zip"
+                st.download_button(
+                    label=f"📥 Descargar {nombre_zip}",
+                    data=st.session_state["backup_zip_listo"],
+                    file_name=nombre_zip,
+                    mime="application/zip",
+                    use_container_width=True
+                )
+
+        with tab_aud:
+            st.caption("Vista rápida de integridad de registros en memoria.")
+            st.write(f"Total movimientos cargados en sesión: **{len(df_completo)}**")
 
 # ===================================================
 # 🏁 CIERRE VISUAL GLOBAL AL PIE DE TODA LA APP
