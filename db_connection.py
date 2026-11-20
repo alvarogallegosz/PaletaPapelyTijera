@@ -291,21 +291,28 @@ def generar_respaldo_completo_zip(tablas: list = None) -> bytes:
     Extrae todas las filas de las tablas indicadas en Supabase y devuelve
     los bytes de un archivo ZIP con respaldos en JSON (crudo) y Excel (legible).
     """
+    if not supabase:
+        raise ConnectionError("No hay conexión activa con Supabase.")
+
     if tablas is None:
-        # Ajusta esta lista con los nombres exactos de tus tablas en Supabase
-        tablas = ["movimientos", "presupuestos"]
+        tablas = ["movimientos", "presupuestos", "usuarios"]
 
     buffer_zip = io.BytesIO()
     buffer_excel = io.BytesIO()
     datos_extraidos = {}
 
-    # 1. Extracción desde Supabase (paginando de 1000 en 1000 por si crecen las tablas)
     for tabla in tablas:
         registros_tabla = []
         inicio = 0
         paso = 1000
         while True:
-            res = supabase.table(tabla).select("*").range(inicio, inicio + paso - 1).execute()
+            res = (
+                supabase.table(tabla)
+                .select("*")
+                .order("id", desc=False)
+                .range(inicio, inicio + paso - 1)
+                .execute()
+            )
             lote = res.data or []
             registros_tabla.extend(lote)
             if len(lote) < paso:
@@ -313,11 +320,9 @@ def generar_respaldo_completo_zip(tablas: list = None) -> bytes:
             inicio += paso
         datos_extraidos[tabla] = registros_tabla
 
-    # 2. Construcción del Excel multi-hoja para lectura rápida
     with pd.ExcelWriter(buffer_excel, engine="openpyxl") as writer:
         for tabla, registros in datos_extraidos.items():
             df_temp = pd.DataFrame(registros) if registros else pd.DataFrame({"info": ["Tabla vacía"]})
-            # Convertir columnas dict/list (JSONB) a string para que Excel no arroje error
             for col in df_temp.columns:
                 df_temp[col] = df_temp[col].apply(
                     lambda x: json.dumps(x, ensure_ascii=False) if isinstance(x, (dict, list)) else x
@@ -325,13 +330,9 @@ def generar_respaldo_completo_zip(tablas: list = None) -> bytes:
             df_temp.to_excel(writer, sheet_name=tabla[:31], index=False)
     buffer_excel.seek(0)
 
-    # 3. Empaquetado en archivo ZIP en memoria
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     with zipfile.ZipFile(buffer_zip, "w", zipfile.ZIP_DEFLATED) as zf:
-        # Guardar el Excel consolidado
         zf.writestr(f"Auditoria_Paleta_{timestamp}.xlsx", buffer_excel.getvalue())
-        
-        # Guardar cada tabla en JSON puro (ideal para restauración exacta)
         for tabla, registros in datos_extraidos.items():
             json_str = json.dumps(registros, indent=2, ensure_ascii=False, default=str)
             zf.writestr(f"raw_{tabla}_{timestamp}.json", json_str)
